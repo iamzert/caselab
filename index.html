@@ -15,15 +15,19 @@
     <header id="hdr">
       <button class="logo" data-act="nav" data-id="cases"><span class="logo-mark"></span><span class="logo-text" data-i18n="title"></span></button>
       <nav class="topnav">
-        <button data-act="nav" data-id="inv" data-i18n="nav_inv"></button>
-        <button data-act="nav" data-id="cases" data-i18n="nav_cases"></button>
-        <button data-act="nav" data-id="upgrade" data-i18n="nav_upgrade"></button>
-        <button data-act="nav" data-id="rewards" data-i18n="nav_rewards"></button>
-        <button data-act="nav" data-id="farm" data-i18n="nav_farm"></button>
+        <button data-act="nav" data-id="inv"><svg class="ico" viewBox="0 0 24 24"><path d="M8 7V6a4 4 0 0 1 8 0v1"/><rect x="5" y="7" width="14" height="14" rx="3"/><path d="M9 13h6"/></svg><span data-i18n="nav_inv"></span></button>
+        <button data-act="nav" data-id="cases"><svg class="ico" viewBox="0 0 24 24"><path d="M3.5 8.5 12 4l8.5 4.5v7L12 20l-8.5-4.5z"/><path d="M3.5 8.5 12 13l8.5-4.5M12 13v7"/></svg><span data-i18n="nav_cases"></span></button>
+        <button data-act="nav" data-id="upgrade"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 16V8M8.5 11.5 12 8l3.5 3.5"/></svg><span data-i18n="nav_upgrade"></span></button>
+        <button data-act="nav" data-id="rewards"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="1.5"/><path d="M3 7h18v3H3zM12 7v13M12 7C10 3 6.5 4 7.5 6.5M12 7c2-4 5.5-3 4.5-.5"/></svg><span data-i18n="nav_rewards"></span></button>
+        <button data-act="nav" data-id="farm"><svg class="ico" viewBox="0 0 24 24"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></svg><span data-i18n="nav_farm"></span></button>
+        <button class="nav-admin" data-act="nav" data-id="admin" hidden aria-label="admin" title="Админ"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
       </nav>
       <div class="hdr-right">
-        <div class="bal"><i class="ci"></i><span id="bal">0</span></div>
-        <button class="hbtn plus" data-act="nav" data-id="farm" aria-label="farm">+</button>
+        <div class="bal-group">
+          <div class="bal"><i class="ci"></i><span id="bal">0</span></div>
+          <button class="hbtn plus" data-act="nav" data-id="farm" aria-label="farm">+</button>
+        </div>
+        <button class="hbtn adm-hbtn" data-act="nav" data-id="admin" hidden aria-label="admin"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg></button>
         <button class="hbtn desk" data-act="bg-pick" aria-label="background">🖼</button>
         <button class="hbtn" id="btn-sound" data-act="sound" aria-label="sound">🔊</button>
         <button class="hdr-user" data-act="nav" data-id="profile" aria-label="profile">
@@ -215,6 +219,9 @@
           <div class="rw-quests" id="rw-quests"></div>
         </section>
 
+        <!-- Админ-панель (вкладка видна только после входа администратора) -->
+        <section class="screen" id="scr-admin"><div id="adm-root"></div></section>
+
         <!-- Профиль -->
         <section class="screen" id="scr-profile">
           <div class="prof-top">
@@ -245,11 +252,11 @@
     </div>
 
     <nav id="tabbar">
-      <button data-act="nav" data-id="cases"><span>📦</span><small data-i18n="nav_cases"></small></button>
-      <button data-act="nav" data-id="inv"><span>🎒</span><small data-i18n="nav_inv"></small></button>
-      <button data-act="nav" data-id="upgrade"><span>⏫</span><small data-i18n="nav_upgrade"></small></button>
-      <button data-act="nav" data-id="rewards"><span>🎁</span><small data-i18n="nav_rewards"></small></button>
-      <button data-act="nav" data-id="farm"><span>💰</span><small data-i18n="nav_farm"></small></button>
+      <button data-act="nav" data-id="cases"><svg class="ico" viewBox="0 0 24 24"><path d="M3.5 8.5 12 4l8.5 4.5v7L12 20l-8.5-4.5z"/><path d="M3.5 8.5 12 13l8.5-4.5M12 13v7"/></svg><small data-i18n="nav_cases"></small></button>
+      <button data-act="nav" data-id="inv"><svg class="ico" viewBox="0 0 24 24"><path d="M8 7V6a4 4 0 0 1 8 0v1"/><rect x="5" y="7" width="14" height="14" rx="3"/><path d="M9 13h6"/></svg><small data-i18n="nav_inv"></small></button>
+      <button data-act="nav" data-id="upgrade"><svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 16V8M8.5 11.5 12 8l3.5 3.5"/></svg><small data-i18n="nav_upgrade"></small></button>
+      <button data-act="nav" data-id="rewards"><svg class="ico" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="1.5"/><path d="M3 7h18v3H3zM12 7v13M12 7C10 3 6.5 4 7.5 6.5M12 7c2-4 5.5-3 4.5-.5"/></svg><small data-i18n="nav_rewards"></small></button>
+      <button data-act="nav" data-id="farm"><svg class="ico" viewBox="0 0 24 24"><ellipse cx="12" cy="7" rx="7" ry="3"/><path d="M5 7v5c0 1.7 3.1 3 7 3s7-1.3 7-3V7M5 12v5c0 1.7 3.1 3 7 3s7-1.3 7-3v-5"/></svg><small data-i18n="nav_farm"></small></button>
     </nav>
   </div>
 

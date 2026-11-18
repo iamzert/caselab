@@ -3,7 +3,9 @@
 // Экраны «Кейсы» (список) и «Кейс» (открытие с рулеткой)
 (function () {
   const t = G.t, $ = UI.$, A = UI.actions, COIN = UI.COIN;
-  const COUNTS = [1, 2, 3, 5];
+  const COUNTS = [1, 2, 3, 5, 10, 15];
+  const MINI_FROM = 6;   // с этого количества вместо лент — сетка маленьких окон
+  const MINI_N = 9;      // карточек в ленте мини-окна
   let cur = null;        // текущий кейс
   let count = 1;         // сколько открывать за раз
   let query = '';
@@ -51,7 +53,42 @@
     tick();
   }
 
+  // ---------- Мини-окна: по одному на кейс, лента едет вертикально (CSS-переход на видеокарте) ----------
+  function miniCard(id, f) {
+    return '<div class="mc r' + SKINS[id].r + '"><div class="mc-art">' + Art.item(id, f) + '</div></div>';
+  }
+
+  function renderMiniIdle() {
+    let html = '';
+    for (let k = 0; k < count; k++) html += '<div class="mroll"><div class="mstrip">' + miniCard(G.rollSkin(cur), null) + '</div></div>';
+    $('#cp-rolls').innerHTML = '<div class="mgrid">' + html + '</div>';
+  }
+
+  function spinMini(roll, winner, fast, delay, withSound) {
+    return new Promise((resolve) => {
+      const strip = roll.querySelector('.mstrip');
+      const w = G.caseWeights(cur);
+      let html = '';
+      for (let i = 0; i < MINI_N - 1; i++) html += miniCard(G.rollSkin(cur, w), null);
+      strip.innerHTML = html + miniCard(winner.s, winner.f);
+      roll.className = 'mroll';
+      strip.style.transition = 'none';
+      strip.style.transform = 'translate3d(0,0,0)';
+      const h = roll.clientHeight;
+      void strip.offsetHeight;
+      const dur = (fast ? 900 : 2400) + delay;
+      strip.style.transition = 'transform ' + dur + 'ms cubic-bezier(.15,.8,.25,1)';
+      strip.style.transform = 'translate3d(0,' + (-(MINI_N - 1) * h) + 'px,0)';
+      if (withSound) {
+        // щелчки в моменты, когда карточки проходят окно (замедляются к концу)
+        for (let k = 1; k < MINI_N; k++) setTimeout(Sfx.tick, dur * (1 - Math.pow(1 - k / (MINI_N - 1), 1 / 3)));
+      }
+      setTimeout(() => { roll.classList.add('done', 'r' + SKINS[winner.s].r); resolve(); }, dur + 40);
+    });
+  }
+
   function renderIdle() {
+    if (count >= MINI_FROM) { renderMiniIdle(); return; }
     let html = '';
     for (let k = 0; k < count; k++) {
       let cards = '';
@@ -168,16 +205,19 @@
     Sfx.open();
     await G.wait(fast ? 150 : 400);
 
-    const rolls = document.querySelectorAll('#cp-rolls .roll');
-    await Promise.all(res.items.map((inst, k) => spinStrip(rolls[k], inst, fast, k * 180, k === 0)));
+    const mini = n >= MINI_FROM;
+    const rolls = document.querySelectorAll(mini ? '#cp-rolls .mroll' : '#cp-rolls .roll');
+    await Promise.all(res.items.map((inst, k) => (mini
+      ? spinMini(rolls[k], inst, fast, k * 70, k === 0)
+      : spinStrip(rolls[k], inst, fast, k * 180, k === 0))));
     const bestR = Math.max.apply(null, res.items.map((x) => SKINS[x.s].r));
     Sfx.win(Math.min(5, bestR));
-    // Частицы над редкими предметами
-    document.querySelectorAll('#cp-rolls .it.win').forEach((card, k) => {
+    // Частицы над редкими предметами (в мини-режиме — скромнее, чтобы не тормозило)
+    (mini ? rolls : document.querySelectorAll('#cp-rolls .it.win')).forEach((card, k) => {
       const r = SKINS[res.items[k].s].r;
-      if (r < 3) return;
+      if (r < (mini ? 4 : 3)) return;
       const b = card.getBoundingClientRect();
-      UI.burst(b.left + b.width / 2, b.top + b.height / 2, RARITIES[r].color, r >= 5 ? 46 : r >= 4 ? 30 : 18);
+      UI.burst(b.left + b.width / 2, b.top + b.height / 2, RARITIES[r].color, mini ? 14 : r >= 5 ? 46 : r >= 4 ? 30 : 18);
     });
     await G.wait(bestR >= 4 ? 500 : 300);
 

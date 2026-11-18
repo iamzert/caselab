@@ -649,7 +649,49 @@ const Art = (function () {
     return cv;
   }
 
-  // ---------- Кэш и очередь ----------
+  // ---------- Кэш между запусками (IndexedDB) ----------
+  // Готовые картинки сохраняются в браузере: при следующем запуске они не рисуются заново.
+  // ART_VER меняется при любом изменении отрисовки — тогда старый кэш очищается.
+  const ART_VER = 'a8';
+  let dbp = null;
+  function db() {
+    if (dbp) return dbp;
+    dbp = new Promise((resolve) => {
+      try {
+        const rq = indexedDB.open('caselab_art', 1);
+        rq.onupgradeneeded = () => rq.result.createObjectStore('img');
+        rq.onerror = () => resolve(null);
+        rq.onsuccess = () => {
+          const d = rq.result;
+          try {
+            const st = d.transaction('img', 'readwrite').objectStore('img');
+            const vr = st.get('__ver');
+            vr.onsuccess = () => {
+              if (vr.result !== ART_VER) { st.clear(); st.put(ART_VER, '__ver'); }
+              resolve(d);
+            };
+            vr.onerror = () => resolve(d);
+          } catch (e) { resolve(null); }
+        };
+      } catch (e) { resolve(null); }
+    });
+    return dbp;
+  }
+  function idbGet(key) {
+    return db().then((d) => new Promise((resolve) => {
+      if (!d) { resolve(null); return; }
+      try {
+        const rq = d.transaction('img', 'readonly').objectStore('img').get(key);
+        rq.onsuccess = () => resolve(rq.result instanceof Blob ? rq.result : null);
+        rq.onerror = () => resolve(null);
+      } catch (e) { resolve(null); }
+    }));
+  }
+  function idbPut(key, blob) {
+    db().then((d) => { if (d) { try { d.transaction('img', 'readwrite').objectStore('img').put(blob, key); } catch (e) { /* место кончилось — не страшно */ } } });
+  }
+
+  // ---------- Очередь отрисовки ----------
   function finish(key, url) {
     urls[key] = url;
     delete pending[key];
@@ -673,23 +715,51 @@ const Art = (function () {
       finish(key, BLANK);
       return;
     }
-    if (cv.toBlob) cv.toBlob((b) => finish(key, b ? URL.createObjectURL(b) : cv.toDataURL()), 'image/png');
-    else finish(key, cv.toDataURL('image/png'));
+    if (cv.toBlob) {
+      cv.toBlob((b) => {
+        if (b) { idbPut(ART_VER + ':' + key, b); finish(key, URL.createObjectURL(b)); } else finish(key, cv.toDataURL());
+      }, 'image/png');
+    } else finish(key, cv.toDataURL('image/png'));
   }
 
-  function work() {
+  // Пока крутится рулетка, не рисуем: анимация должна идти плавно (картинки для неё готовы заранее)
+  const busy = () => typeof UI !== 'undefined' && UI.isSpinning && UI.isSpinning();
+
+  function work(deadline) {
     scheduled = false;
+    if (!queue.length) return;
+    if (busy()) { setTimeout(schedule, 150); return; }
     const t0 = performance.now();
-    while (queue.length && performance.now() - t0 < 14) produce(queue.shift());
+    do produce(queue.shift());
+    while (queue.length && (deadline && deadline.timeRemaining ? deadline.timeRemaining() > 8 : performance.now() - t0 < 14));
     if (queue.length) schedule();
   }
-  function schedule() { if (!scheduled) { scheduled = true; setTimeout(work, 0); } }
+  function schedule() {
+    if (scheduled || !queue.length) return;
+    scheduled = true;
+    if (window.requestIdleCallback) requestIdleCallback(work, { timeout: 120 });
+    else setTimeout(work, 0);
+  }
+
+  // Новые запросы встают в начало очереди (одной пачкой, в своём порядке):
+  // то, что сейчас на экране, рисуется раньше того, что запрашивали до этого.
+  let batch = null;
+  function enqueue(key) {
+    if (!batch) {
+      batch = [];
+      Promise.resolve().then(() => { queue.unshift.apply(queue, batch); batch = null; schedule(); });
+    }
+    batch.push(key);
+  }
 
   function request(key) {
     if (urls[key] || pending[key]) return;
     pending[key] = 1;
-    queue.push(key);
-    schedule();
+    idbGet(ART_VER + ':' + key).then((blob) => {
+      if (urls[key]) return;
+      if (blob) finish(key, URL.createObjectURL(blob));
+      else enqueue(key);
+    });
   }
 
   function img(key, cls) {

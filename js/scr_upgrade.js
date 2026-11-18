@@ -35,15 +35,19 @@ const Upgrade = (function () {
     return v;
   }
 
-  // Шанс с учётом подкрутки из админ-панели (кольцо всегда показывает настоящий шанс)
+  // Показываемый шанс. Множители ×0.25…×3 из админ-панели видны на кольце; режим «100% (скрыто)» — нет:
+  // кольцо показывает обычный шанс, а настоящий шанс победы равен 1 (realChance).
+  // Подкрутка хранится только на устройстве администратора — у остальных игроков шансы честные.
   function chance() {
     const s = stakeValue();
     if (!target || s <= 0) return 0;
     const tp = targetPrice(target);
     if (tp <= s) return 0;
-    if (G.odds.up >= G.ODDS_WIN) return 1;
-    return Math.min(1, Math.min(UPGRADE_MAX, s / tp * UPGRADE_EDGE) * G.odds.up);
+    const base = Math.min(UPGRADE_MAX, s / tp * UPGRADE_EDGE);
+    if (G.odds.up >= G.ODDS_WIN) return base;
+    return Math.min(1, base * G.odds.up);
   }
+  const realChance = () => { const ch = chance(); return ch > 0 && G.odds.up >= G.ODDS_WIN ? 1 : ch; };
 
   // ---------- Круг ----------
   function arcPath(deg) {
@@ -208,7 +212,7 @@ const Upgrade = (function () {
 
   // ---------- Запуск апгрейда ----------
   async function go() {
-    const ch = chance();
+    const ch = chance(), real = realChance();   // считаем до списания ставки
     if (UI.isSpinning() || ch <= 0) { UI.toast(t('up_need')); return; }
     if (!stake.length && G.invFull(1)) { UI.toast(t('inv_full', { n: INVENTORY_MAX }), 'bad'); return; }
     if (!G.canPay(bal)) { UI.toast(t('not_enough'), 'bad'); return; }
@@ -217,8 +221,9 @@ const Upgrade = (function () {
     G.spend(bal);
     G.removeInsts(stake);
     const tgt = target;
-    const roll = Math.random() * (ch >= 1 ? 0.98 : 1);
-    const win = roll < ch;
+    // при гарантированной победе стрелка останавливается внутри видимой зелёной зоны
+    const roll = real >= 1 ? Math.random() * ch * 0.98 : Math.random();
+    const win = roll < real;
     G.S.upgrades++;
     G.track('u', 1);
     if (win) { G.S.upWins++; G.track('uw', 1); }

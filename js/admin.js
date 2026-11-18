@@ -63,7 +63,7 @@ const Admin = (function () {
 
   function open() {
     if (UI.isSpinning()) return;
-    if (unlocked()) panel(); else login();
+    if (unlocked()) UI.showScreen('admin'); else login();
   }
 
   // Проверка логина и пароля (общая для окна входа и регистрации под ником админа).
@@ -99,7 +99,8 @@ const Admin = (function () {
       unlock();
       // админ без профиля сразу получает свой ник
       if (!G.S.profile.name) { G.S.profile = { name: ADMIN_LOGIN, ava: '👑' }; G.save(true); UI.setProfileBadge(); }
-      panel();
+      UI.closeModal(true);
+      UI.showScreen('admin');
     } else login('Неверный логин или пароль');
   };
 
@@ -114,7 +115,11 @@ const Admin = (function () {
 
   const last = { skin: null, wear: 'ft', n: 1 };   // выбор в «Выдать предмет» сохраняется между действиями
 
+  // Панель — отдельный экран (вкладка ⚙ видна только после входа администратора)
   function panel() {
+    const root = document.getElementById('adm-root');
+    if (!root) return;
+    if (!unlocked()) { root.innerHTML = ''; return; }
     const S = G.S;
     const skins = SKIN_LIST.map((s) => '<option value="' + s.id + '"' + (s.id === last.skin ? ' selected' : '') + '>' + (G.isStar(s.id) ? '★ ' : '') + G.skinName(s.id) + ' | ' + G.finishName(s.id) + ' · ' + G.fmt(s.value) + '</option>').join('');
     const wears = WEARS.map((w) => '<option value="' + w.id + '"' + (w.id === last.wear ? ' selected' : '') + '>' + G.t('wear_' + w.id) + '</option>').join('');
@@ -131,7 +136,7 @@ const Admin = (function () {
       CASES.map((c) => '<option value="' + c.id + '"' + (c.id === caseKey ? ' selected' : '') + '>' + G.nm(c.name) + '</option>').join('');
     const overrides = Object.keys(G.odds.cases).map((k) => (k === 'all' ? 'все кейсы' : G.nm(CASE_BY_ID[k] ? CASE_BY_ID[k].name : { ru: k })) + ' ×' + G.odds.cases[k]);
 
-    UI.modal('<div class="adm">' +
+    root.innerHTML = '<div class="adm panel">' +
       '<div class="adm-h"><h3 class="m-title">⚙️ Админ-панель</h3><button class="btn mini" data-act="adm-logout">Выйти</button></div>' +
 
       '<section><h4>Баланс: ' + COIN + G.fmt(S.coins) + '</h4><div class="adm-row">' +
@@ -156,14 +161,15 @@ const Admin = (function () {
       '<button class="btn mini" data-act="adm-quests">Выполнить задания дня</button></div></section>' +
 
       '<section><h4>Шансы выпадения (только на этом устройстве)</h4>' +
-      '<div class="adm-sub">Апгрейдер — множитель шанса победы' + (G.odds.up !== 1 ? ' · сейчас ' + (G.odds.up >= G.ODDS_WIN ? 'всегда удачно' : '×' + G.odds.up) : '') + '</div>' +
-      '<div class="adm-row">' + upBtn(0.25, '×0.25') + upBtn(0.5, '×0.5') + upBtn(1, '×1 (обычно)') + upBtn(1.5, '×1.5') + upBtn(2, '×2') + upBtn(3, '×3') + upBtn(G.ODDS_WIN, 'Всегда удачно') + '</div>' +
+      '<div class="adm-sub">Апгрейдер — множитель шанса победы' + (G.odds.up !== 1 ? ' · сейчас ' + (G.odds.up >= G.ODDS_WIN ? '100% (скрыто)' : '×' + G.odds.up) : '') + '</div>' +
+      '<div class="adm-row">' + upBtn(0.25, '×0.25') + upBtn(0.5, '×0.5') + upBtn(1, '×1 (обычно)') + upBtn(1.5, '×1.5') + upBtn(2, '×2') + upBtn(3, '×3') + upBtn(G.ODDS_WIN, '100% (скрыто)') + '</div>' +
       '<div class="adm-sub">Кейсы — шанс предметов дороже кейса</div>' +
       '<div class="adm-row"><select id="adm-odds-case">' + caseOpts + '</select>' +
       [0.1, 0.5, 1, 2, 5, 10, 50].map(caseBtn).join('') + '</div>' +
       '<div class="adm-row"><button class="btn mini" data-act="adm-odds-reset">Сбросить все шансы</button>' +
       '<span class="adm-note">' + (overrides.length ? 'Изменено: ' + overrides.join(', ') : 'Все шансы обычные') + '</span></div>' +
-      '<p class="adm-note">Шансы на странице кейса и на кольце апгрейда показываются с учётом подкрутки.</p></section>' +
+      '<p class="adm-note">Множители ×0.25…×3 видны на кольце апгрейда, множители кейсов — в шансах на странице кейса. ' +
+      'Режим «100% (скрыто)» на кольце не виден: показывается обычный шанс, а апгрейд всегда удачный.</p></section>' +
 
       '<section><h4>Экономика кейсов (сейчас)</h4><div class="adm-table"><table><tr><th>Кейс</th><th>Цена</th><th>Средний дроп</th><th>Отдача</th></tr>' + rows + '</table></div></section>' +
 
@@ -171,19 +177,24 @@ const Admin = (function () {
       '<button class="btn mini" data-act="adm-export">Экспорт</button>' +
       '<button class="btn mini" data-act="adm-import">Импорт из поля</button></div>' +
       '<textarea id="adm-save" rows="3" placeholder="Сюда выгружается сохранение; вставьте JSON и нажмите «Импорт»"></textarea></section>' +
-
-      '<div class="m-btns"><button class="btn primary" data-act="close">Закрыть</button></div></div>', { wide: true });
+      '</div>';
   }
+
+  Screens.reg('admin', { render: panel });
 
   function done(msg) {
     G.save(true);
     UI.renderFeed();
-    UI.showScreen(UI.screen() === 'case' ? 'cases' : UI.screen());
     panel();
+    UI.refresh();
     if (msg) UI.toast(msg, 'good');
   }
 
-  A['adm-logout'] = function () { session = false; store.set(null); UI.closeModal(); UI.toast('Вы вышли из админ-панели'); };
+  A['adm-logout'] = function () {
+    session = false; store.set(null);
+    UI.showScreen('cases');
+    UI.toast('Вы вышли из админ-панели');
+  };
 
   A['adm-coins'] = function (v) { if (!unlocked()) return; G.addCoins(Number(v) || 0); done('+' + G.fmt(Number(v))); };
   A['adm-setcoins'] = function () {
@@ -255,14 +266,13 @@ const Admin = (function () {
   });
   function oddsChanged(msg) {
     G.saveOdds();
-    UI.showScreen(UI.screen());   // пересчитать шансы на открытом экране
     panel();
     UI.toast(msg, 'good');
   }
   A['adm-odds-up'] = function (v) {
     if (!unlocked()) return;
     G.odds.up = Number(v) || 1;
-    oddsChanged(G.odds.up >= G.ODDS_WIN ? 'Апгрейд: всегда удачно' : 'Апгрейд: шанс ×' + G.odds.up);
+    oddsChanged(G.odds.up >= G.ODDS_WIN ? 'Апгрейд: 100% (скрыто)' : 'Апгрейд: шанс ×' + G.odds.up);
   };
   A['adm-odds-case'] = function (v) {
     if (!unlocked()) return;

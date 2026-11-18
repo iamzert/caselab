@@ -171,6 +171,8 @@ const UI = (function () {
     });
     $$('[data-lock]').forEach((el) => { if (!el.hasAttribute('data-cost')) el.disabled = spinning || G.adBusy; });
     $$('[data-act="nav"]').forEach((b) => { b.disabled = spinning; });
+    const adm = typeof Admin !== 'undefined' && Admin.unlocked();
+    $$('[data-act="nav"][data-id="admin"]').forEach((b) => { b.hidden = !adm; });
     const dots = {};
     $$('.topnav [data-act="nav"], #tabbar [data-act="nav"], .hbtn[data-act="nav"]').forEach((b) => {
       const id = b.getAttribute('data-id');

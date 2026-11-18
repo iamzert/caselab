@@ -86,8 +86,9 @@
     setInterval(tick, 250);
     setInterval(() => G.save(false), 3000);
 
-    // Ждём, пока отрисуются ящики и витрина (не дольше 3.5 с)
-    await Promise.race([Art.prewarm([]), G.wait(3500)]);
+    // Ждём, пока отрисуются ящики и витрина и загрузятся шрифты (не дольше 3.5 с)
+    const fonts = document.fonts && document.fonts.ready ? document.fonts.ready.catch(() => null) : null;
+    await Promise.race([Promise.all([Art.prewarm([]), fonts]), G.wait(3500)]);
 
     const loader = document.getElementById('loader');
     loader.classList.add('hide');

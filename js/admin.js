@@ -80,7 +80,7 @@ const Admin = (function () {
   const waitLeft = () => Math.max(0, Math.ceil((lockUntil - Date.now()) / 1000));
 
   function login(msg) {
-    UI.modal('<h3 class="m-title">🔒 Вход для администратора</h3>' +
+    UI.modal('<h3 class="m-title">' + UI.ic('lock') + ' Вход для администратора</h3>' +
       '<input id="adm-login" class="adm-pass" type="text" autocomplete="username" placeholder="Логин" value="' + ADMIN_LOGIN + '">' +
       '<input id="adm-pass" class="adm-pass" type="password" autocomplete="current-password" placeholder="Пароль">' +
       (msg ? '<p class="hint adm-err">' + msg + '</p>' : '') +
@@ -128,16 +128,16 @@ const Admin = (function () {
       return '<tr><td>' + G.nm(c.name) + '</td><td>' + G.fmtP(c.price) + '</td><td>' + G.fmt(e) + '</td><td>' + (e / c.price * 100).toFixed(1) + '%</td></tr>';
     }).join('');
     // Шансы выпадения: апгрейдер и кейсы (все или выбранный)
-    const upBtn = (v, label) => '<button class="btn mini' + (G.odds.up === v ? ' primary' : '') + '" data-act="adm-odds-up" data-id="' + v + '">' + label + '</button>';
+    const upBtn = (v, label) => '<button class="btn mini' + (G.odds.up === v ? ' primary' : '') + '" data-act="adm-odds-up" data-id="' + v + '">' + label.replace('×', '<span class="x">×</span>') + '</button>';
     const caseKey = oddsCase;
     const curCase = G.odds.cases[caseKey] != null ? G.odds.cases[caseKey] : (caseKey === 'all' ? 1 : null);
-    const caseBtn = (v) => '<button class="btn mini' + (curCase === v ? ' primary' : '') + '" data-act="adm-odds-case" data-id="' + v + '">×' + v + '</button>';
+    const caseBtn = (v) => '<button class="btn mini' + (curCase === v ? ' primary' : '') + '" data-act="adm-odds-case" data-id="' + v + '"><span class="x">×</span>' + v + '</button>';
     const caseOpts = '<option value="all"' + (caseKey === 'all' ? ' selected' : '') + '>Все кейсы</option>' +
       CASES.map((c) => '<option value="' + c.id + '"' + (c.id === caseKey ? ' selected' : '') + '>' + G.nm(c.name) + '</option>').join('');
     const overrides = Object.keys(G.odds.cases).map((k) => (k === 'all' ? 'все кейсы' : G.nm(CASE_BY_ID[k] ? CASE_BY_ID[k].name : { ru: k })) + ' ×' + G.odds.cases[k]);
 
     root.innerHTML = '<div class="adm panel">' +
-      '<div class="adm-h"><h3 class="m-title">⚙️ Админ-панель</h3><button class="btn mini" data-act="adm-logout">Выйти</button></div>' +
+      '<div class="adm-h"><h3 class="m-title">' + UI.ic('gear') + 'Админ-панель</h3><button class="btn mini" data-act="adm-logout">' + UI.ic('logout') + 'Выйти</button></div>' +
 
       '<section><h4>Баланс: ' + COIN + G.fmt(S.coins) + '</h4><div class="adm-row">' +
       [100, 1000, 10000, 100000].map((v) => '<button class="btn mini" data-act="adm-coins" data-id="' + v + '">+' + G.fmtInt(v) + '</button>').join('') +

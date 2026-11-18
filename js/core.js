@@ -118,7 +118,7 @@ const G = (function () {
       week: { id: -1, o: 0 },
       freeAt: 0, adCoinsAt: 0, adCaseAt: 0, adSellAt: 0,
       lastSeen: Date.now(),
-      settings: { sound: true, fast: false, lang: null, sort: 'new', bg: 'desert' },
+      settings: { sound: true, fast: false, lang: null, sort: 'new', bg: 'none' },
       profile: { name: '', ava: '' },   // ник и аватар из регистрации (хранятся в сохранении)
       savedAt: 0,
     };

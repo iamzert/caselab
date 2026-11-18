@@ -18,14 +18,18 @@ const Farm = (function () {
     return '';
   }
 
+  const SHOP_ICON = { click: 'tap', auto: 'chip', luck: 'dice', sell: 'trend' };
+
   function renderShop() {
     $('#shop-list').innerHTML = G.UPGRADES.map((u) => {
       const l = G.S.up[u.id];
       const maxed = l >= u.max;
       const a = upEffect(u, l), b = maxed ? a : upEffect(u, l + 1);
-      return '<div class="shop-card"><div class="shop-ico">' + u.icon + '</div>' +
+      let pips = '';
+      for (let i = 0; i < u.max; i++) pips += '<i' + (i < l ? ' class="on"' : '') + '></i>';
+      return '<div class="shop-card"><div class="shop-ico">' + UI.ic(SHOP_ICON[u.id] || 'up') + '</div>' +
         '<div class="shop-info"><b>' + t('up_' + u.id) + ' <span class="lvl">' + t('level', { v: l }) + '</span></b>' +
-        '<small>' + t('up_' + u.id + '_d', { a: a, b: b }) + '</small></div>' +
+        '<small>' + t('up_' + u.id + '_d', { a: a, b: b }) + '</small><div class="pips">' + pips + '</div></div>' +
         (maxed ? '<button class="btn" disabled>' + t('max') + '</button>'
           : '<button class="btn primary" data-act="buy" data-id="' + u.id + '" data-cost="' + u.cost(l) + '">' + COIN + G.fmtP(u.cost(l)) + '</button>') +
         '</div>';
@@ -39,8 +43,8 @@ const Farm = (function () {
 
   function tick() {
     const S = G.S, now = Date.now();
-    UI.setText($('#farm-click'), '👆 ' + t('click_power', { v: G.fmt(G.clickPower()) }));
-    UI.setText($('#farm-income'), '⛏️ ' + t('income', { v: G.fmt(G.income()) }));
+    UI.setHTML($('#farm-click'), UI.ic('tap') + t('click_power', { v: G.fmt(G.clickPower()) }));
+    UI.setHTML($('#farm-income'), UI.ic('chip') + t('income', { v: G.fmt(G.income()) }));
     $('#tap-hint').classList.toggle('pulse', S.clicks < 30);
 
     UI.setText($('#free-sub'), t('free_case_sub', { name: G.nm(CASE_BY_ID[FREE_CASE_ID].name) }));
@@ -51,7 +55,7 @@ const Farm = (function () {
 
     const ab = $('#btn-adcoins');
     const ar = now - S.adCoinsAt >= G.C.AD_COINS_CD;
-    UI.setHTML(ab, ar ? '📺 +' + G.fmt(adCoinsReward()) : t('wait', { t: G.fmtTime(S.adCoinsAt + G.C.AD_COINS_CD - now) }));
+    UI.setHTML(ab, ar ? UI.ic('play') + '+' + G.fmt(adCoinsReward()) : t('wait', { t: G.fmtTime(S.adCoinsAt + G.C.AD_COINS_CD - now) }));
     ab.disabled = !ar || G.adBusy;
   }
 

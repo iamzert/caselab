@@ -22,7 +22,7 @@ const Profile = (function () {
       ['st_opened', G.fmtInt(S.opened)], ['st_upgrades', G.fmtInt(S.upgrades)], ['st_up_wins', G.fmtInt(S.upWins)],
       ['st_earned', COIN + G.fmt(S.total)], ['st_clicks', G.fmtInt(S.clicks)],
     ];
-    $('#prof-stats').innerHTML = rows.map((r) => '<div class="st-row"><span>' + t(r[0]) + '</span><b>' + r[1] + '</b></div>').join('');
+    $('#prof-stats').innerHTML = rows.map((r) => '<div class="st"><b>' + r[1] + '</b><span>' + t(r[0]) + '</span></div>').join('');
 
     const n = G.foundCount();
     UI.setText($('#col-progress'), t('col_progress', { a: n, b: TOTAL_SKINS }));
@@ -40,7 +40,7 @@ const Profile = (function () {
       const open = !!openCol[c.id];
       return '<div class="col-sec' + (open ? ' open' : '') + (got === c.items.length ? ' full' : '') + '">' +
         '<button class="col-h" data-act="col-toggle" data-id="' + c.id + '"><span class="col-nm">' + G.nm(c.name) + '</span>' +
-        '<span class="col-n">' + got + ' / ' + c.items.length + '</span><span class="col-ar">' + (open ? '▴' : '▾') + '</span></button>' +
+        '<span class="col-n">' + got + ' / ' + c.items.length + '</span>' + UI.ic('chev', 'col-ar') + '</button>' +
         (open ? '<div class="item-grid small">' + c.items.map((id) => UI.itemCard(id, { cls: S.found[id] ? '' : 'unknown' })).join('') + '</div>' : '') +
         '</div>';
     }).join('');
@@ -59,7 +59,7 @@ const Profile = (function () {
     const prefill = P.name || G.cleanName(Platform.playerInfo().name);
     const skip = first && !window.CASELAB_NO_SDK;   // в Яндекс Играх регистрация необязательна
     UI.modal('<div class="reg">' +
-      (first ? '<div class="reg-logo"><span class="logo-mark"></span><span class="logo-text">' + t('title') + '</span></div>' : '') +
+      (first ? '<div class="reg-logo">' + UI.logo() + '</div>' : '') +
       '<h3 class="m-title">' + t(first ? 'reg_title' : 'reg_edit') + '</h3>' +
       (first ? '<p class="reg-sub">' + t('reg_sub') + '</p>' : '') +
       '<label class="reg-l" for="reg-name">' + t('reg_name') + '</label>' +
@@ -130,7 +130,7 @@ const Profile = (function () {
     UI.modal('<h3 class="m-title">' + t('settings') + '</h3>' +
       '<div class="set-row"><span>' + t('sound') + '</span>' + seg('set-sound', [['1', t('on')], ['0', t('off')]], S.settings.sound ? '1' : '0') + '</div>' +
       '<div class="set-row"><span>' + t('language') + '</span>' + seg('set-lang', [['ru', 'RU'], ['en', 'EN']], G.lang) + '</div>' +
-      '<div class="set-row"><span>' + t('background') + '</span><button class="btn" data-act="bg-pick" data-id="settings">🖼 ' + (bg ? G.nm(bg.name) : '') + '</button></div>' +
+      '<div class="set-row"><span>' + t('background') + '</span><button class="btn" data-act="bg-pick" data-id="settings">' + UI.ic('image') + (bg ? G.nm(bg.name) : '') + '</button></div>' +
       '<div class="m-btns"><button class="btn primary" data-act="close">' + t('close') + '</button>' +
       '<button class="btn danger" data-act="reset">' + t('reset') + '</button></div>');
   }

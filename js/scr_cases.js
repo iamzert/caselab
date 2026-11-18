@@ -9,26 +9,89 @@
   let cur = null;        // текущий кейс
   let count = 1;         // сколько открывать за раз
   let query = '';
+  let secFilter = 'all'; // выбранный раздел
   let lastResult = null; // { items: [inst], isNew: [] }
 
-  // ================= Список кейсов =================
+  // ================= Баннер: главные кейсы =================
+  // Слайды меняются сами (по окончании анимации полоски), наведение мыши ставит паузу.
+  const FEATURED = [
+    { id: 'reliquary', tag: 'hero_relic_tag', sub: 'hero_relic_sub', icon: 'gem' },
+    { id: 'k_kar', tag: 'hero_knife_tag', sub: 'hero_knife_sub', icon: 'star' },
+    { id: FREE_CASE_ID, tag: 'hero_free_tag', sub: 'hero_free_sub', icon: 'clock', free: true },
+  ].filter((f) => CASE_BY_ID[f.id]);
+  let heroIdx = 0;
+
+  function heroHTML() {
+    const slides = FEATURED.map((f, i) => {
+      const c = CASE_BY_ID[f.id];
+      const top = UI.caseStats(c).top;
+      return '<div class="hero-slide' + (i === heroIdx ? ' on' : '') + '" style="--cc:' + UI.glowOf(c.art[1]) + '">' +
+        '<span class="hero-wm">' + G.nm(c.name) + '</span>' +
+        '<div class="hero-txt"><span class="hero-tag">' + UI.ic(f.icon) + t(f.tag) + '</span>' +
+        '<h2 class="hero-name">' + G.nm(c.name) + '</h2>' +
+        '<p class="hero-sub">' + t(f.sub) + '</p>' +
+        '<div class="hero-cta"><button class="btn primary big" data-act="case" data-id="' + c.id + '">' + t('hero_open') + '</button>' +
+        '<span class="hero-price"><small>' + t('hero_price') + '</small>' + (f.free ? t('free_badge') : COIN + G.fmtP(c.price)) + '</span></div></div>' +
+        '<div class="hero-art r' + SKINS[top].r + '"><div class="hero-glow"></div><div class="hero-item">' + Art.item(top, null) + '</div>' +
+        '<div class="hero-crate">' + Art.crate(c) + '</div></div></div>';
+    });
+    return slides.join('') + (FEATURED.length > 1 ? '<div class="hero-dots">' + FEATURED.map((f, i) =>
+      '<button class="' + (i === heroIdx ? 'on' : '') + '" data-act="hero" data-id="' + i + '" aria-label="' + (i + 1) + '"></button>').join('') + '</div>' : '');
+  }
+
+  function setHero(i) {
+    heroIdx = (i + FEATURED.length) % FEATURED.length;
+    document.querySelectorAll('#hero .hero-slide').forEach((s, k) => s.classList.toggle('on', k === heroIdx));
+    document.querySelectorAll('#hero .hero-dots button').forEach((b, k) => b.classList.toggle('on', k === heroIdx));
+  }
+  document.addEventListener('animationend', (e) => {
+    if (e.animationName === 'heroBar' && UI.screen() === 'cases') setHero(heroIdx + 1);
+  });
+  A['hero'] = function (i) { if (Number(i) !== heroIdx) setHero(Number(i)); };
+
+  // ================= Разделы и список кейсов =================
   function caseMatches(c, q) {
     if (!q) return true;
     if (G.nm(c.name).toLowerCase().indexOf(q) >= 0) return true;
     return c.items.some((id) => (G.skinName(id) + ' ' + G.finishName(id)).toLowerCase().indexOf(q) >= 0);
   }
 
+  function renderChips() {
+    const chip = (id, name, n) => '<button class="chip' + (secFilter === id ? ' on' : '') + '" data-act="sec" data-id="' + id + '">' + name + '<i>' + n + '</i></button>';
+    $('#case-chips').innerHTML = chip('all', t('sec_all'), CASES.length) + SECTIONS.map((s) => {
+      const n = CASES.filter((c) => c.sec === s.id).length;
+      return n ? chip(s.id, G.nm(s.name), n) : '';
+    }).join('');
+  }
+
   function renderList() {
     let html = '';
-    SECTIONS.forEach((sec) => {
+    $('#hero').hidden = !!query;
+    SECTIONS.forEach((sec, si) => {
+      if (secFilter !== 'all' && sec.id !== secFilter) return;
       const list = CASES.filter((c) => c.sec === sec.id && caseMatches(c, query));
       if (!list.length) return;
-      html += '<h2 class="sec-h">' + G.nm(sec.name) + '<span class="sec-n">' + list.length + '</span></h2><div class="case-grid">' + list.map(UI.caseCard).join('') + '</div>';
+      html += '<h2 class="sec-h"><span class="sec-i">' + String(si + 1).padStart(2, '0') + '</span>' + G.nm(sec.name) +
+        '<span class="sec-n">' + list.length + ' ' + UI.plural(list.length, 'pl_cases') + '</span></h2>' +
+        '<div class="case-grid">' + list.map(UI.caseCard).join('') + '</div>';
     });
     $('#case-sections').innerHTML = html || '<div class="empty">' + t('nothing_found') + '</div>';
   }
 
-  Screens.reg('cases', { render: renderList });
+  function renderCases() {
+    $('#hero').innerHTML = heroHTML();
+    renderChips();
+    renderList();
+  }
+
+  Screens.reg('cases', { render: renderCases });
+
+  A['sec'] = function (id) {
+    secFilter = id === 'all' || SECTIONS.some((s) => s.id === id) ? id : 'all';
+    renderChips();
+    renderList();
+    UI.refresh();
+  };
 
   document.addEventListener('input', (e) => {
     if (e.target.id !== 'case-search') return;
@@ -44,13 +107,35 @@
     if (id) cur = CASE_BY_ID[id] || cur;
     if (!cur) return;
     Art.prewarm(cur.items.map(Art.itemKey));
+    const sec = SECTIONS.filter((s) => s.id === cur.sec)[0];
+    const secName = sec ? G.nm(sec.name) : '';
+    const st = UI.caseStats(cur);
+    $('#cp-stage').style.setProperty('--cc', UI.glowOf(cur.art[1]));
     $('#cp-crate').innerHTML = Art.crate(cur);
+    UI.setText($('#cp-crumb'), t('nav_cases') + ' / ' + secName);
+    UI.setText($('#cp-kicker'), secName);
     UI.setText($('#cp-name'), G.nm(cur.name));
+    $('#cp-facts').innerHTML =
+      '<div class="cp-fact"><small>' + t('cp_price') + '</small><b>' + COIN + G.fmtP(cur.price) + '</b></div>' +
+      '<div class="cp-fact"><small>' + t('cp_items') + '</small><b>' + cur.items.length + '</b></div>' +
+      '<div class="cp-fact"><small>' + t('cp_best') + '</small><b>' + COIN + UI.short(st.max) + '</b></div>';
+    UI.setText($('#cp-count-n'), cur.items.length + ' ' + UI.plural(cur.items.length, 'pl_items'));
     $('#cp-count').innerHTML = COUNTS.map((n) =>
-      '<button class="cnt' + (n === count ? ' on' : '') + '" data-act="count" data-id="' + n + '" data-lock="1">×' + n + '</button>').join('');
+      '<button class="cnt' + (n === count ? ' on' : '') + '" data-act="count" data-id="' + n + '" data-lock="1"><span class="x">×</span>' + n + '</button>').join('');
     renderIdle();
     renderContents();
     tick();
+  }
+
+  // Шансы по редкостям: полоска и подписи (с учётом «Удачи»)
+  function renderOdds(w, total) {
+    const by = {};
+    cur.items.forEach((id, i) => { const r = SKINS[id].r; by[r] = (by[r] || 0) + w[i]; });
+    const rs = Object.keys(by).map(Number).sort((a, b) => a - b);
+    $('#cp-rbar').innerHTML = rs.map((r) => '<i class="r' + r + '" style="flex-grow:' + (by[r] / total).toFixed(5) + '" title="' +
+      t('rar_' + RARITIES[r].id) + ' · ' + G.fmtPct(by[r] / total * 100) + '"></i>').join('');
+    $('#cp-rleg').innerHTML = rs.map((r) => '<span class="r' + r + '">' + t('rar_' + RARITIES[r].id).replace(/^[★✦] /, '') +
+      ' <b>' + G.fmtPct(by[r] / total * 100) + '</b></span>').join('');
   }
 
   // ---------- Мини-окна: по одному на кейс, лента едет вертикально (CSS-переход на видеокарте) ----------
@@ -88,6 +173,7 @@
   }
 
   function renderIdle() {
+    $('#cp-stage').classList.toggle('compact', count >= 3);
     if (count >= MINI_FROM) { renderMiniIdle(); return; }
     let html = '';
     for (let k = 0; k < count; k++) {
@@ -109,6 +195,7 @@
     const rows = cur.items.map((id, i) => ({ id: id, ch: w[i] / total * 100 }))
       .sort((a, b) => SKINS[b.id].value - SKINS[a.id].value);
     $('#cp-contents').innerHTML = rows.map((r) => UI.itemCard(r.id, { chance: r.ch })).join('');
+    renderOdds(w, total);
   }
 
   function tick() {
@@ -241,10 +328,12 @@
       html += '<div class="drop-one r' + sk.r + '">' + (res.isNew[0] ? '<span class="new-badge">' + t('new_item') + '</span>' : '') +
         '<div class="rays"></div><div class="drop-art">' + Art.item(single.s, single.f) + '</div></div>' +
         '<div class="drop-rar r' + sk.r + '">' + t('rar_' + RARITIES[sk.r].id) + '</div>' +
-        '<div class="drop-name">' + (G.isStar(single.s) ? '★ ' : '') + G.skinName(single.s) + ' | ' + G.finishName(single.s) + '</div>' +
-        '<div class="drop-wear">' + UI.wearShort(single.f) + ' · ' + single.f.toFixed(4) + '</div>';
+        '<div class="drop-name">' + (G.isStar(single.s) ? '★ ' : '') + G.skinName(single.s) + ' <span>| ' + G.finishName(single.s) + '</span></div>' +
+        '<div class="drop-wear">' + UI.wearShort(single.f) + ' · ' + single.f.toFixed(4) + '</div>' +
+        '<div class="drop-price">' + COIN + G.fmt(G.sellPrice(single)) + '</div>';
     } else {
       html += '<div class="drop-grid">' + res.items.map((x, i) => UI.itemCard(x, { badge: res.isNew[i] ? t('new_item') : '' })).join('') + '</div>';
+      if (live.length) html += '<div class="drop-sum">' + t('drop_sum') + '<b>' + COIN + G.fmt(sum) + '</b></div>';
     }
     if (anyNew) html += '<p class="hint">' + t('new_skin_bonus') + '</p>';
     html += '<div class="m-btns">';

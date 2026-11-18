@@ -85,7 +85,7 @@ const Rewards = (function () {
       ? '<div class="rw-cond"><span>' + t('rw_cond_open', { a: prog, b: need }) + '</span>' +
         '<div class="bar"><div class="bar-fill" style="width:' + (prog / need * 100) + '%"></div></div></div>'
       : '<div class="rw-cond"><span>' + t('rw_cond_none') + '</span></div>';
-    const btn = got ? '<button class="btn" disabled>✓ ' + t('rw_claimed') + '</button>'
+    const btn = got ? '<button class="btn" disabled>' + UI.ic('check') + t('rw_claimed') + '</button>'
       : condMet(k) ? '<button class="btn primary" data-act="rw-claim" data-id="' + k + '">' + t('rw_claim') + '</button>'
         : '<button class="btn" disabled>' + t('rw_locked') + '</button>';
     return '<div class="rw-card r' + sk.r + (got ? ' got' : '') + '" id="rw-' + k + '">' +
@@ -109,7 +109,7 @@ const Rewards = (function () {
     { id: 's25', k: 's', n: 25, r: 8 },
     { id: 'r3', k: 'r', n: 1, r: 12 },
   ];
-  const Q_ICON = { o: '📦', u: '⏫', uw: '🎯', c: '👆', s: '💰', r: '💎' };
+  const Q_ICON = { o: 'cases', u: 'upgrade', uw: 'target', c: 'tap', s: 'tag', r: 'gem' };
   let qCache = { d: null, list: [] };
 
   // Три задания разных типов, одни и те же весь день
@@ -133,10 +133,10 @@ const Rewards = (function () {
   function questRow(q) {
     const pr = qProgress(q), done = pr >= q.n, got = qClaimed(q);
     const txt = (q.k === 's' ? G.fmt(pr) : G.fmtInt(pr)) + ' / ' + q.n;
-    const btn = got ? '<button class="btn" disabled>✓ ' + t('rw_claimed') + '</button>'
+    const btn = got ? '<button class="btn" disabled>' + UI.ic('check') + t('rw_claimed') + '</button>'
       : '<button class="btn' + (done ? ' primary' : '') + '" data-act="q-claim" data-id="' + q.id + '"' + (done ? '' : ' disabled') + '>+' + COIN + G.fmtP(q.r) + '</button>';
     return '<div class="q-row' + (done ? ' done' : '') + (got ? ' got' : '') + '">' +
-      '<div class="q-ico">' + Q_ICON[q.k] + '</div>' +
+      '<div class="q-ico">' + UI.ic(Q_ICON[q.k]) + '</div>' +
       '<div class="q-info"><b>' + t('q_' + q.id) + '</b>' +
       '<div class="q-prog"><div class="bar"><div class="bar-fill" style="width:' + (pr / q.n * 100) + '%"></div></div><span>' + txt + '</span></div></div>' +
       btn + '</div>';

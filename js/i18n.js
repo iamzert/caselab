@@ -148,6 +148,11 @@ const I18N = {
     // Новая раскладка
     nav_upgrades: 'Апгрейды',
     feed_empty: 'Здесь появятся настоящие дропы дороже {v}',
+    feed_empty_all: 'Здесь появятся дропы всех игроков дороже {v}',
+    feed_conn: 'Подключаемся к живому дропу…',
+    feed_off: 'Нет связи с живым дропом. Пробуем снова…',
+    feed_case: 'Кейс «{c}» — открыть',
+    ago_now: 'только что', ago_m: '{n} мин назад', ago_h: '{n} ч назад', ago_d: '{n} дн назад',
     tag_top: 'Топ',
     up_stake_title: 'Выберите предметы и баланс для ставки',
     up_target_title: 'Выберите предмет для апгрейда',
@@ -318,6 +323,11 @@ const I18N = {
     // New layout
     nav_upgrades: 'Upgrades',
     feed_empty: 'Real drops worth over {v} will appear here',
+    feed_empty_all: 'Drops of all players worth over {v} will appear here',
+    feed_conn: 'Connecting to live drops…',
+    feed_off: 'Live drops are offline. Retrying…',
+    feed_case: 'Open the “{c}” case',
+    ago_now: 'just now', ago_m: '{n} min ago', ago_h: '{n} h ago', ago_d: '{n} d ago',
     tag_top: 'Top',
     up_stake_title: 'Pick items and balance to stake',
     up_target_title: 'Pick an item to upgrade into',

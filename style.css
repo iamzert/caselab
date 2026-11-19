@@ -431,8 +431,10 @@ body.has-bg::after {
 .fd {
   position: relative; display: flex; align-items: center; gap: 9px; padding: 6px 8px 6px 7px;
   box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .04); transition: background-color .15s;
-  animation: fdIn .42s cubic-bezier(.2, .8, .2, 1);
 }
+/* «въезжают» только новые строки — при обновлении ленты остальные стоят на месте */
+.fd.new { animation: fdIn .42s cubic-bezier(.2, .8, .2, 1); }
+.fd.link { cursor: pointer; }
 .fd:hover { background: rgba(255, 255, 255, .045); }
 .fd-art {
   position: relative; width: 70px; height: 52px; flex-shrink: 0; overflow: hidden;
@@ -441,7 +443,7 @@ body.has-bg::after {
 .fd-art::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--rc); }
 .fd-art .wimg { position: absolute; inset: 4px 4px 6px; transition: transform .25s cubic-bezier(.2, .8, .2, 1); }
 .fd:hover .fd-art .wimg { transform: scale(1.08); }
-.fd-txt { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.fd-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .fd-txt b { font: 800 11.5px/1.2 var(--f); letter-spacing: .01em; color: #fff; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fd-txt span { font: 500 11px/1.25 var(--f); color: #a9b1be; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fd-txt em { display: flex; align-items: center; margin-top: 1px; font: 700 13px/1.1 var(--d); font-style: normal; color: var(--acc); letter-spacing: .03em; }
@@ -450,6 +452,15 @@ body.has-bg::after {
 .fd-empty { padding: 30px 18px; text-align: center; color: var(--muted); font: 500 12px/1.5 var(--f); }
 .fd-empty .ic { display: block; margin: 0 auto 12px; font-size: 26px; color: var(--dim); }
 @keyframes fdIn { from { opacity: 0; transform: translateX(-12px); } }
+/* кто выбил: аватар и ник (кейс и давность — в подсказке); свои дропы отмечены золотой кромкой */
+.fd-who { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.fd-txt .fd-nm { min-width: 0; font: 600 10.5px/1.34 var(--f); color: #d3d9e3; }
+.fd-ava { flex-shrink: 0; font: 11px/1 system-ui, "Segoe UI Emoji", "Apple Color Emoji", sans-serif; font-style: normal; }
+.fd.me { box-shadow: inset 2px 0 0 var(--acc), inset 0 -1px 0 rgba(255, 255, 255, .04); }
+.fd.me .fd-nm { color: var(--acc); }
+/* нет связи с каналом: точка «в эфире» серая и не пульсирует */
+#feed.off .fd-live > i { background: #6b7383; }
+#feed.off .fd-live > i::after { animation: none; opacity: 0; }
 .feed-foot { flex-shrink: 0; height: 42px; display: flex; background: rgba(0, 0, 0, .14); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
 .fbtn { flex: 1; border: 0; background: none; color: #8790a0; font-size: 16px; transition: color .15s, background-color .15s; }
 .fbtn + .fbtn { box-shadow: inset 1px 0 0 rgba(255, 255, 255, .04); }
@@ -1550,7 +1561,24 @@ button.it:active .wimg { transform: scale(.97); transition-duration: .08s; }
 }
 @media (max-width: 900px) {
   :root { --hdr: 50px; }
-  #feed { display: none; }
+  /* живой дроп — горизонтальная полоса под шапкой: точка «в эфире» со счётчиком и дропы, листаются пальцем */
+  #body { flex-direction: column; }
+  #main { min-height: 0; }
+  #feed { width: auto; height: 54px; flex-direction: row; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .05), 0 1px 0 rgba(0, 0, 0, .45); }
+  #feed .feed-tabs, #feed .feed-foot, #feed-title { display: none; }
+  #feed .fd-head { width: 40px; height: auto; flex-direction: column; justify-content: center; gap: 7px; padding: 0; box-shadow: inset -1px 0 0 rgba(255, 255, 255, .05); }
+  #feed .fd-cnt { font-size: 13px; }
+  #feed-list { display: flex; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; }
+  #feed-list .fd { flex: 0 0 168px; gap: 7px; padding: 5px 8px 5px 6px; box-shadow: inset -1px 0 0 rgba(255, 255, 255, .05); }
+  #feed-list .fd.me { box-shadow: inset 2px 0 0 var(--acc), inset -1px 0 0 rgba(255, 255, 255, .05); }
+  #feed-list .fd-art { width: 52px; height: 42px; }
+  #feed-list .fd-art .wimg { inset: 3px 3px 5px; }
+  #feed-list .fd-txt { gap: 1px; }
+  #feed-list .fd-txt > span { display: none; }
+  #feed-list .fd-txt b { font-size: 10.5px; }
+  #feed-list .fd-txt em { margin-top: 0; font-size: 12px; }
+  #feed-list .fd-empty { display: flex; align-items: center; gap: 10px; padding: 0 14px; white-space: nowrap; text-align: left; font-size: 11.5px; }
+  #feed-list .fd-empty .ic { display: inline-block; margin: 0; font-size: 18px; }
   .hdr-l { width: auto; padding-left: 12px; flex: 1; }
   .topnav { display: none; }
   .logo-text { font-size: 21px; }

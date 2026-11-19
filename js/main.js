@@ -95,6 +95,7 @@
     UI.setProfileBadge();
     bindEvents();
     UI.renderFeed();
+    Live.start();   // общий живой дроп сайта (на Яндексе выключен)
     UI.showScreen('cases');
     if (DEV && Q.get('screen')) UI.showScreen(Q.get('screen'));
     if (DEV && Q.get('case') && CASE_BY_ID[Q.get('case')]) UI.actions['case'](Q.get('case'));

@@ -202,24 +202,53 @@ const UI = (function () {
   }
 
   // ---------- Лента дропа (левая колонка) ----------
-  // Режимы: 'all' — последние дропы, 'top' — лучшие за всё время.
+  // Режимы: 'all' — последние дропы, 'top' — лучшие.
+  // На сайте лента общая для всех игроков (js/live.js), в Яндекс Играх — своя, из сохранения.
   // Показываются только настоящие дропы от G.C.FEED_MIN — никаких выдуманных игроков.
   let feedMode = 'all';
+  let feedShown = new Set();   // строки, которые уже на экране: «въезжают» только новые
+  function feedAgo(ms) {
+    const m = Math.floor(ms / 60000);
+    if (m < 1) return t('ago_now');
+    if (m < 60) return t('ago_m', { n: m });
+    const h = Math.floor(m / 60);
+    return h < 24 ? t('ago_h', { n: h }) : t('ago_d', { n: Math.floor(h / 24) });
+  }
   function renderFeed() {
     const S = G.S;
-    const list = feedMode === 'top' ? S.top : S.feed;
-    setText($('#feed-title'), t(feedMode === 'top' ? 'feed_best' : 'feed_mine'));
+    const live = typeof Live !== 'undefined' && Live.enabled;
+    const top = feedMode === 'top';
+    const list = live ? (top ? Live.top() : Live.items()) : (top ? S.top : S.feed);
+    const st = live ? Live.state() : 'on';
+    setText($('#feed-title'), t(top ? 'feed_best' : 'feed_mine'));
     setText($('#feed-count'), String(list.length));
+    $('#feed').classList.toggle('off', st !== 'on');
     $$('.feed-tabs button').forEach((b) => b.classList.toggle('on', b.getAttribute('data-id') === feedMode));
-    setHTML($('#feed-list'), list.length ? list.map((x) => {
+    const me = G.playerName();
+    const now = live ? Live.now() : Date.now();
+    const shown = new Set();
+    const rows = list.map((x) => {
       const sk = SKINS[x.s];
-      return '<div class="fd r' + sk.r + '">' +
+      const key = feedMode + (x.k || x.s + '|' + x.f);
+      shown.add(key);
+      const c = x.c ? CASE_BY_ID[x.c] : null;
+      const cls = 'fd r' + sk.r + (feedShown.has(key) ? '' : ' new') + (live && (x.me || x.n === me) ? ' me' : '') + (c ? ' link' : '');
+      // подсказка: из какого кейса и когда; строка с кейсом открывает этот кейс
+      const tip = [c ? t('feed_case', { c: G.nm(c.name) }) : '', live && x.t ? feedAgo(now - x.t) : ''].filter(Boolean).join(' · ');
+      const attrs = (c ? ' data-act="feed-case" data-id="' + c.id + '"' : '') + (tip ? ' title="' + tip.replace(/"/g, '&quot;') + '"' : '');
+      const who = live ? '<div class="fd-who">' + (x.a ? '<i class="fd-ava">' + x.a + '</i>' : '') + '<span class="fd-nm">' + x.n + '</span></div>' : '';
+      return '<div class="' + cls + '"' + attrs + '>' +
         '<div class="fd-art">' + Art.item(x.s, x.f) + '</div>' +
-        '<div class="fd-txt"><b>' + (G.isStar(x.s) ? '★ ' : '') + G.skinName(x.s) +
+        '<div class="fd-txt">' + who + '<b>' + (G.isStar(x.s) ? '★ ' : '') + G.skinName(x.s) +
         (x.up ? ic('upgrade', 'fd-mk') : '') + (x.g ? ic('rewards', 'fd-mk') : '') + '</b>' +
         '<span>' + G.finishName(x.s) + ' (' + wearShort(x.f) + ')</span>' +
         '<em>' + COIN + G.fmt(G.instValue(x)) + '</em></div></div>';
-    }).join('') : '<div class="fd-empty">' + ic('fire') + t('feed_empty', { v: G.fmtInt(G.C.FEED_MIN) }) + '</div>');
+    });
+    feedShown = shown;
+    let empty = t(live ? 'feed_empty_all' : 'feed_empty', { v: G.fmtInt(G.C.FEED_MIN) });
+    if (st === 'conn') empty = t('feed_conn');
+    else if (st === 'err') empty = t('feed_off');
+    setHTML($('#feed-list'), rows.length ? rows.join('') : '<div class="fd-empty">' + ic('fire') + empty + '</div>');
   }
 
   // ---------- Шапка и доступность кнопок ----------
@@ -298,6 +327,10 @@ const UI = (function () {
     renderFeed();
     $('#feed-list').scrollTop = 0;
     $('#feed-list').scrollLeft = 0;
+  };
+  // Клик по дропу в ленте — открыть кейс, из которого он выпал (не во время прокрутки)
+  actions['feed-case'] = function (id) {
+    if (!spinning && Object.prototype.hasOwnProperty.call(CASE_BY_ID, id) && actions['case']) actions['case'](id);
   };
   actions['sound'] = function () {
     G.S.settings.sound = !G.S.settings.sound;

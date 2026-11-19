@@ -291,7 +291,7 @@
     const weights = G.caseWeights(cur);
     for (let k = 0; k < n; k++) {
       const s = G.rollSkin(cur, weights);
-      const r = G.addInst(s, G.rollFloat());
+      const r = G.addInst(s, G.rollFloat(), 'case', cur.id);
       const ch = RareFx.chance(cur, weights, s);
       res.items.push(r.inst);
       res.isNew.push(r.isNew);

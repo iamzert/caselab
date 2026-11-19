@@ -207,7 +207,7 @@ const Admin = (function () {
 
   function giveOne(id, wearId) {
     if (G.invFull(1)) return false;
-    G.addInst(id, G.rollFloat(wearId), 'gift');
+    G.addInst(id, G.rollFloat(wearId), 'admin');
     return true;
   }
   A['adm-give'] = function () {

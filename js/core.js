@@ -265,7 +265,8 @@ const G = (function () {
 
   // Добавляет экземпляр предмета, возвращает { inst, isNew }.
   // src: 'up' — выигран в апгрейде, 'gift' — приз из наград, иначе — из кейса.
-  G.addInst = function (skinId, f, src) {
+  // src: 'case' (caseId — из какого кейса), 'up' — апгрейд, 'gift' — награда, 'admin' — выдача из админки
+  G.addInst = function (skinId, f, src, caseId) {
     const S = G.S;
     const inst = { u: S.uid++, s: skinId, f: f };
     S.inv.push(inst);
@@ -275,7 +276,9 @@ const G = (function () {
     if (!S.best || v > G.instValue(S.best)) S.best = { s: skinId, f: f };
     if (v < C.FEED_MIN) return { inst: inst, isNew: isNew };
     // Лента: только дорогие дропы (от FEED_MIN)
-    const entry = { s: skinId, f: f, up: src === 'up', g: src === 'gift' };
+    const entry = { s: skinId, f: f, up: src === 'up', g: src === 'gift' || src === 'admin' };
+    // в общий живой дроп сайта (js/live.js) — только настоящие дропы, выдача из админки туда не идёт
+    if (src !== 'admin' && typeof Live !== 'undefined') Live.publish(entry, caseId);
     S.feed.unshift(entry);
     if (S.feed.length > C.FEED_MAX) S.feed.length = C.FEED_MAX;
     // Лучшие дропы за всё время (фильтр «Топ» в ленте)

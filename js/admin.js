@@ -9,7 +9,7 @@
 // и вставьте результат в ADMIN_HASH ниже.
 const Admin = (function () {
   const ADMIN_LOGIN = 'mana';
-  const ADMIN_HASH = '63e92242cfbd94394b33b63c796529a7d1be075f425cacebf96c779e69d3c33d';
+  const ADMIN_HASH = '0c5d827eb801375e3b3eeb0e120490f43879270e8d112c49d00799e117baebee';
   const KEY = 'caselab_admin';
   const A = UI.actions, COIN = UI.COIN;
 

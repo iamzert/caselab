@@ -3,7 +3,7 @@
 // Процедурные текстуры раскрасок (canvas). Всё генерируется в коде, без картинок.
 // Текстура покрывает всё поле оружия 512×192 и рендерится в масштабе S.
 const Tex = (function () {
-  const W = 512, H = 192, S = 1.5;
+  const W = 512, H = 192, S = 2;   // S — пикселей на единицу модели: чем больше, тем чётче скины
   const cache = {};
 
   // ---------- Случайность и шум ----------
@@ -67,7 +67,9 @@ const Tex = (function () {
   function full() { return mk(W * S, H * S); }
 
   // Попиксельная генерация в пониженном разрешении r с последующим масштабированием
+  // r — доля разрешения; поднимаем её в 1.3 раза (не выше 1), чтобы узоры не размывались при растяжении
   function pixels(r, fn) {
+    r = Math.min(1, r * 1.3);
     const w = Math.round(W * S * r), h = Math.round(H * S * r);
     const c = mk(w, h), ctx = c.getContext('2d'), img = ctx.createImageData(w, h), d = img.data;
     const kx = W / w, ky = H / h;
@@ -81,7 +83,7 @@ const Tex = (function () {
       }
     }
     ctx.putImageData(img, 0, 0);
-    if (r === 1) return c;
+    if (r >= 1) return c;
     const out = full(), octx = out.getContext('2d');
     octx.imageSmoothingEnabled = true;
     octx.imageSmoothingQuality = 'high';
@@ -617,5 +619,15 @@ const Tex = (function () {
     return c;
   }
 
-  return { W: W, H: H, S: S, get: get, chips: chips, polymer: polymer, brushed: brushed, grime: grime, rgb: rgb, shade: shade, rng: rng, perlin: perlin, fbm: fbm };
+  // Расширение: генераторы новых узоров лежат в js/tex_*.js и регистрируются через addGen.
+  // Сигнатура генератора: gen(f, R, n, n2, n3) → canvas W*S × H*S (f — запись FINISHES, R — случайность, n* — шумы Перлина)
+  function addGen(kind, fn) {
+    GEN[kind] = fn;
+    Object.keys(cache).forEach((id) => { if (FINISHES[id] && FINISHES[id].kind === kind) delete cache[id]; });
+  }
+  const lib = { W: W, H: H, S: S, rng: rng, perlin: perlin, fbm: fbm, rgb: rgb, mix: mix, clamp01: clamp01, smooth: smooth,
+    pal: pal, shade: shade, mk: mk, full: full, pixels: pixels, vec: vec, grain: grain, blob: blob, seedOf: seedOf };
+
+  return { W: W, H: H, S: S, get: get, chips: chips, polymer: polymer, brushed: brushed, grime: grime, rgb: rgb, shade: shade, rng: rng, perlin: perlin, fbm: fbm,
+    addGen: addGen, lib: lib, hasGen: (kind) => !!GEN[kind] };
 })();

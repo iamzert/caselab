@@ -60,6 +60,18 @@
     Platform.on('resume', () => { if (!document.hidden) Sfx.resume(); });
   }
 
+  // Тестовое сохранение для локального просмотра: разные редкости в инвентаре и ленте
+  function demoState() {
+    const pick = (r, n) => SKIN_LIST.filter((s) => s.r === r).filter((s, i) => i % 7 === 3).slice(0, n).map((s) => s.id);
+    const ids = [].concat(pick(8, 2), pick(7, 2), pick(6, 4), pick(5, 3), pick(4, 3), pick(3, 3), pick(2, 3), pick(1, 2), pick(0, 2));
+    const inv = ids.map((s, i) => ({ u: i + 1, s: s, f: 0.02 + (i % 9) * 0.08 }));
+    const feed = inv.filter((x) => SKINS[x.s].r >= 6).map((x) => ({ s: x.s, f: x.f }));
+    return { coins: 25340.5, total: 90000, inv: inv, uid: inv.length + 1, found: {}, feed: feed, top: feed.slice(),
+      opened: 137, upgrades: 24, upWins: 9, best: feed[0] || null, daily: { last: 0, streak: 3 },
+      settings: { sound: false, lang: Q0.get('lang') === 'en' ? 'en' : 'ru', bg: Q0.get('bg') || 'coast' }, profile: { name: 'Demo', ava: '🐺' } };
+  }
+  const Q0 = new URLSearchParams(location.search);
+
   async function boot() {
     Art.initDefs();
     await Platform.init();
@@ -69,8 +81,13 @@
     let raw = local;
     if (cloud && (!local || (cloud.savedAt || 0) > (local.savedAt || 0))) raw = cloud;
     G.S = G.sanitize(raw);
+    // Локальный просмотр: ?demo — тестовое сохранение (не записывается), ?screen=<экран>, ?case=<id кейса>
+    const Q = new URLSearchParams(location.search);
+    const DEV = /^(127.0.0.1|localhost)$/.test(location.hostname);
+    if (DEV && Q.has('demo')) { G.demo = true; G.S = G.sanitize(demoState()); }
 
     G.lang = G.S.settings.lang || detectLang();
+    Fonts.boot(G.S.settings.font);   // пара шрифтов: класс на <html> до первой отрисовки экранов
     Sfx.setEnabled(G.S.settings.sound);
     Backgrounds.apply(G.S.settings.bg);
     UI.applyI18n();
@@ -79,6 +96,8 @@
     bindEvents();
     UI.renderFeed();
     UI.showScreen('cases');
+    if (DEV && Q.get('screen')) UI.showScreen(Q.get('screen'));
+    if (DEV && Q.get('case') && CASE_BY_ID[Q.get('case')]) UI.actions['case'](Q.get('case'));
     const showOffline = Farm.prepareOffline();
 
     lastTick = Date.now();
@@ -97,7 +116,7 @@
     Platform.ready();
     Platform.gameplay(true);
     // Первый вход: сначала регистрация, потом окно офлайн-дохода (если он есть)
-    if (!G.S.profile.name) Profile.askRegister(showOffline);
+    if (G.demo) { /* без регистрации и окон */ } else if (!G.S.profile.name) Profile.askRegister(showOffline);
     else if (showOffline) showOffline();
     if (location.hash === '#admin') Admin.open();
   }

@@ -94,10 +94,12 @@ const UI = (function () {
   }
 
   // ---------- Модальные окна ----------
+  // Незаблокированное окно получает крестик в правом верхнем углу (то же действие, что и «Забрать»/«Закрыть»)
   function modal(html, opts) {
     opts = opts || {};
     const root = $('#modal-root');
-    root.innerHTML = '<div class="modal-back"><div class="modal' + (opts.wide ? ' wide' : '') + '">' + html + '</div></div>';
+    const x = opts.locked ? '' : '<button class="m-x" data-act="close" aria-label="close">' + ic('x') + '</button>';
+    root.innerHTML = '<div class="modal-back"><div class="modal' + (opts.wide ? ' wide' : '') + '">' + x + html + '</div></div>';
     root.classList.add('show');
     modalOnClose = opts.onClose || null;
     modalIsLocked = !!opts.locked;
@@ -163,11 +165,12 @@ const UI = (function () {
   function caseStats(c) {
     let s = caseInfo[c.id];
     if (!s) {
-      s = { max: 0, top: c.items[0], star: false, relic: false };
+      s = { max: 0, top: c.items[0], star: false, relic: false, ultra: false };
       c.items.forEach((id) => {
         const sk = SKINS[id];
         if (sk.value > s.max) { s.max = sk.value; s.top = id; }
-        if (sk.r >= 7) s.relic = true;
+        if (sk.r >= 8) s.ultra = true;
+        else if (sk.r >= 7) s.relic = true;
         else if (G.isStar(id)) s.star = true;
       });
       caseInfo[c.id] = s;
@@ -175,38 +178,48 @@ const UI = (function () {
     return s;
   }
 
+  // Самый дорогой кейс — с меткой «Топ»
+  let topCaseId = null;
+  function topCase() {
+    if (!topCaseId) topCaseId = CASES.reduce((a, c) => (c.price > a.price ? c : a), CASES[0]).id;
+    return topCaseId;
+  }
+
+  // Плитка кейса: картинка на сером фоне, снизу название и цена
   function caseCard(c) {
     const free = c.id === FREE_CASE_ID && Date.now() >= G.S.freeAt;
     const st = caseStats(c);
-    const tier = st.relic ? '<span class="cc-tier r7">✦ 1M+</span>' : st.star ? '<span class="cc-tier r6">★</span>' : '';
-    return '<button class="case-card" data-act="case" data-id="' + c.id + '" style="--cc:' + glowOf(c.art[1]) + '">' +
-      (free ? '<span class="cc-tag">' + t('free_badge') + '</span>' : '') + tier +
+    const tag = free ? '<span class="cc-tag">' + t('free_badge') + '</span>'
+      : c.id === topCase() ? '<span class="cc-tag top">' + t('tag_top') + '</span>' : '';
+    const tier = st.ultra ? '<span class="cc-tier r8">✧ 100M+</span>' : st.relic ? '<span class="cc-tier r7">✦ 1M+</span>'
+      : st.star ? '<span class="cc-tier r6">★</span>' : '';
+    const cls = c.id === 'royal' ? ' royal' : c.sec === 'ultra' ? ' ultra' : '';
+    return '<button class="case-card' + cls + '" data-act="case" data-id="' + c.id + '">' + tag + tier +
       '<div class="cc-art">' + Art.crate(c) + '</div>' +
       '<div class="cc-info"><div class="cc-name">' + G.nm(c.name) + '</div>' +
-      '<div class="cc-row"><span class="cc-max">' + t('case_max') + '<b>' + COIN + short(st.max) + '</b></span>' +
-      '<span class="cc-price" data-cost="' + c.price + '">' + COIN + G.fmtP(c.price) + '</span></div></div>' +
+      '<div class="cc-price" data-cost="' + c.price + '">' + COIN + G.fmtP(c.price) + '</div></div>' +
       '</button>';
   }
 
-  // ---------- Лента дропа ----------
+  // ---------- Лента дропа (левая колонка) ----------
   // Режимы: 'all' — последние дропы, 'top' — лучшие за всё время.
-  // Показываются только настоящие дропы от G.C.FEED_MIN; если их нет, ленты нет совсем.
+  // Показываются только настоящие дропы от G.C.FEED_MIN — никаких выдуманных игроков.
   let feedMode = 'all';
   function renderFeed() {
     const S = G.S;
     const list = feedMode === 'top' ? S.top : S.feed;
-    document.body.classList.toggle('no-feed', !S.feed.length);
     setText($('#feed-title'), t(feedMode === 'top' ? 'feed_best' : 'feed_mine'));
+    setText($('#feed-count'), String(list.length));
     $$('.feed-tabs button').forEach((b) => b.classList.toggle('on', b.getAttribute('data-id') === feedMode));
-    const who = (S.profile.ava ? S.profile.ava + ' ' : '') + G.playerName();
-    setHTML($('#feed-list'), list.map((x) => {
+    setHTML($('#feed-list'), list.length ? list.map((x) => {
       const sk = SKINS[x.s];
-      return '<div class="fd r' + sk.r + (x.up ? ' up' : '') + (x.g ? ' g' : '') + '">' +
+      return '<div class="fd r' + sk.r + '">' +
         '<div class="fd-art">' + Art.item(x.s, x.f) + '</div>' +
         '<div class="fd-txt"><b>' + (G.isStar(x.s) ? '★ ' : '') + G.skinName(x.s) +
-        (x.up ? ic('upgrade', 'fd-mk') : '') + (x.g ? ic('rewards', 'fd-mk') : '') + '</b><span>' + G.finishName(x.s) +
-        ' (' + wearShort(x.f) + ')</span><em><i class="fd-who">' + who + '</i><i class="fd-pr">' + COIN + G.fmt(G.instValue(x)) + '</i></em></div></div>';
-    }).join(''));
+        (x.up ? ic('upgrade', 'fd-mk') : '') + (x.g ? ic('rewards', 'fd-mk') : '') + '</b>' +
+        '<span>' + G.finishName(x.s) + ' (' + wearShort(x.f) + ')</span>' +
+        '<em>' + COIN + G.fmt(G.instValue(x)) + '</em></div></div>';
+    }).join('') : '<div class="fd-empty">' + ic('fire') + t('feed_empty', { v: G.fmtInt(G.C.FEED_MIN) }) + '</div>');
   }
 
   // ---------- Шапка и доступность кнопок ----------
@@ -234,7 +247,8 @@ const UI = (function () {
 
   function setSpinning(v) { spinning = v; refresh(); }
 
-  function setSoundIcon() { setHTML($('#btn-sound'), ic(G.S.settings.sound ? 'sound' : 'mute')); }
+  // Кнопки звука есть в левой колонке и на экране апгрейда
+  function setSoundIcon() { $$('[data-act="sound"]').forEach((b) => setHTML(b, ic(G.S.settings.sound ? 'sound' : 'mute'))); }
 
   function setProfileBadge() {
     const p = Platform.playerInfo();
@@ -261,12 +275,24 @@ const UI = (function () {
   function applyI18n() {
     document.documentElement.lang = G.lang;
     document.title = t('title');
-    $('#logo-text').innerHTML = logoText();
+    $$('.logo-text').forEach((el) => { el.innerHTML = logoText(); });
     $$('[data-i18n]').forEach((el) => { el.textContent = t(el.getAttribute('data-i18n')); });
     $$('[data-i18n-ph]').forEach((el) => { el.placeholder = t(el.getAttribute('data-i18n-ph')); });
+    $$('[data-i18n-title]').forEach((el) => { el.title = t(el.getAttribute('data-i18n-title')); });
+    $$('.foot-lang button').forEach((b) => b.classList.toggle('on', b.getAttribute('data-id') === G.lang));
   }
 
   actions['nav'] = function (id) { showScreen(id); };
+  // Язык из подвала (без окна настроек)
+  actions['lang'] = function (id) {
+    if (id !== 'ru' && id !== 'en' || id === G.lang) return;
+    G.lang = id;
+    G.S.settings.lang = id;
+    G.save(false);
+    applyI18n();
+    renderFeed();
+    showScreen(screen);
+  };
   actions['feed'] = function (id) {
     feedMode = id === 'top' ? 'top' : 'all';
     renderFeed();

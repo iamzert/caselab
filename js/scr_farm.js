@@ -25,11 +25,12 @@ const Farm = (function () {
       const l = G.S.up[u.id];
       const maxed = l >= u.max;
       const a = upEffect(u, l), b = maxed ? a : upEffect(u, l + 1);
+      // сегменты уровня: пройденные — золотые, следующий — приглушённо-золотой
       let pips = '';
-      for (let i = 0; i < u.max; i++) pips += '<i' + (i < l ? ' class="on"' : '') + '></i>';
-      return '<div class="shop-card"><div class="shop-ico">' + UI.ic(SHOP_ICON[u.id] || 'up') + '</div>' +
+      for (let i = 0; i < u.max; i++) pips += '<i' + (i < l ? ' class="on"' : i === l ? ' class="nx"' : '') + '></i>';
+      return '<div class="shop-card' + (maxed ? ' max' : '') + '"><div class="shop-ico">' + UI.ic(SHOP_ICON[u.id] || 'up') + '</div>' +
         '<div class="shop-info"><b>' + t('up_' + u.id) + ' <span class="lvl">' + t('level', { v: l }) + '</span></b>' +
-        '<small>' + t('up_' + u.id + '_d', { a: a, b: b }) + '</small><div class="pips">' + pips + '</div></div>' +
+        '<small>' + t('up_' + u.id + '_d', { a: a, b: '<em>' + b + '</em>' }) + '</small><div class="pips">' + pips + '</div></div>' +
         (maxed ? '<button class="btn" disabled>' + t('max') + '</button>'
           : '<button class="btn primary" data-act="buy" data-id="' + u.id + '" data-cost="' + u.cost(l) + '">' + COIN + G.fmtP(u.cost(l)) + '</button>') +
         '</div>';

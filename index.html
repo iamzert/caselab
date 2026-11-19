@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#0b0d11">
+  <meta name="theme-color" content="#11141b">
   <title>Кейс Лаб</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23ffd47a' d='M16 3 28.5 9.5 16 16 3.5 9.5z'/%3E%3Cpath fill='%23ffb22e' d='M3.5 9.5 16 16v13.5L3.5 23z'/%3E%3Cpath fill='%23cf7f08' d='M28.5 9.5 16 16v13.5L28.5 23z'/%3E%3C/svg%3E">
-  <link rel="preload" href="fonts/sofia-xc-cyr.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="fonts/sofia-xc-lat.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="fonts/sofia-cyr.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="fonts/sofia-lat.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/science-gothic-cyr.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/science-gothic-lat.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/golos-text-cyr.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/golos-text-lat.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,75 +22,73 @@
   </div>
 
   <div id="app">
+    <!-- Шапка: логотип над лентой, разделы по центру, баланс и профиль справа -->
     <header id="hdr">
-      <button class="logo" data-act="nav" data-id="cases" aria-label="Case Lab">
-        <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><path class="lm-t" d="M16 3 28.5 9.5 16 16 3.5 9.5z"/><path class="lm-l" d="M3.5 9.5 16 16v13.5L3.5 23z"/><path class="lm-r" d="M28.5 9.5 16 16v13.5L28.5 23z"/><path class="lm-s" d="M3.5 14.2 16 20.7l12.5-6.5"/><path class="lm-k" d="M8.4 15.4l2.6 1.35v2.9L8.4 18.3z"/></svg>
-        <span class="logo-text" id="logo-text"></span>
-      </button>
+      <div class="hdr-l">
+        <button class="logo" data-act="nav" data-id="cases" aria-label="Case Lab">
+          <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><path class="lm-t" d="M16 3 28.5 9.5 16 16 3.5 9.5z"/><path class="lm-l" d="M3.5 9.5 16 16v13.5L3.5 23z"/><path class="lm-r" d="M28.5 9.5 16 16v13.5L28.5 23z"/><path class="lm-s" d="M3.5 14.2 16 20.7l12.5-6.5"/><path class="lm-k" d="M8.4 15.4l2.6 1.35v2.9L8.4 18.3z"/></svg>
+          <span class="logo-text" id="logo-text"></span>
+        </button>
+      </div>
       <nav class="topnav">
-        <button data-act="nav" data-id="cases"><i class="ic i-cases"></i><span data-i18n="nav_cases"></span></button>
-        <button data-act="nav" data-id="inv"><i class="ic i-inv"></i><span data-i18n="nav_inv"></span></button>
-        <button data-act="nav" data-id="upgrade"><i class="ic i-upgrade"></i><span data-i18n="nav_upgrade"></span></button>
-        <button data-act="nav" data-id="rewards"><i class="ic i-rewards"></i><span data-i18n="nav_rewards"></span></button>
-        <button data-act="nav" data-id="farm"><i class="ic i-farm"></i><span data-i18n="nav_farm"></span></button>
+        <button data-act="nav" data-id="inv"><span data-i18n="nav_inv"></span></button>
+        <button data-act="nav" data-id="cases"><span data-i18n="nav_cases"></span></button>
+        <button data-act="nav" data-id="upgrade"><span data-i18n="nav_upgrades"></span></button>
+        <button data-act="nav" data-id="rewards"><span data-i18n="nav_rewards"></span></button>
+        <button data-act="nav" data-id="farm"><span data-i18n="nav_farm"></span></button>
         <button class="nav-admin" data-act="nav" data-id="admin" hidden aria-label="admin" title="Админ"><i class="ic i-gear"></i></button>
       </nav>
-      <div class="hdr-right">
-        <div class="bal-group">
-          <div class="bal"><i class="ci"></i><span id="bal">0</span></div>
-          <button class="plus" data-act="nav" data-id="farm" aria-label="farm"><i class="ic i-plus"></i></button>
-        </div>
+      <div class="hdr-r">
+        <div class="bal" title=""><i class="ci"></i><span id="bal">0</span></div>
+        <button class="plus" data-act="nav" data-id="farm" aria-label="farm"><i class="ic i-plus"></i></button>
         <button class="hbtn adm-hbtn" data-act="nav" data-id="admin" hidden aria-label="admin"><i class="ic i-gear"></i></button>
-        <button class="hbtn desk" data-act="bg-pick" aria-label="background"><i class="ic i-image"></i></button>
-        <button class="hbtn" id="btn-sound" data-act="sound" aria-label="sound"><i class="ic i-sound"></i></button>
         <button class="hdr-user" data-act="nav" data-id="profile" aria-label="profile">
-          <span class="hdr-name" id="hdr-name"></span>
           <span class="avatar" id="ava-btn"><img id="ava-img" alt=""><span id="ava-letter"></span></span>
         </button>
       </div>
     </header>
 
     <div id="body">
+      <!-- Левая колонка: живая лента дорогих дропов (только настоящие, от 25 000) -->
       <aside id="feed">
-        <div class="feed-head">
-          <div class="feed-title"><i class="live"></i><span id="feed-title"></span></div>
-          <div class="feed-tabs">
-            <button class="on" data-act="feed" data-id="all" data-i18n="feed_all"></button>
-            <button data-act="feed" data-id="top" data-i18n="feed_hot"></button>
-          </div>
+        <div class="fd-head">
+          <span class="fd-live"><i></i><span id="feed-title"></span></span>
+          <span class="fd-cnt" id="feed-count">0</span>
+        </div>
+        <div class="feed-tabs">
+          <button class="on" data-act="feed" data-id="all" data-i18n-title="feed_all" aria-label="all"><i class="ic i-grid"></i></button>
+          <button data-act="feed" data-id="top" data-i18n-title="feed_hot" aria-label="top"><i class="ic i-fire"></i></button>
         </div>
         <div id="feed-list"></div>
+        <div class="feed-foot">
+          <button class="fbtn" id="btn-sound" data-act="sound" aria-label="sound"><i class="ic i-sound"></i></button>
+          <button class="fbtn" data-act="bg-pick" aria-label="background"><i class="ic i-image"></i></button>
+          <button class="fbtn" data-act="settings" aria-label="settings"><i class="ic i-gear"></i></button>
+        </div>
       </aside>
 
       <main id="main">
         <!-- Кейсы -->
         <section class="screen" id="scr-cases">
-          <div class="hero" id="hero"></div>
-          <div class="cases-bar">
-            <div class="chips" id="case-chips"></div>
+          <div class="subnav">
             <label class="search"><i class="ic i-search"></i><input id="case-search" type="text" autocomplete="off" data-i18n-ph="search"></label>
+            <div class="chips" id="case-chips"></div>
           </div>
-          <div id="case-sections"></div>
+          <div class="wrap" id="case-sections"></div>
         </section>
 
         <!-- Страница кейса -->
         <section class="screen" id="scr-case">
-          <div class="cp-top">
-            <button class="back" data-act="nav" data-id="cases"><i class="ic i-back"></i><span data-i18n="back"></span></button>
-            <span class="cp-crumb" id="cp-crumb"></span>
-          </div>
-          <div class="cp-stage" id="cp-stage">
-            <div class="cp-hero">
-              <div class="cp-crate" id="cp-crate"></div>
-              <div class="cp-meta">
-                <div class="cp-kicker" id="cp-kicker"></div>
-                <h1 id="cp-name"></h1>
-                <div class="cp-facts" id="cp-facts"></div>
-                <div class="rbar" id="cp-rbar"></div>
-                <div class="rleg" id="cp-rleg"></div>
-              </div>
+          <div class="wrap">
+            <div class="cp-top">
+              <button class="back" data-act="nav" data-id="cases"><i class="ic i-back"></i><span data-i18n="back"></span></button>
+              <div class="cp-title"><span class="cp-crumb" id="cp-crumb"></span><h1 id="cp-name"></h1></div>
+              <div class="cp-facts" id="cp-facts"></div>
             </div>
-            <div id="cp-rolls"></div>
+            <div class="cp-stage" id="cp-stage">
+              <div class="cp-crate" id="cp-crate"></div>
+              <div id="cp-rolls"></div>
+            </div>
             <div class="cp-controls">
               <div class="cp-count" id="cp-count"></div>
               <button class="btn primary big" id="cp-open" data-act="open"></button>
@@ -98,110 +96,117 @@
               <button class="btn ad big" id="cp-open-ad" data-act="open-ad"></button>
               <button class="btn toggle" id="cp-fast" data-act="fast" data-lock="1"><i class="ic i-bolt"></i><span data-i18n="fast"></span></button>
             </div>
+            <div class="cp-odds"><div class="rbar" id="cp-rbar"></div><div class="rleg" id="cp-rleg"></div></div>
+            <h2 class="sec-h"><span data-i18n="contents"></span><span class="sec-n" id="cp-count-n"></span></h2>
+            <div class="item-grid" id="cp-contents"></div>
           </div>
-          <h2 class="sec-h small"><span data-i18n="contents"></span><span class="sec-n" id="cp-count-n"></span></h2>
-          <div class="item-grid" id="cp-contents"></div>
         </section>
 
         <!-- Инвентарь -->
         <section class="screen" id="scr-inv">
-          <div class="panel inv-bar">
-            <div class="inv-sum">
-              <small data-i18n="inv_worth"></small>
-              <b><i class="ci"></i><span id="inv-worth">0</span></b>
-              <small id="inv-count"></small>
-            </div>
-            <div class="inv-tools">
-              <select id="inv-sort">
+          <div class="wrap">
+            <div class="inv-bar">
+              <button class="btn dark" data-act="sell-all" data-i18n="sell_all"></button>
+              <button class="btn dark" data-act="sell-low" data-i18n="sell_low"></button>
+              <div class="inv-sum"><small data-i18n="inv_worth"></small><b><i class="ci"></i><span id="inv-worth">0</span></b><small id="inv-count"></small></div>
+              <label class="sortsel"><i class="ic i-sort"></i><select id="inv-sort">
                 <option value="new" data-i18n="sort_new"></option>
                 <option value="desc" data-i18n="sort_desc"></option>
                 <option value="asc" data-i18n="sort_asc"></option>
                 <option value="rar" data-i18n="sort_rar"></option>
-              </select>
-              <button class="btn" data-act="sell-low" data-i18n="sell_low"></button>
-              <button class="btn primary" data-act="sell-all" data-i18n="sell_all"></button>
+              </select><i class="ic i-chev"></i></label>
             </div>
+            <div class="inv-wrap" id="inv-wrap"><div class="item-grid inv" id="inv-grid"></div></div>
           </div>
-          <div class="item-grid" id="inv-grid"></div>
         </section>
 
         <!-- Апгрейд -->
         <section class="screen" id="scr-upgrade">
-          <div class="up-top">
-            <div class="panel up-panel">
-              <div class="up-ph"><span data-i18n="up_stake"></span><button class="btn mini" data-act="up-clear-stake" data-i18n="up_clear"></button></div>
-              <div class="up-slot" id="up-stake"></div>
-              <div class="up-bal">
-                <span data-i18n="up_balance"></span>
-                <input type="range" id="up-bal-range" min="0" max="0" step="0.01" value="0">
-                <b><i class="ci"></i><span id="up-bal-val">0</span></b>
-              </div>
-              <div class="up-sum" id="up-sum"></div>
+          <div class="wrap">
+            <div class="up-tools">
+              <button class="tbtn" id="up-fast" data-act="fast" data-lock="1" data-i18n-title="up_turbo" aria-label="turbo"><i class="ic i-bolt"></i></button>
+              <button class="tbtn" data-act="sound" aria-label="sound"><i class="ic i-sound"></i></button>
             </div>
-            <div class="up-center">
-              <div class="up-tools">
-                <button class="btn toggle mini" id="up-fast" data-act="fast" data-lock="1"><i class="ic i-bolt"></i><span data-i18n="up_turbo"></span></button>
+            <div class="up-top">
+              <div class="up-panel">
+                <div class="up-ph"><span data-i18n="up_stake_title"></span><button class="lnk" data-act="up-clear-stake" data-i18n="up_clear"></button></div>
+                <div class="up-slot" id="up-stake"></div>
+                <div class="up-sum" id="up-sum"></div>
               </div>
-              <div class="up-ring" id="up-ring">
-                <svg viewBox="0 0 200 200" aria-hidden="true">
-                  <defs>
-                    <radialGradient id="up-disc" cx="50%" cy="38%" r="64%">
-                      <stop offset="0" stop-color="#1d232d"/><stop offset="1" stop-color="#0a0d12"/>
-                    </radialGradient>
-                    <linearGradient id="up-arc-g" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0" stop-color="#ffdc80"/><stop offset="1" stop-color="#ff9a12"/>
-                    </linearGradient>
-                  </defs>
-                  <path id="up-ticks" d="" fill="none" stroke="rgba(255,255,255,.2)" stroke-width="1.2"/>
-                  <circle cx="100" cy="100" r="80" fill="none" stroke="#12161d" stroke-width="13"/>
-                  <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(255,77,94,.13)" stroke-width="13"/>
-                  <path id="up-arc" d="" fill="none" stroke="url(#up-arc-g)" stroke-width="13"/>
-                  <circle cx="100" cy="100" r="70.5" fill="url(#up-disc)" stroke="rgba(255,255,255,.09)" stroke-width="1"/>
-                  <circle cx="100" cy="100" r="62" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="1" stroke-dasharray="1.5 4.5"/>
-                  <g id="up-ptr"><path d="M100,32 L92.5,11 L107.5,11 Z" fill="#f4f6f9"/><path d="M100,32 L100,11 L107.5,11 Z" fill="#b9c0cb"/></g>
-                </svg>
-                <div class="up-ring-txt"><b id="up-chance">0.00%</b><small data-i18n="up_chance"></small><span id="up-mult"></span></div>
+              <div class="up-center">
+                <div class="up-brand" id="up-brand"></div>
+                <div class="up-ring" id="up-ring">
+                  <svg viewBox="0 0 200 200" aria-hidden="true">
+                    <defs>
+                      <radialGradient id="up-disc" cx="50%" cy="40%" r="62%">
+                        <stop offset="0" stop-color="#2a303b"/><stop offset="1" stop-color="#0e1116"/>
+                      </radialGradient>
+                      <linearGradient id="up-arc-g" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#ffd166"/><stop offset="1" stop-color="#ff8a00"/>
+                      </linearGradient>
+                    </defs>
+                    <circle cx="100" cy="100" r="99" fill="rgba(10,12,16,.55)"/>
+                    <path id="up-ticks" d="" fill="none" stroke="rgba(255,255,255,.28)" stroke-width="1.1"/>
+                    <circle cx="100" cy="100" r="80" fill="none" stroke="#151920" stroke-width="15"/>
+                    <path id="up-arc" d="" fill="none" stroke="url(#up-arc-g)" stroke-width="15"/>
+                    <circle cx="100" cy="100" r="71" fill="url(#up-disc)" stroke="rgba(255,255,255,.08)" stroke-width="1"/>
+                    <g id="up-ptr"><path d="M100,34 L91,12 L109,12 Z" fill="#ffb22e"/><path d="M100,34 L100,12 L109,12 Z" fill="#d98306"/></g>
+                  </svg>
+                  <div class="up-ring-txt"><b id="up-chance">0.00%</b><small data-i18n="up_chance"></small><span id="up-mult"></span></div>
+                </div>
+              </div>
+              <div class="up-panel">
+                <div class="up-ph"><span data-i18n="up_target_title"></span><button class="lnk" data-act="up-clear-target" data-i18n="up_clear"></button></div>
+                <div class="up-slot" id="up-target"></div>
+              </div>
+            </div>
+            <div class="up-mid">
+              <div class="up-bal">
+                <span class="up-bal-l"><i class="ic i-plus"></i><span data-i18n="up_balance"></span></span>
+                <div class="up-bal-c">
+                  <b><i class="ci"></i><span id="up-bal-val">0</span></b>
+                  <input type="range" id="up-bal-range" min="0" max="0" step="0.01" value="0">
+                </div>
+                <span class="up-bal-max"><small data-i18n="max_short"></small><b><i class="ci"></i><span id="up-bal-max">0</span></b></span>
               </div>
               <button class="btn primary big" id="up-go" data-act="up-go" data-i18n="up_btn"></button>
-            </div>
-            <div class="panel up-panel">
-              <div class="up-ph"><span data-i18n="up_target"></span><button class="btn mini" data-act="up-clear-target" data-i18n="up_clear"></button></div>
-              <div class="up-slot" id="up-target"></div>
               <div class="up-quick">
-                <button class="btn mini" data-act="up-quick" data-id="x1.5"><span class="x">×</span>1.5</button>
-                <button class="btn mini" data-act="up-quick" data-id="x2"><span class="x">×</span>2</button>
-                <button class="btn mini" data-act="up-quick" data-id="x5"><span class="x">×</span>5</button>
-                <button class="btn mini" data-act="up-quick" data-id="x10"><span class="x">×</span>10</button>
-                <button class="btn mini" data-act="up-quick" data-id="p75">75%</button>
-                <button class="btn mini" data-act="up-quick" data-id="p50">50%</button>
-                <button class="btn mini" data-act="up-quick" data-id="p25">25%</button>
+                <button data-act="up-quick" data-id="x1.5"><span class="x">×</span>1.5</button>
+                <button data-act="up-quick" data-id="x2"><span class="x">×</span>2</button>
+                <button data-act="up-quick" data-id="x5"><span class="x">×</span>5</button>
+                <button data-act="up-quick" data-id="x10"><span class="x">×</span>10</button>
+                <button data-act="up-quick" data-id="p25">25%</button>
+                <button data-act="up-quick" data-id="p50">50%</button>
+                <button data-act="up-quick" data-id="p75">75%</button>
               </div>
             </div>
-          </div>
-          <div class="up-lists">
-            <div class="panel">
-              <div class="up-lh">
-                <span data-i18n="up_my_items"></span>
-                <select id="up-sort">
-                  <option value="desc" data-i18n="sort_desc"></option>
-                  <option value="asc" data-i18n="sort_asc"></option>
-                  <option value="new" data-i18n="sort_new"></option>
-                </select>
+            <div class="up-lists">
+              <div class="panel up-list">
+                <div class="panel-h">
+                  <i class="ic i-inv"></i><span data-i18n="up_my_items"></span>
+                  <label class="sortsel mini"><i class="ic i-sort"></i><select id="up-sort">
+                    <option value="desc" data-i18n="sort_desc"></option>
+                    <option value="asc" data-i18n="sort_asc"></option>
+                    <option value="new" data-i18n="sort_new"></option>
+                  </select></label>
+                </div>
+                <div class="item-grid up scroll" id="up-inv"></div>
               </div>
-              <div class="item-grid small scroll" id="up-inv"></div>
-            </div>
-            <div class="panel">
-              <div class="up-lh">
-                <span data-i18n="up_pick"></span>
-                <input id="up-search" type="text" autocomplete="off" data-i18n-ph="up_search">
-                <input id="up-min" type="number" min="0" data-i18n-ph="up_from">
-                <input id="up-max" type="number" min="0" data-i18n-ph="up_to">
-              </div>
-              <div class="item-grid small" id="up-cat"></div>
-              <div class="pager">
-                <button class="btn mini" data-act="up-page" data-id="-1" aria-label="prev">‹</button>
-                <span id="up-page"></span>
-                <button class="btn mini" data-act="up-page" data-id="1" aria-label="next">›</button>
+              <div class="panel up-list">
+                <div class="panel-h">
+                  <i class="ic i-up"></i><span data-i18n="up_pick"></span>
+                  <div class="up-filters">
+                    <input id="up-min" type="number" min="0" data-i18n-ph="up_from">
+                    <input id="up-max" type="number" min="0" data-i18n-ph="up_to">
+                    <label class="search mini"><i class="ic i-search"></i><input id="up-search" type="text" autocomplete="off" data-i18n-ph="up_search"></label>
+                  </div>
+                </div>
+                <div class="item-grid up" id="up-cat"></div>
+                <div class="pager">
+                  <button class="pg" data-act="up-page" data-id="-1" aria-label="prev"><i class="ic i-chev l"></i></button>
+                  <span id="up-page"></span>
+                  <button class="pg" data-act="up-page" data-id="1" aria-label="next"><i class="ic i-chev r"></i></button>
+                </div>
               </div>
             </div>
           </div>
@@ -209,85 +214,147 @@
 
         <!-- Фарм -->
         <section class="screen" id="scr-farm">
-          <div class="farm">
-            <div class="panel farm-coin">
-              <div class="farm-stats"><span class="pill" id="farm-click"></span><span class="pill" id="farm-income"></span></div>
-              <button id="big-coin" class="big-coin" aria-label="coin">
-                <span class="bc-ring"></span>
-                <svg class="bc-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 28.5 9.5 16 16 3.5 9.5z" fill="rgba(255,244,205,.55)"/><path d="M3.5 9.5 16 16v13.5L3.5 23z" fill="rgba(122,72,0,.45)"/><path d="M28.5 9.5 16 16v13.5L28.5 23z" fill="rgba(122,72,0,.7)"/></svg>
-              </button>
-              <div class="tap-hint" id="tap-hint" data-i18n="tap_hint"></div>
-            </div>
-            <div class="farm-side">
-              <div class="bonus">
-                <div class="b-ico"><i class="ic i-cases"></i></div>
-                <div class="b-txt"><b data-i18n="free_case"></b><small id="free-sub"></small></div>
-                <button class="btn primary" id="btn-free" data-act="free-case"></button>
+          <div class="wrap">
+            <h2 class="sec-h first"><span data-i18n="nav_farm"></span></h2>
+            <div class="farm">
+              <div class="panel farm-coin">
+                <div class="farm-stats"><span class="pill" id="farm-click"></span><span class="pill" id="farm-income"></span></div>
+                <button id="big-coin" class="big-coin" aria-label="coin">
+                  <span class="bc-ring"></span>
+                  <svg class="bc-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 28.5 9.5 16 16 3.5 9.5z" fill="rgba(255,244,205,.55)"/><path d="M3.5 9.5 16 16v13.5L3.5 23z" fill="rgba(122,72,0,.45)"/><path d="M28.5 9.5 16 16v13.5L28.5 23z" fill="rgba(122,72,0,.7)"/></svg>
+                </button>
+                <div class="tap-hint" id="tap-hint" data-i18n="tap_hint"></div>
               </div>
-              <div class="bonus">
-                <div class="b-ico ad"><i class="ic i-play"></i></div>
-                <div class="b-txt"><b data-i18n="ad_coins"></b><small data-i18n="ad_coins_sub"></small></div>
-                <button class="btn ad" id="btn-adcoins" data-act="ad-coins"></button>
+              <div class="farm-side">
+                <div class="bonus">
+                  <div class="b-ico"><i class="ic i-cases"></i></div>
+                  <div class="b-txt"><b data-i18n="free_case"></b><small id="free-sub"></small></div>
+                  <button class="btn primary" id="btn-free" data-act="free-case"></button>
+                </div>
+                <div class="bonus">
+                  <div class="b-ico ad"><i class="ic i-play"></i></div>
+                  <div class="b-txt"><b data-i18n="ad_coins"></b><small data-i18n="ad_coins_sub"></small></div>
+                  <button class="btn ad" id="btn-adcoins" data-act="ad-coins"></button>
+                </div>
+                <h3 class="sub-h" data-i18n="shop"></h3>
+                <div id="shop-list"></div>
               </div>
-              <h2 class="sec-h small"><span data-i18n="shop"></span></h2>
-              <div id="shop-list"></div>
             </div>
           </div>
         </section>
 
         <!-- Награды -->
         <section class="screen" id="scr-rewards">
-          <div class="panel rw-daily">
-            <div class="rw-dh">
-              <div class="rw-dt">
-                <div class="b-ico"><i class="ic i-rewards"></i></div>
-                <div><h2 class="rw-h" data-i18n="daily"></h2><small id="daily-sub"></small></div>
+          <div class="wrap">
+            <h2 class="sec-h first"><span data-i18n="rw_timed"></span></h2>
+            <div class="rw-grid" id="rw-timed"></div>
+            <h2 class="sec-h"><span data-i18n="rw_awards"></span></h2>
+            <div class="rw-daily">
+              <div class="rw-days" id="rw-days"></div>
+              <div class="rw-dtxt">
+                <h3 data-i18n="daily"></h3>
+                <span class="rw-ribbon" id="daily-sub"></span>
+                <p data-i18n="daily_desc"></p>
+                <button class="btn primary big" id="btn-daily" data-act="daily"></button>
               </div>
-              <button class="btn primary big" id="btn-daily" data-act="daily"></button>
             </div>
-            <div class="rw-days" id="rw-days"></div>
+            <div class="rw-qh"><h2 class="sec-h"><span data-i18n="rw_quests"></span></h2><small id="rw-q-reset"></small></div>
+            <div class="rw-quests" id="rw-quests"></div>
+            <div class="rw-top"><div class="rw-top-l"><span data-i18n="rw_top"></span></div><div class="rw-top-list" id="rw-top"></div></div>
           </div>
-          <h2 class="sec-h small"><span data-i18n="rw_timed"></span></h2>
-          <div class="rw-grid" id="rw-timed"></div>
-          <div class="rw-qh"><h2 class="sec-h small"><span data-i18n="rw_quests"></span></h2><small id="rw-q-reset"></small></div>
-          <div class="rw-quests" id="rw-quests"></div>
         </section>
 
         <!-- Админ-панель (вкладка видна только после входа администратора) -->
-        <section class="screen" id="scr-admin"><div id="adm-root"></div></section>
+        <section class="screen" id="scr-admin"><div class="wrap"><div id="adm-root"></div></div></section>
 
         <!-- Профиль -->
         <section class="screen" id="scr-profile">
-          <div class="prof-top">
-            <div class="panel prof-card">
-              <div class="prof-head">
-                <div class="prof-ava"><img id="prof-img" alt=""><span id="prof-letter"></span></div>
-                <div class="prof-id"><b id="prof-name"></b><small id="prof-cloud"></small></div>
+          <div class="wrap">
+            <div class="prof-top">
+              <div class="panel prof-card">
+                <div class="prof-head">
+                  <div class="prof-ava"><img id="prof-img" alt=""><span id="prof-letter"></span></div>
+                  <div class="prof-id"><b id="prof-name"></b><small id="prof-uid"></small><div class="prof-rank" id="prof-rank"></div></div>
+                  <div class="prof-icons">
+                    <button class="ibtn" data-act="edit-profile" aria-label="edit"><i class="ic i-edit"></i></button>
+                    <button class="ibtn" data-act="settings" aria-label="settings"><i class="ic i-gear"></i></button>
+                  </div>
+                </div>
+                <div class="prof-bal">
+                  <div><small data-i18n="balance"></small><b><i class="ci"></i><span id="prof-bal">0</span></b></div>
+                  <button class="btn good" data-act="nav" data-id="farm"><span data-i18n="topup"></span><i class="ic i-plus"></i></button>
+                </div>
+                <div class="prof-stats" id="prof-stats"></div>
               </div>
-              <div class="prof-bal"><small data-i18n="balance"></small><b><i class="ci"></i><span id="prof-bal">0</span></b></div>
-              <div class="prof-btns">
-                <button class="btn primary" data-act="nav" data-id="farm"><i class="ic i-plus"></i><span data-i18n="nav_farm"></span></button>
-                <button class="btn" data-act="edit-profile"><i class="ic i-edit"></i><span data-i18n="edit_profile"></span></button>
-                <button class="btn" data-act="settings"><i class="ic i-gear"></i><span data-i18n="settings"></span></button>
+              <div class="panel prof-best"><small class="lbl" data-i18n="best_drop"></small><div id="prof-best"></div></div>
+              <div class="panel prof-col">
+                <small class="lbl" data-i18n="collection"></small>
+                <div class="prof-col-n" id="col-progress"></div>
+                <div class="bar"><div class="bar-fill" id="col-bar"></div></div>
+                <small class="prof-col-b" id="col-bonus"></small>
+                <small class="prof-cloud" id="prof-cloud"></small>
               </div>
             </div>
-            <div class="panel prof-best"><small class="lbl"><i class="ic i-trophy"></i><span data-i18n="best_drop"></span></small><div id="prof-best"></div></div>
-            <div class="panel prof-stats" id="prof-stats"></div>
+            <div class="prof-bar">
+              <div class="tabs" id="prof-tabs">
+                <button class="on" data-act="prof-tab" data-id="items" data-i18n="tab_items"></button>
+                <button data-act="prof-tab" data-id="col" data-i18n="tab_col"></button>
+              </div>
+              <div class="prof-tools" id="prof-tools">
+                <button class="btn dark mini" data-act="sell-all" data-i18n="sell_all"></button>
+                <label class="sortsel"><i class="ic i-sort"></i><select id="prof-sort">
+                  <option value="new" data-i18n="sort_new"></option>
+                  <option value="desc" data-i18n="sort_desc"></option>
+                  <option value="asc" data-i18n="sort_asc"></option>
+                  <option value="rar" data-i18n="sort_rar"></option>
+                </select><i class="ic i-chev"></i></label>
+              </div>
+            </div>
+            <div class="inv-wrap" id="prof-wrap"><div class="item-grid inv" id="prof-items"></div></div>
+            <div id="col-list" hidden></div>
           </div>
-          <h2 class="sec-h"><span data-i18n="collection"></span></h2>
-          <div class="panel col-head">
-            <div id="col-progress"></div>
-            <small id="col-bonus"></small>
-            <div class="bar"><div class="bar-fill" id="col-bar"></div></div>
-          </div>
-          <div id="col-list"></div>
         </section>
+
+        <!-- Подвал -->
+        <footer class="foot">
+          <div class="wrap foot-in">
+            <div class="foot-brand">
+              <button class="logo" data-act="nav" data-id="cases" aria-label="Case Lab">
+                <svg class="logo-mark" viewBox="0 0 32 32" aria-hidden="true"><path class="lm-t" d="M16 3 28.5 9.5 16 16 3.5 9.5z"/><path class="lm-l" d="M3.5 9.5 16 16v13.5L3.5 23z"/><path class="lm-r" d="M28.5 9.5 16 16v13.5L28.5 23z"/><path class="lm-s" d="M3.5 14.2 16 20.7l12.5-6.5"/><path class="lm-k" d="M8.4 15.4l2.6 1.35v2.9L8.4 18.3z"/></svg>
+                <span class="logo-text foot-logo"></span>
+              </button>
+              <small class="foot-copy">© 2026 · <span data-i18n="foot_sim"></span></small>
+            </div>
+            <div class="foot-col">
+              <b data-i18n="foot_nav"></b>
+              <button data-act="nav" data-id="inv" data-i18n="nav_inv"></button>
+              <button data-act="nav" data-id="cases" data-i18n="nav_cases"></button>
+              <button data-act="nav" data-id="upgrade" data-i18n="nav_upgrades"></button>
+              <button data-act="nav" data-id="rewards" data-i18n="nav_rewards"></button>
+              <button data-act="nav" data-id="farm" data-i18n="nav_farm"></button>
+            </div>
+            <div class="foot-col">
+              <b data-i18n="foot_play"></b>
+              <button data-act="nav" data-id="profile" data-i18n="nav_profile"></button>
+              <button data-act="settings" data-i18n="settings"></button>
+              <button data-act="bg-pick" data-i18n="background"></button>
+            </div>
+            <div class="foot-col wide">
+              <b data-i18n="foot_info"></b>
+              <p data-i18n="foot_disclaimer"></p>
+            </div>
+            <div class="foot-lang">
+              <button data-act="lang" data-id="ru">RU</button>
+              <button data-act="lang" data-id="en">EN</button>
+            </div>
+          </div>
+        </footer>
       </main>
     </div>
 
     <nav id="tabbar">
-      <button data-act="nav" data-id="cases"><i class="ic i-cases"></i><small data-i18n="nav_cases"></small></button>
       <button data-act="nav" data-id="inv"><i class="ic i-inv"></i><small data-i18n="nav_inv"></small></button>
+      <button data-act="nav" data-id="cases"><i class="ic i-cases"></i><small data-i18n="nav_cases"></small></button>
       <button data-act="nav" data-id="upgrade"><i class="ic i-upgrade"></i><small data-i18n="nav_upgrade"></small></button>
       <button data-act="nav" data-id="rewards"><i class="ic i-rewards"></i><small data-i18n="nav_rewards"></small></button>
       <button data-act="nav" data-id="farm"><i class="ic i-farm"></i><small data-i18n="nav_farm"></small></button>
@@ -301,13 +368,36 @@
   <script src="js/i18n.js"></script>
   <script src="js/data.js"></script>
   <script src="js/art_geo.js"></script>
+  <script src="js/geo_pistol.js"></script>
+  <script src="js/geo_pistol2.js"></script>
+  <script src="js/geo_smg.js"></script>
+  <script src="js/geo_smg2.js"></script>
+  <script src="js/geo_rifle.js"></script>
+  <script src="js/geo_rifle2.js"></script>
+  <script src="js/geo_sniper.js"></script>
+  <script src="js/geo_shotgun.js"></script>
+  <script src="js/geo_kar.js"></script>
+  <script src="js/geo_knife.js"></script>
+  <script src="js/geo_knife4.js"></script>
+  <script src="js/geo_knife2.js"></script>
+  <script src="js/geo_knife3.js"></script>
+  <script src="js/geo_knife5.js"></script>
+  <script src="js/geo_gloves.js"></script>
+  <script src="js/geo_gloves2.js"></script>
   <script src="js/art_tex.js"></script>
+  <script src="js/tex_a.js"></script>
+  <script src="js/tex_b.js"></script>
+  <script src="js/tex_c.js"></script>
+  <script src="js/tex_ultra.js"></script>
   <script src="js/art.js"></script>
+  <script src="js/art_crate.js"></script>
   <script src="js/bg.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/platform.js"></script>
   <script src="js/core.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/fx_rare.js"></script>
+  <script src="js/fonts.js"></script>
   <script src="js/scr_cases.js"></script>
   <script src="js/scr_inv.js"></script>
   <script src="js/scr_upgrade.js"></script>

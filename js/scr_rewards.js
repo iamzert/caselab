@@ -20,7 +20,9 @@ const Rewards = (function () {
     $('#rw-days').innerHTML = DAILY.map((v, i) => {
       const n = i + 1;
       const cls = n <= doneTo ? ' done' : n === cur ? ' cur' : '';
-      return '<div class="rw-dd' + cls + (n === 7 ? ' last' : '') + '"><small>' + t('rw_dayn', { d: n }) + '</small><b>' + COIN + v + '</b></div>';
+      // седьмой день — главный приз серии: корона в углу
+      return '<div class="rw-dd' + cls + (n === 7 ? ' last' : '') + '">' + (n === 7 ? UI.ic('crown') : '') +
+        '<small>' + t('rw_dayn', { d: n }) + '</small><b>' + COIN + v + '</b></div>';
     }).join('');
   }
 
@@ -32,7 +34,7 @@ const Rewards = (function () {
     w: { min: 25, max: 120, tier: 'fn', need: 70 },
   };
   const KINDS = ['h', 'd', 'w'];
-  const UNITS = { h: [2, 3], d: [1, 2, 3], w: [0, 1, 2, 3] }; // какие части таймера показывать
+  const UNITS = { h: [0, 1, 2, 3], d: [0, 1, 2, 3], w: [0, 1, 2, 3] }; // какие части таймера показывать
   const pools = {};
 
   function pool(k) {
@@ -75,6 +77,7 @@ const Rewards = (function () {
     UNITS[k].forEach((i, j) => { if (bs[j]) UI.setText(bs[j], i ? pad(p[i]) : String(p[i])); });
   }
 
+  // Карточка приза: название периода, предмет, таймер; внизу кнопка и условие
   function timedCard(k, p) {
     const pz = prize(k, p[k]);
     const sk = SKINS[pz.s];
@@ -82,20 +85,21 @@ const Rewards = (function () {
     const need = PRIZES[k].need;
     const prog = Math.min(progress(k), need);
     const cond = need
-      ? '<div class="rw-cond"><span>' + t('rw_cond_open', { a: prog, b: need }) + '</span>' +
-        '<div class="bar"><div class="bar-fill" style="width:' + (prog / need * 100) + '%"></div></div></div>'
-      : '<div class="rw-cond"><span>' + t('rw_cond_none') + '</span></div>';
+      ? '<small>' + t('rw_cond_open_short') + '</small><b>' + prog + ' / ' + need + '</b>' +
+        '<div class="bar"><div class="bar-fill" style="width:' + (prog / need * 100) + '%"></div></div>'
+      : '<small>' + t('rw_cond') + '</small><b>' + t('rw_free') + '</b>';
     const btn = got ? '<button class="btn" disabled>' + UI.ic('check') + t('rw_claimed') + '</button>'
       : condMet(k) ? '<button class="btn primary" data-act="rw-claim" data-id="' + k + '">' + t('rw_claim') + '</button>'
-        : '<button class="btn" disabled>' + t('rw_locked') + '</button>';
-    return '<div class="rw-card r' + sk.r + (got ? ' got' : '') + '" id="rw-' + k + '">' +
-      '<h3>' + t('rw_' + k) + '</h3>' +
-      '<div class="rw-art">' + Art.item(pz.s, pz.f) + (got ? '<span class="rw-stamp">' + t('rw_claimed') + '</span>' : '') + '</div>' +
-      '<div class="rw-name">' + (G.isStar(pz.s) ? '★ ' : '') + G.skinName(pz.s) + '<span>' + G.finishName(pz.s) + ' · ' + UI.wearShort(pz.f) + '</span></div>' +
-      '<div class="rw-price">' + COIN + G.fmt(G.sellPrice(pz)) + '</div>' +
-      '<div class="rw-lbl">' + t(got ? 'rw_next_in' : 'rw_ends_in') + '</div>' +
-      '<div class="cd" data-k="' + k + '">' + cdHTML(k) + '</div>' +
-      cond + btn + '</div>';
+        : '<button class="btn" disabled>' + UI.ic('lock') + t('rw_locked_short') + '</button>';
+    return '<div class="rw-card k-' + k + ' r' + sk.r + (got ? ' got' : '') + '" id="rw-' + k + '">' +
+      '<div class="rw-body"><div class="rw-info"><h3>' + t('rw_' + k) + '</h3>' +
+      '<div class="rw-item"><b>' + (G.isStar(pz.s) ? '★ ' : '') + G.skinName(pz.s) + '</b>' +
+      '<span>' + G.finishName(pz.s) + ' · ' + UI.wearShort(pz.f) + '</span>' +
+      '<em>' + COIN + G.fmt(G.sellPrice(pz)) + '</em></div>' +
+      '<div class="cd" data-k="' + k + '" title="' + t(got ? 'rw_next_in' : 'rw_ends_in') + '">' + cdHTML(k) + '</div></div>' +
+      '<div class="rw-art">' + Art.item(pz.s, pz.f) + '</div>' +
+      (got ? '<span class="rw-stamp">' + UI.ic('check') + t('rw_claimed') + '</span>' : '') + '</div>' +
+      '<div class="rw-foot">' + btn + '<div class="rw-cond">' + cond + '</div></div></div>';
   }
 
   // ================= Задания дня =================
@@ -133,8 +137,10 @@ const Rewards = (function () {
   function questRow(q) {
     const pr = qProgress(q), done = pr >= q.n, got = qClaimed(q);
     const txt = (q.k === 's' ? G.fmt(pr) : G.fmtInt(pr)) + ' / ' + q.n;
+    // не выполнено — награда плашкой; выполнено — золотая кнопка; забрано — галочка
     const btn = got ? '<button class="btn" disabled>' + UI.ic('check') + t('rw_claimed') + '</button>'
-      : '<button class="btn' + (done ? ' primary' : '') + '" data-act="q-claim" data-id="' + q.id + '"' + (done ? '' : ' disabled') + '>+' + COIN + G.fmtP(q.r) + '</button>';
+      : done ? '<button class="btn primary" data-act="q-claim" data-id="' + q.id + '">+' + COIN + G.fmtP(q.r) + '</button>'
+        : '<span class="q-rw">+' + COIN + G.fmtP(q.r) + '</span>';
     return '<div class="q-row' + (done ? ' done' : '') + (got ? ' got' : '') + '">' +
       '<div class="q-ico">' + UI.ic(Q_ICON[q.k]) + '</div>' +
       '<div class="q-info"><b>' + t('q_' + q.id) + '</b>' +
@@ -143,9 +149,17 @@ const Rewards = (function () {
   }
 
   // ================= Отрисовка =================
-  let sigD = '', sigT = '', sigQ = '';
+  let sigD = '', sigT = '', sigQ = '', sigTop = '';
 
-  function render() { sigD = sigT = sigQ = ''; tick(); }
+  function render() { sigD = sigT = sigQ = sigTop = ''; tick(); }
+
+  // Лучшие дропы игрока (те же, что во вкладке «Топ» левой ленты)
+  function renderTop() {
+    const top = G.S.top;
+    $('#rw-top').innerHTML = top.length
+      ? top.map((x) => UI.itemCard(x, { price: G.instValue(x) })).join('')
+      : '<div class="empty small">' + t('rw_top_empty', { v: G.fmtInt(G.C.FEED_MIN) }) + '</div>';
+  }
 
   function tick() {
     const p = G.rollPeriods();
@@ -154,7 +168,9 @@ const Rewards = (function () {
     const dr = dailyReady();
     const sd = [dr, S.daily.streak, S.daily.last].join();
     if (sd !== sigD) { sigD = sd; renderDays(dr); }
-    UI.setText($('#daily-sub'), t('daily_sub', { d: dr ? dailyStreak() : Math.max(1, S.daily.streak) }));
+    UI.setText($('#daily-sub'), t('daily_day', { d: dr ? dailyStreak() : Math.max(1, S.daily.streak) }));
+    const stp = S.top.length + ':' + (S.top[0] ? S.top[0].s + S.top[0].f : '') + ':' + G.lang;
+    if (stp !== sigTop) { sigTop = stp; renderTop(); }
     const db = $('#btn-daily');
     UI.setHTML(db, dr ? t('take_btn') + ' +' + COIN + G.fmt(dailyReward(dailyStreak())) : t('wait', { t: G.fmtTime(S.daily.last + G.C.DAY - now) }));
     db.disabled = !dr;

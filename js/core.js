@@ -118,7 +118,7 @@ const G = (function () {
       week: { id: -1, o: 0 },
       freeAt: 0, adCoinsAt: 0, adCaseAt: 0, adSellAt: 0,
       lastSeen: Date.now(),
-      settings: { sound: true, fast: false, lang: null, sort: 'new', bg: 'none' },
+      settings: { sound: true, fast: false, lang: null, sort: 'new', bg: 'coast' },
       profile: { name: '', ava: '' },   // ник и аватар из регистрации (хранятся в сохранении)
       savedAt: 0,
     };
@@ -164,6 +164,8 @@ const G = (function () {
       d.settings.lang = raw.settings.lang === 'ru' || raw.settings.lang === 'en' ? raw.settings.lang : null;
       if (['new', 'desc', 'asc', 'rar'].indexOf(raw.settings.sort) >= 0) d.settings.sort = raw.settings.sort;
       if (typeof raw.settings.bg === 'string' && raw.settings.bg.length < 40) d.settings.bg = raw.settings.bg;
+      // пара шрифтов (id из js/fonts.js); неизвестный id Fonts.apply заменит парой по умолчанию
+      if (typeof raw.settings.font === 'string' && /^[a-z]{2,12}$/.test(raw.settings.font)) d.settings.font = raw.settings.font;
     }
     if (raw.profile && typeof raw.profile === 'object') {
       d.profile.name = G.cleanName(raw.profile.name);
@@ -179,6 +181,7 @@ const G = (function () {
   function serialize() { G.S.savedAt = Date.now(); return JSON.stringify(G.S); }
 
   G.save = function (forceCloud) {
+    if (G.demo) return;   // демо-режим локального просмотра ничего не сохраняет
     try { localStorage.setItem(SAVE_KEY, serialize()); } catch (e) { /* приватный режим */ }
     if (!Platform.hasCloud()) return;
     if (!forceCloud && Date.now() - G.lastCloudSave < C.CLOUD_GAP) return;

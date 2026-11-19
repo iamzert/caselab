@@ -21,9 +21,10 @@ const Sfx = (function () {
     return ctx;
   }
 
+  // Возвращает { src, g } — чтобы длинный звук можно было оборвать (пропуск эффекта)
   function tone(freq, dur, type, vol, delay, toFreq) {
     const c = ensure();
-    if (!c) return;
+    if (!c) return null;
     const t0 = c.currentTime + (delay || 0);
     const o = c.createOscillator();
     const g = c.createGain();
@@ -37,6 +38,52 @@ const Sfx = (function () {
     g.connect(master);
     o.start(t0);
     o.stop(t0 + dur + 0.02);
+    return { src: o, g: g };
+  }
+
+  // Белый шум (один буфер на всё) через фильтр со скользящей частотой.
+  // swell — плавное нарастание до конца вместо щелчка в начале.
+  let nbuf = null;
+  function noise(dur, vol, delay, type, f0, f1, swell) {
+    const c = ensure();
+    if (!c) return null;
+    if (!nbuf) {
+      const len = Math.floor(c.sampleRate * 1.5);
+      nbuf = c.createBuffer(1, len, c.sampleRate);
+      const d = nbuf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    }
+    const t0 = c.currentTime + (delay || 0);
+    const src = c.createBufferSource();
+    src.buffer = nbuf;
+    src.loop = true;
+    const f = c.createBiquadFilter();
+    f.type = type;
+    f.Q.value = type === 'bandpass' ? 1.4 : 0.7;
+    f.frequency.setValueAtTime(f0, t0);
+    f.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+    const g = c.createGain();
+    g.gain.setValueAtTime(0.0001, t0);
+    if (swell) {
+      g.gain.exponentialRampToValueAtTime(vol, t0 + dur);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur + 0.12);
+    } else {
+      g.gain.exponentialRampToValueAtTime(vol, t0 + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    }
+    src.connect(f);
+    f.connect(g);
+    g.connect(master);
+    src.start(t0, Math.random());
+    src.stop(t0 + dur + 0.15);
+    return { src: src, g: g };
+  }
+
+  // Колокольчик: основной тон и два негармонических призвука, которые гаснут быстрее
+  function bell(freq, dur, vol, delay) {
+    tone(freq, dur, 'sine', vol, delay);
+    tone(freq * 2.76, dur * 0.45, 'sine', vol * 0.32, delay);
+    tone(freq * 5.4, dur * 0.2, 'sine', vol * 0.12, delay);
   }
 
   const WIN = [
@@ -62,6 +109,40 @@ const Sfx = (function () {
       const step = r >= 4 ? 0.09 : 0.07;
       seq.forEach(function (f, i) { tone(f, 0.25, r >= 3 ? 'square' : 'triangle', r >= 3 ? 0.15 : 0.25, i * step); });
       if (r >= 4) tone(seq[seq.length - 1] * 2, 0.7, 'sine', 0.2, seq.length * step);
+    },
+    // Очень редкий дроп (шанс < 1 %): низкий удар с шумовым хлопком, колокольное арпеджио
+    // вверх (у реликвий и артефактов — на тон выше), россыпь блёсток и высокий «звон» в конце
+    rare: function (r) {
+      if (!ensure()) return;
+      tone(150, 0.75, 'sine', 0.5, 0, 34);
+      tone(75, 0.9, 'triangle', 0.22, 0, 32);
+      noise(0.55, 0.3, 0, 'lowpass', 3200, 160);
+      const ch = r >= 7 ? [659.3, 830.6, 987.8, 1318.5, 1661.2, 1975.5] : [587.3, 740, 880, 1174.7, 1480, 1760];
+      ch.forEach(function (f, i) { bell(f, 1.6 - i * 0.12, 0.13, 0.08 + i * 0.06); });
+      for (let i = 0; i < 16; i++) tone(2600 + Math.random() * 3000, 0.045, 'sine', 0.045, 0.3 + Math.random() * 1.1);
+      bell(ch[0] * 4, 1.4, 0.05, 0.5);
+    },
+    // Нарастание перед остановкой на очень редком предмете: шорох, поднимающийся вверх,
+    // и удары «сердца». Возвращает функцию, которая обрывает звук (клик «пропустить»).
+    rareRise: function (sec) {
+      const c = ensure();
+      if (!c) return function () {};
+      sec = Math.max(0.6, Math.min(5, sec || 2));
+      const nodes = [noise(sec, 0.11, 0, 'bandpass', 260, 2800, true)];
+      for (let t = 0.05; t < sec - 0.2; t += 0.62) {
+        nodes.push(tone(68, 0.16, 'sine', 0.42, t, 44), tone(60, 0.14, 'sine', 0.28, t + 0.17, 40));
+      }
+      return function () {
+        const now = c.currentTime;
+        nodes.forEach(function (x) {
+          if (!x) return;
+          try {
+            x.g.gain.cancelScheduledValues(now);
+            x.g.gain.setTargetAtTime(0.0001, now, 0.03);
+            x.src.stop(now + 0.15);
+          } catch (e) { /* узел ещё не запущен или уже остановлен */ }
+        });
+      };
     },
     setEnabled: function (v) {
       enabled = !!v;

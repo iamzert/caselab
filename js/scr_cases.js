@@ -6,48 +6,12 @@
   const COUNTS = [1, 2, 3, 5, 10, 15];
   const MINI_FROM = 6;   // с этого количества вместо лент — сетка маленьких окон
   const MINI_N = 9;      // карточек в ленте мини-окна
+  const MINI_RARE_N = 14; // ...и в окне с очень редким выигрышем (длиннее путь — дольше докат)
   let cur = null;        // текущий кейс
   let count = 1;         // сколько открывать за раз
   let query = '';
   let secFilter = 'all'; // выбранный раздел
   let lastResult = null; // { items: [inst], isNew: [] }
-
-  // ================= Баннер: главные кейсы =================
-  // Слайды меняются сами (по окончании анимации полоски), наведение мыши ставит паузу.
-  const FEATURED = [
-    { id: 'reliquary', tag: 'hero_relic_tag', sub: 'hero_relic_sub', icon: 'gem' },
-    { id: 'k_kar', tag: 'hero_knife_tag', sub: 'hero_knife_sub', icon: 'star' },
-    { id: FREE_CASE_ID, tag: 'hero_free_tag', sub: 'hero_free_sub', icon: 'clock', free: true },
-  ].filter((f) => CASE_BY_ID[f.id]);
-  let heroIdx = 0;
-
-  function heroHTML() {
-    const slides = FEATURED.map((f, i) => {
-      const c = CASE_BY_ID[f.id];
-      const top = UI.caseStats(c).top;
-      return '<div class="hero-slide' + (i === heroIdx ? ' on' : '') + '" style="--cc:' + UI.glowOf(c.art[1]) + '">' +
-        '<span class="hero-wm">' + G.nm(c.name) + '</span>' +
-        '<div class="hero-txt"><span class="hero-tag">' + UI.ic(f.icon) + t(f.tag) + '</span>' +
-        '<h2 class="hero-name">' + G.nm(c.name) + '</h2>' +
-        '<p class="hero-sub">' + t(f.sub) + '</p>' +
-        '<div class="hero-cta"><button class="btn primary big" data-act="case" data-id="' + c.id + '">' + t('hero_open') + '</button>' +
-        '<span class="hero-price"><small>' + t('hero_price') + '</small>' + (f.free ? t('free_badge') : COIN + G.fmtP(c.price)) + '</span></div></div>' +
-        '<div class="hero-art r' + SKINS[top].r + '"><div class="hero-glow"></div><div class="hero-item">' + Art.item(top, null) + '</div>' +
-        '<div class="hero-crate">' + Art.crate(c) + '</div></div></div>';
-    });
-    return slides.join('') + (FEATURED.length > 1 ? '<div class="hero-dots">' + FEATURED.map((f, i) =>
-      '<button class="' + (i === heroIdx ? 'on' : '') + '" data-act="hero" data-id="' + i + '" aria-label="' + (i + 1) + '"></button>').join('') + '</div>' : '');
-  }
-
-  function setHero(i) {
-    heroIdx = (i + FEATURED.length) % FEATURED.length;
-    document.querySelectorAll('#hero .hero-slide').forEach((s, k) => s.classList.toggle('on', k === heroIdx));
-    document.querySelectorAll('#hero .hero-dots button').forEach((b, k) => b.classList.toggle('on', k === heroIdx));
-  }
-  document.addEventListener('animationend', (e) => {
-    if (e.animationName === 'heroBar' && UI.screen() === 'cases') setHero(heroIdx + 1);
-  });
-  A['hero'] = function (i) { if (Number(i) !== heroIdx) setHero(Number(i)); };
 
   // ================= Разделы и список кейсов =================
   function caseMatches(c, q) {
@@ -66,12 +30,11 @@
 
   function renderList() {
     let html = '';
-    $('#hero').hidden = !!query;
-    SECTIONS.forEach((sec, si) => {
+    SECTIONS.forEach((sec) => {
       if (secFilter !== 'all' && sec.id !== secFilter) return;
       const list = CASES.filter((c) => c.sec === sec.id && caseMatches(c, query));
       if (!list.length) return;
-      html += '<h2 class="sec-h"><span class="sec-i">' + String(si + 1).padStart(2, '0') + '</span>' + G.nm(sec.name) +
+      html += '<h2 class="sec-h">' + G.nm(sec.name) +
         '<span class="sec-n">' + list.length + ' ' + UI.plural(list.length, 'pl_cases') + '</span></h2>' +
         '<div class="case-grid">' + list.map(UI.caseCard).join('') + '</div>';
     });
@@ -79,7 +42,6 @@
   }
 
   function renderCases() {
-    $('#hero').innerHTML = heroHTML();
     renderChips();
     renderList();
   }
@@ -110,10 +72,11 @@
     const sec = SECTIONS.filter((s) => s.id === cur.sec)[0];
     const secName = sec ? G.nm(sec.name) : '';
     const st = UI.caseStats(cur);
-    $('#cp-stage').style.setProperty('--cc', UI.glowOf(cur.art[1]));
+    const stage = $('#cp-stage');
+    stage.style.setProperty('--cc', UI.glowOf(cur.art[1]));
+    stage.classList.remove('rolling');
     $('#cp-crate').innerHTML = Art.crate(cur);
     UI.setText($('#cp-crumb'), t('nav_cases') + ' / ' + secName);
-    UI.setText($('#cp-kicker'), secName);
     UI.setText($('#cp-name'), G.nm(cur.name));
     $('#cp-facts').innerHTML =
       '<div class="cp-fact"><small>' + t('cp_price') + '</small><b>' + COIN + G.fmtP(cur.price) + '</b></div>' +
@@ -149,26 +112,61 @@
     $('#cp-rolls').innerHTML = '<div class="mgrid">' + html + '</div>';
   }
 
-  function spinMini(roll, winner, fast, delay, withSound) {
+  // fx — эффект очень редкого дропа этого открытия (null, если такого нет): клик по нему
+  // мгновенно докручивает все окна. rare — в этом окне очень редкий выигрыш: лента длиннее,
+  // ведётся кадрами по кривой RareFx.curve и дольше докатывается последними карточками.
+  function spinMini(roll, winner, fast, delay, withSound, fx, rare) {
     return new Promise((resolve) => {
       const strip = roll.querySelector('.mstrip');
       const w = G.caseWeights(cur);
+      const n = rare ? MINI_RARE_N : MINI_N;
       let html = '';
-      for (let i = 0; i < MINI_N - 1; i++) html += miniCard(G.rollSkin(cur, w), null);
+      for (let i = 0; i < n - 1; i++) html += miniCard(G.rollSkin(cur, w), null);
       strip.innerHTML = html + miniCard(winner.s, winner.f);
       roll.className = 'mroll';
       strip.style.transition = 'none';
       strip.style.transform = 'translate3d(0,0,0)';
       const h = roll.clientHeight;
       void strip.offsetHeight;
+      const end = (n - 1) * h;
       const dur = (fast ? 900 : 2400) + delay;
+      const timers = [];
+      let over = false;
+      const finish = () => {
+        if (over) return;
+        over = true;
+        timers.forEach(clearTimeout);
+        strip.style.transition = 'none';
+        strip.style.transform = 'translate3d(0,' + (-end) + 'px,0)';
+        roll.classList.add('done', 'r' + SKINS[winner.s].r);
+        resolve();
+      };
+      if (fx) fx.onSkip(finish);
+      if (rare) {
+        const cv = RareFx.curve(end, h, dur, fast, true);
+        const t0 = performance.now();
+        let hot = false, last = 0;
+        const frame = (now) => {
+          if (over) return;
+          const el = now - t0;
+          if (el >= cv.dur) { finish(); return; }
+          const y = cv.at(el);
+          strip.style.transform = 'translate3d(0,' + (-y) + 'px,0)';
+          if (!hot && el >= cv.crawl) { hot = true; fx.crawl(roll, null, cv.dur - el, SKINS[winner.s].r); }
+          const idx = Math.floor(y / h + 0.5);
+          if (idx !== last) { last = idx; if (withSound || hot) Sfx.tick(); }
+          requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+        return;
+      }
       strip.style.transition = 'transform ' + dur + 'ms cubic-bezier(.15,.8,.25,1)';
-      strip.style.transform = 'translate3d(0,' + (-(MINI_N - 1) * h) + 'px,0)';
+      strip.style.transform = 'translate3d(0,' + (-end) + 'px,0)';
       if (withSound) {
         // щелчки в моменты, когда карточки проходят окно (замедляются к концу)
-        for (let k = 1; k < MINI_N; k++) setTimeout(Sfx.tick, dur * (1 - Math.pow(1 - k / (MINI_N - 1), 1 / 3)));
+        for (let k = 1; k < n; k++) timers.push(setTimeout(Sfx.tick, dur * (1 - Math.pow(1 - k / (n - 1), 1 / 3))));
       }
-      setTimeout(() => { roll.classList.add('done', 'r' + SKINS[winner.s].r); resolve(); }, dur + 40);
+      timers.push(setTimeout(finish, dur + 40));
     });
   }
 
@@ -217,10 +215,12 @@
   Screens.reg('case', { render: renderCase, tick: tick });
 
   // ================= Открытие =================
-  function spinStrip(roll, winner, fast, delay, withSound) {
+  // fx, rare — как у spinMini: у очень редкого выигрыша лента короче (выигрыш ближе к началу),
+  // зато дольше докатывается последними карточками; клик по эффекту докручивает ленту сразу
+  function spinStrip(roll, winner, fast, delay, withSound, fx, rare) {
     return new Promise((resolve) => {
       const strip = roll.querySelector('.strip');
-      const N = fast ? 30 : 60;
+      const N = fast ? 30 : rare ? 45 : 60;
       const WIN = N - 6;
       const weights = G.caseWeights(cur);
       let html = '';
@@ -228,28 +228,39 @@
         html += i === WIN ? UI.itemCard(winner) : UI.itemCard(G.rollSkin(cur, weights));
       }
       strip.innerHTML = html;
+      roll.classList.remove('done');
       strip.style.transform = 'translate3d(0,0,0)';
       const cards = strip.children;
       const cardW = cards[0].offsetWidth;
       const step = cards[1].offsetLeft - cards[0].offsetLeft;
       const first = cards[0].offsetLeft;
       const W = roll.clientWidth;
-      const jitter = (Math.random() - 0.5) * cardW * 0.8;
+      // очень редкий выигрыш: указатель встаёт в первой трети карточки — она «едва дотягивает»
+      const jitter = rare ? cardW * (0.14 + Math.random() * 0.22 - 0.5) : (Math.random() - 0.5) * cardW * 0.8;
       const target = cards[WIN].offsetLeft + cardW / 2 - W / 2 + jitter;
-      const dur = (fast ? 1200 : 5800) + delay;
+      const base = (fast ? 1200 : 5800) + delay;
+      const cv = rare ? RareFx.curve(target, step, base, fast, false) : null;
+      const dur = cv ? cv.dur : base;
       const t0 = performance.now();
-      let lastIdx = -1;
+      let lastIdx = -1, hot = false;
       function frame(now) {
-        const p = Math.min(1, (now - t0) / dur);
-        const e = 1 - Math.pow(1 - p, 4);
-        const x = target * e;
+        const el = now - t0;
+        const p = fx && fx.skipped ? 1 : Math.min(1, el / dur);
+        const x = p >= 1 ? target : cv ? cv.at(el) : target * (1 - Math.pow(1 - p, 4));
         strip.style.transform = 'translate3d(' + (-x) + 'px,0,0)';
-        if (withSound) {
+        // начало доката: подсветка указателя и выигрыша, затемнение вокруг рулетки
+        if (cv && !hot && p < 1 && el >= cv.crawl) { hot = true; fx.crawl(roll, cards[WIN], dur - el, SKINS[winner.s].r); }
+        if (withSound || hot) {
           const idx = Math.floor((x + W / 2 - first) / step);
           if (idx !== lastIdx) { lastIdx = idx; Sfx.tick(); }
         }
         if (p < 1) requestAnimationFrame(frame);
-        else { cards[WIN].classList.add('win'); resolve(); }
+        else {
+          // остановка: выигрыш в рамке своей редкости, остальные карточки гаснут (один слой поверх ленты)
+          cards[WIN].classList.add('win');
+          roll.classList.add('done');
+          resolve();
+        }
       }
       requestAnimationFrame(frame);
     });
@@ -274,11 +285,18 @@
 
     if (n !== count) { count = n; renderCase(); }
     UI.setSpinning(true);
-    const res = { items: [], isNew: [] };
+    // chance — шанс выпавшего предмета по весам на момент открытия (с «Удачей» и подкруткой),
+    // rare — он меньше 1 %: для такого дропа своя анимация
+    const res = { items: [], isNew: [], chance: [], rare: [] };
+    const weights = G.caseWeights(cur);
     for (let k = 0; k < n; k++) {
-      const r = G.addInst(G.rollSkin(cur), G.rollFloat());
+      const s = G.rollSkin(cur, weights);
+      const r = G.addInst(s, G.rollFloat());
+      const ch = RareFx.chance(cur, weights, s);
       res.items.push(r.inst);
       res.isNew.push(r.isNew);
+      res.chance.push(ch);
+      res.rare.push(ch < RareFx.LIMIT);
     }
     G.S.opened += n;
     G.track('o', n);
@@ -287,26 +305,40 @@
     G.save(false);
 
     const fast = G.S.settings.fast;
+    const stage = $('#cp-stage');
     const crate = $('#cp-crate');
-    crate.classList.remove('shaking'); void crate.offsetWidth; crate.classList.add('shaking');
+    if (!stage.classList.contains('rolling')) {
+      crate.classList.remove('shaking'); void crate.offsetWidth; crate.classList.add('shaking');
+    }
     Sfx.open();
     await G.wait(fast ? 150 : 400);
+    // Рулетка встаёт на место ящика
+    stage.classList.add('rolling');
 
     const mini = n >= MINI_FROM;
     const rolls = document.querySelectorAll(mini ? '#cp-rolls .mroll' : '#cp-rolls .roll');
+    // Очень редкий дроп (шанс < 1 %): затянутый докат, затемнение, большой эффект для самого маловероятного
+    let top = -1;
+    res.rare.forEach((v, k) => { if (v && (top < 0 || res.chance[k] < res.chance[top])) top = k; });
+    const fx = top >= 0 ? RareFx.session({ fast: fast, mini: mini, area: $('#cp-rolls'), lanes: rolls, r: SKINS[res.items[top].s].r }) : null;
     await Promise.all(res.items.map((inst, k) => (mini
-      ? spinMini(rolls[k], inst, fast, k * 70, k === 0)
-      : spinStrip(rolls[k], inst, fast, k * 180, k === 0))));
+      ? spinMini(rolls[k], inst, fast, k * 70, k === 0, fx, res.rare[k])
+      : spinStrip(rolls[k], inst, fast, k * 180, k === 0, fx, res.rare[k]))));
     const bestR = Math.max.apply(null, res.items.map((x) => SKINS[x.s].r));
-    Sfx.win(Math.min(5, bestR));
-    // Частицы над редкими предметами (в мини-режиме — скромнее, чтобы не тормозило)
-    (mini ? rolls : document.querySelectorAll('#cp-rolls .it.win')).forEach((card, k) => {
-      const r = SKINS[res.items[k].s].r;
-      if (r < (mini ? 4 : 3)) return;
-      const b = card.getBoundingClientRect();
-      UI.burst(b.left + b.width / 2, b.top + b.height / 2, RARITIES[r].color, mini ? 14 : r >= 5 ? 46 : r >= 4 ? 30 : 18);
-    });
-    await G.wait(bestR >= 4 ? 500 : 300);
+    if (fx) {
+      const el = mini ? rolls[top] : rolls[top].querySelector('.it.win');
+      try { await fx.reveal({ el: el, inst: res.items[top], chance: res.chance[top] }); } catch (e) { fx.close(); }
+    } else {
+      Sfx.win(Math.min(5, bestR));
+      // Частицы над редкими предметами (в мини-режиме — скромнее, чтобы не тормозило)
+      (mini ? rolls : document.querySelectorAll('#cp-rolls .it.win')).forEach((card, k) => {
+        const r = SKINS[res.items[k].s].r;
+        if (r < (mini ? 4 : 3)) return;
+        const b = card.getBoundingClientRect();
+        UI.burst(b.left + b.width / 2, b.top + b.height / 2, RARITIES[r].color, mini ? 14 : r >= 5 ? 46 : r >= 4 ? 30 : 18);
+      });
+      await G.wait(bestR >= 4 ? 500 : 300);
+    }
 
     UI.setSpinning(false);
     UI.renderFeed();
@@ -323,16 +355,24 @@
     const anyNew = res.isNew.some(Boolean);
     const again = round2(cur.price * count);
     let html = '<h3 class="m-title">' + t('drop_title') + '</h3>';
+    const rare = (i) => !!(res.rare && res.rare[i]);
     if (single) {
       const sk = SKINS[single.s];
-      html += '<div class="drop-one r' + sk.r + '">' + (res.isNew[0] ? '<span class="new-badge">' + t('new_item') + '</span>' : '') +
+      // очень редкий дроп: по рамке витрины бегут искры, за предметом медленно вращаются лучи
+      html += '<div class="drop-one r' + sk.r + (rare(0) ? ' rx-rare' : '') + '">' + (res.isNew[0] ? '<span class="new-badge">' + t('new_item') + '</span>' : '') +
+        (rare(0) ? RareFx.showcase() : '') +
         '<div class="rays"></div><div class="drop-art">' + Art.item(single.s, single.f) + '</div></div>' +
         '<div class="drop-rar r' + sk.r + '">' + t('rar_' + RARITIES[sk.r].id) + '</div>' +
         '<div class="drop-name">' + (G.isStar(single.s) ? '★ ' : '') + G.skinName(single.s) + ' <span>| ' + G.finishName(single.s) + '</span></div>' +
         '<div class="drop-wear">' + UI.wearShort(single.f) + ' · ' + single.f.toFixed(4) + '</div>' +
+        (rare(0) ? '<div class="r' + sk.r + '">' + RareFx.oddsLine(res.chance[0]) + '</div>' : '') +
         '<div class="drop-price">' + COIN + G.fmt(G.sellPrice(single)) + '</div>';
     } else {
-      html += '<div class="drop-grid">' + res.items.map((x, i) => UI.itemCard(x, { badge: res.isNew[i] ? t('new_item') : '' })).join('') + '</div>';
+      // в сетке очень редкие предметы — в рамке цвета редкости и с меткой шанса
+      html += '<div class="drop-grid">' + res.items.map((x, i) => {
+        const card = UI.itemCard(x, { badge: res.isNew[i] ? t('new_item') : '', cls: rare(i) ? 'rx-rare' : '' });
+        return rare(i) ? card.replace(/<\/div>$/, RareFx.tag(res.chance[i]) + '</div>') : card;
+      }).join('') + '</div>';
       if (live.length) html += '<div class="drop-sum">' + t('drop_sum') + '<b>' + COIN + G.fmt(sum) + '</b></div>';
     }
     if (anyNew) html += '<p class="hint">' + t('new_skin_bonus') + '</p>';
@@ -344,8 +384,16 @@
       if (single && SKINS[single.s].r >= 2 && adSellReady && sum <= G.C.AD_SELL_MAX) html += '<button class="btn ad" data-act="res-sell2">' + t('sell_x2', { v: COIN + G.fmt(sum * 2) }) + '</button>';
     }
     html += '<button class="btn primary big" data-act="res-again" data-cost="' + again + '">' + t('again') + ' · ' + COIN + G.fmtP(again) + '</button></div>';
-    UI.modal(html, { wide: !single, onClose: () => G.maybeInterstitial() });
+    UI.modal(html, { wide: !single, onClose: () => { endRoll(); G.maybeInterstitial(); } });
     UI.refresh();
+  }
+
+  // Окно результата закрыто — снова показываем ящик, ленты готовим заново
+  function endRoll() {
+    const stage = $('#cp-stage');
+    if (!stage || !stage.classList.contains('rolling') || UI.isSpinning()) return;
+    stage.classList.remove('rolling');
+    if (cur) renderIdle();
   }
 
   function sellResult(mult) {
@@ -379,6 +427,7 @@
   };
   A['res-again'] = function () {
     UI.closeModal(true);
+    endRoll();
     G.maybeInterstitial().then(() => open('paid'));
   };
   // Бесплатный кейс с экрана «Фарм»

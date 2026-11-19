@@ -4,33 +4,64 @@
 const Profile = (function () {
   const t = G.t, $ = UI.$, A = UI.actions, COIN = UI.COIN;
   const openCol = {};   // раскрытые кейсы в коллекции
+  let tab = 'items';    // вкладка: предметы | коллекция
+
+  // Ранг по числу открытых кейсов
+  const RANKS = [0, 10, 50, 150, 400, 1000];
+  function rankOf(n) {
+    let i = 0;
+    while (i + 1 < RANKS.length && n >= RANKS[i + 1]) i++;
+    const next = RANKS[i + 1];
+    return { i: i, pct: next ? (n - RANKS[i]) / (next - RANKS[i]) * 100 : 100 };
+  }
 
   function render() {
     const S = G.S;
     const p = Platform.playerInfo();
     const img = $('#prof-img');
-    if (p.photo) { img.src = p.photo; img.style.display = 'block'; UI.setText($('#prof-letter'), ''); }
-    else { img.style.display = 'none'; UI.setText($('#prof-letter'), S.profile.ava || G.playerName().charAt(0).toUpperCase()); }
+    const ava = S.profile.ava;
+    if (p.photo && !ava) { img.src = p.photo; img.style.display = 'block'; UI.setText($('#prof-letter'), ''); }
+    else { img.style.display = 'none'; UI.setText($('#prof-letter'), ava || G.playerName().charAt(0).toUpperCase()); }
+    $('.prof-ava').classList.toggle('emoji', !!ava);
     UI.setText($('#prof-name'), G.playerName());
+    UI.setText($('#prof-uid'), 'ID: ' + (1000000 + Math.floor(hash01('id:' + G.playerName()) * 8999999)));
+    const rk = rankOf(S.opened);
+    $('#prof-rank').innerHTML = UI.ic('medal') + '<span>' + t('rank_' + rk.i) + '</span>' +
+      '<div class="bar"><div class="bar-fill" style="width:' + rk.pct.toFixed(1) + '%"></div></div>';
     UI.setText($('#prof-cloud'), Platform.hasCloud() ? t('cloud_on') : t('cloud_off'));
 
-    $('#prof-best').innerHTML = S.best
-      ? UI.itemCard(S.best, { price: G.instValue(S.best) })
-      : '<div class="empty small">' + t('none_yet') + '</div>';
+    // Лучший дроп: слева редкость, название, качество и цена, справа плитка
+    const b = S.best, bs = b && SKINS[b.s];
+    $('#prof-best').innerHTML = bs
+      ? '<div class="pb-info r' + bs.r + '"><span class="pb-rar">' + t('rar_' + RARITIES[bs.r].id) + '</span>' +
+        '<b>' + (G.isStar(b.s) ? '★ ' : '') + G.skinName(b.s) + '</b><span>' + G.finishName(b.s) + ' · ' + UI.wearShort(b.f) + '</span>' +
+        '<em>' + COIN + G.fmt(G.instValue(b)) + '</em></div>' +
+        '<div class="pb-tile">' + UI.itemCard(b, { price: G.instValue(b) }) + '</div>'
+      : '<div class="empty small">' + t('best_empty') + '</div>';
 
-    const rows = [
-      ['st_opened', G.fmtInt(S.opened)], ['st_upgrades', G.fmtInt(S.upgrades)], ['st_up_wins', G.fmtInt(S.upWins)],
-      ['st_earned', COIN + G.fmt(S.total)], ['st_clicks', G.fmtInt(S.clicks)],
-    ];
-    $('#prof-stats').innerHTML = rows.map((r) => '<div class="st"><b>' + r[1] + '</b><span>' + t(r[0]) + '</span></div>').join('');
+    // Статистика: число с иконкой и подпись-капитель
+    const rows = [['cases', S.opened, 'st_opened'], ['upgrade', S.upgrades, 'st_upgrades'], ['trophy', S.upWins, 'st_up_wins']];
+    $('#prof-stats').innerHTML = rows.map((r) => '<div class="st" title="' + t(r[2]) + '"><b>' + UI.ic(r[0]) + G.fmtInt(r[1]) + '</b>' +
+      '<small>' + t(r[2]) + '</small></div>').join('');
 
+    // Коллекция: крупное число, приглушённый итог и процент
     const n = G.foundCount();
-    UI.setText($('#col-progress'), t('col_progress', { a: n, b: TOTAL_SKINS }));
+    const pct = TOTAL_SKINS ? n / TOTAL_SKINS * 100 : 0;
+    UI.setHTML($('#col-progress'), n + '<small>/ ' + TOTAL_SKINS + '</small><em>' + (pct > 0 && pct < 1 ? pct.toFixed(1) : Math.floor(pct)) + '%</em>');
     $('#col-bar').style.width = (n / TOTAL_SKINS * 100) + '%';
     UI.setText($('#col-bonus'), t('col_bonus', { v: n }));
-    renderCollection();
+
+    UI.$$('#prof-tabs button').forEach((b) => b.classList.toggle('on', b.getAttribute('data-id') === tab));
+    $('#prof-tools').hidden = tab !== 'items';
+    $('#prof-wrap').hidden = tab !== 'items';
+    $('#col-list').hidden = tab !== 'col';
+    if (tab === 'items') {
+      $('#prof-sort').value = S.settings.sort;
+      Inventory.fill($('#prof-items'), $('#prof-wrap'));
+    } else renderCollection();
     tick();
   }
+  A['prof-tab'] = function (id) { tab = id === 'col' ? 'col' : 'items'; render(); };
 
   // Коллекция по кейсам: предметы рисуются только у раскрытых кейсов (их сотни)
   function renderCollection() {
@@ -38,8 +69,10 @@ const Profile = (function () {
     $('#col-list').innerHTML = CASES.map((c) => {
       const got = c.items.filter((id) => S.found[id]).length;
       const open = !!openCol[c.id];
+      const pct = c.items.length ? got / c.items.length * 100 : 0;
       return '<div class="col-sec' + (open ? ' open' : '') + (got === c.items.length ? ' full' : '') + '">' +
         '<button class="col-h" data-act="col-toggle" data-id="' + c.id + '"><span class="col-nm">' + G.nm(c.name) + '</span>' +
+        '<span class="col-pb"><i style="width:' + pct.toFixed(1) + '%"></i></span>' +
         '<span class="col-n">' + got + ' / ' + c.items.length + '</span>' + UI.ic('chev', 'col-ar') + '</button>' +
         (open ? '<div class="item-grid small">' + c.items.map((id) => UI.itemCard(id, { cls: S.found[id] ? '' : 'unknown' })).join('') + '</div>' : '') +
         '</div>';
@@ -131,6 +164,7 @@ const Profile = (function () {
       '<div class="set-row"><span>' + t('sound') + '</span>' + seg('set-sound', [['1', t('on')], ['0', t('off')]], S.settings.sound ? '1' : '0') + '</div>' +
       '<div class="set-row"><span>' + t('language') + '</span>' + seg('set-lang', [['ru', 'RU'], ['en', 'EN']], G.lang) + '</div>' +
       '<div class="set-row"><span>' + t('background') + '</span><button class="btn" data-act="bg-pick" data-id="settings">' + UI.ic('image') + (bg ? G.nm(bg.name) : '') + '</button></div>' +
+      '<div class="set-row"><span>' + t('font') + '</span>' + Fonts.button('settings') + '</div>' +
       '<div class="m-btns"><button class="btn primary" data-act="close">' + t('close') + '</button>' +
       '<button class="btn danger" data-act="reset">' + t('reset') + '</button></div>');
   }

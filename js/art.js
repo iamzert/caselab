@@ -116,7 +116,8 @@ const Art = (function () {
         [[b.x0, b.y0], [b.x1, b.y0], [b.x0, b.y1], [b.x1, b.y1]].forEach((q) => add(m[0] * q[0] + m[2] * q[1] + m[4], m[1] * q[0] + m[3] * q[1] + m[5]));
       });
     });
-    boxCache[weaponId] = { x0: x0 - 10, y0: y0 - 8, x1: x1 + 12, y1: y1 + 16 };
+    // края — на целых единицах: при S = 2 сдвиг картинки целый, плёнка и сколы ложатся пиксель в пиксель (без пересэмплинга)
+    boxCache[weaponId] = { x0: Math.floor(x0) - 10, y0: Math.floor(y0) - 8, x1: Math.ceil(x1) + 12, y1: Math.ceil(y1) + 16 };
     return boxCache[weaponId];
   }
 
@@ -176,15 +177,18 @@ const Art = (function () {
       ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1); ctx.drawImage(img, 0, 0, W, H); ctx.restore();
     } else ctx.drawImage(img, 0, 0, W, H);
   }
+  // Микрофактура (полимер, шлифовка) — тексель в пиксель картинки, а не в единицу модели (иначе 2×2 мыла)
+  const FINE = typeof DOMMatrix === 'function' ? new DOMMatrix([1 / S, 0, 0, 1 / S, 0, 0]) : null;
+  function fine(p) { if (FINE && p && p.setTransform) p.setTransform(FINE); return p; }
   function factoryFill(ctx, P, fm) {
     if (fm.tex) { drawFilm(ctx, Tex.make('fact:' + P.mat, fm.tex)); return; }
     if (fm.metal) {
       ctx.fillStyle = matGrad(ctx, { role: fm.metal, bb: P.bb }); ctx.fill(P.path, 'evenodd');
-      ctx.fillStyle = Tex.brushed(ctx); ctx.fill(P.path, 'evenodd');
+      ctx.fillStyle = fine(Tex.brushed(ctx)); ctx.fill(P.path, 'evenodd');
       return;
     }
     ctx.fillStyle = fm.col; ctx.fill(P.path, 'evenodd');
-    ctx.fillStyle = Tex.polymer(ctx); ctx.fill(P.path, 'evenodd');
+    ctx.fillStyle = fine(Tex.polymer(ctx)); ctx.fill(P.path, 'evenodd');
   }
 
   // Фаска: светлая кромка сверху и внутренняя тень снизу — даёт объём
@@ -274,9 +278,10 @@ const Art = (function () {
 
     if (!mono && opt.shadow !== false) {
       ctx.save();
-      ctx.shadowColor = 'rgba(0,0,0,.55)';
-      ctx.shadowBlur = 12 * px;
-      ctx.shadowOffsetY = 8 * px;
+      // контактная тень: целиком помещается в поля рамки (низ +16), без среза по краю картинки
+      ctx.shadowColor = 'rgba(0,0,0,.5)';
+      ctx.shadowBlur = 8 * px;
+      ctx.shadowOffsetY = 5 * px;
       ctx.fillStyle = '#000';
       parts.forEach((P) => { if ('pqmlkgo'.indexOf(P.role) >= 0) ctx.fill(P.path, 'evenodd'); });
       ctx.restore();
@@ -307,8 +312,8 @@ const Art = (function () {
         }
         case 'm': case 'l': case 'k': case 'g':
           contactFill(ctx, P, matGrad(ctx, P), px);
-          if (r === 'm') { ctx.fillStyle = Tex.brushed(ctx); ctx.fill(P.path, 'evenodd'); }
-          if (r === 'k') { ctx.fillStyle = Tex.polymer(ctx); ctx.fill(P.path, 'evenodd'); }
+          if (r === 'm') { ctx.fillStyle = fine(Tex.brushed(ctx)); ctx.fill(P.path, 'evenodd'); }
+          if (r === 'k') { ctx.fillStyle = fine(Tex.polymer(ctx)); ctx.fill(P.path, 'evenodd'); }
           if (opt.dim) { ctx.save(); ctx.clip(P.path, 'evenodd'); dimRect(ctx, P, opt.dim); ctx.restore(); }
           shadeFill(ctx, P, r === 'k' ? 0.5 : 0.8);
           bevel(ctx, P, px, 0.3);
@@ -528,7 +533,7 @@ const Art = (function () {
   // ---------- Кэш между запусками (IndexedDB) ----------
   // Готовые картинки сохраняются в браузере: при следующем запуске они не рисуются заново.
   // ART_VER меняется при любом изменении отрисовки — тогда старый кэш очищается.
-  const ART_VER = 'e3';   // e3: вторая волна доработки моделей и перчаток
+  const ART_VER = 'e4';   // e4: финальная доработка моделей и перчаток, резче узоры скинов, выравнивание плёнки по пикселям
   // Локальный просмотр (127.0.0.1 / localhost) — без кэша: всегда свежие картинки во время работы над графикой
   const NO_IDB = typeof location !== 'undefined' && /^(127.0.0.1|localhost)$/.test(location.hostname);
   let dbp = null;

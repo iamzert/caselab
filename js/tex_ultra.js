@@ -26,6 +26,7 @@
   }
   // Попиксельная заливка без лишних массивов: fn(x, y, o) пишет o[0..2] (0..255)
   function raster(r, fn) {
+    r = Math.min(1, r * 2);   // плотнее сетка — рисунок резче (0.75 → полное разрешение)
     const w = Math.round(FW * r), h = Math.round(FH * r);
     const c = L.mk(w, h), ctx = c.getContext('2d'), img = ctx.createImageData(w, h), d = img.data;
     const k = W / w, o = new Float32Array(3);

@@ -442,7 +442,6 @@
     fr(x0, x1, yb, yb + 0.55, [96, 108, 122]);
     fr(x0, x1, 4.25, 4.6, [132, 140, 150]);
     fr(x0, x1, 7.0, yt, [168, 164, 152]);
-    textF('СТАНЦИЯ', -9.2, 7.4, z - 0.05, 0.55, css(fog([66, 60, 54], z)));
     fr(x0, x1, yb, yb + 0.4, [70, 60, 50], 0.25);
     const rr = Tex.rng(5611);
     for (let k = 0; k < 9; k++) {
@@ -486,6 +485,13 @@
     box(-11, -9.2, yt, yt + 1.4, z + 2, z + 3.5, [120, 124, 128]);
     box(4.5, 6.8, yt, yt + 1.1, z + 3, z + 4.5, [130, 132, 134]);
     line3([-6, yt, z + 4], [-6, yt + 5, z + 4], 1.2, css(fog([60, 64, 70], z)));
+    // крышная вывеска: тёмно-синий щит на двух стойках, белые буквы ~10 px — читается и на телефоне
+    const sz = z - 0.3;
+    [-11.9, -6.5].forEach((X) => line3([X, yt + 0.4, sz], [X, yt + 1.2, sz], lw(0.12, sz, 1.2), css(fog([58, 62, 68], sz))));
+    fill3([[-13.1, yt + 1.15, sz], [-5.3, yt + 1.15, sz], [-5.3, yt + 2.55, sz], [-13.1, yt + 2.55, sz]], css(fog([214, 218, 222], sz)));
+    fill3([[-13.0, yt + 1.2, sz], [-5.4, yt + 1.2, sz], [-5.4, yt + 2.5, sz], [-13.0, yt + 2.5, sz]], css(lit([54, 70, 94], 'F', sz)));
+    fill3([[-13.1, yt + 2.55, sz], [-5.3, yt + 2.55, sz], [-5.3, yt + 2.7, sz], [-13.1, yt + 2.7, sz]], css(fog([236, 239, 242], sz)));
+    textF('СТАНЦИЯ', -9.2, yt + 1.86, sz - 0.02, 0.95, css(fog([238, 240, 242], sz)));
     driftF(x0, -3.2, z, 1.1, 5601); driftF(3.2, x1, z, 1.0, 5602);
   }
   // Тёмная роща сразу за корпусом: даёт светлому фасаду и мачте контрастный фон
@@ -561,13 +567,16 @@
       const at = (i, t) => { const q = top[i], f = foot[i], k = clamp(t + 0.07 * n(q[2] * 0.7, rd[1]), 0.05, 0.95); return [lerp(q[0], f[0], k), q[1] * (1 - k), q[2]]; };
       const crest = [], lee = [];
       for (let i = 0; i <= 40; i++) { crest.push(at(i, rd[0])); lee.push(at(i, rd[0] + 0.12)); }
-      fill3(crest.concat(lee.reverse()), css(fog([150, 166, 188], zm), 0.3));
-      x.beginPath(); crest.forEach((p, i) => { const s = P(p[0], p[1], p[2]); if (i) x.lineTo(s[0], s[1]); else x.moveTo(s[0], s[1]); });
-      x.strokeStyle = css(fog([240, 243, 246], zm), 0.7); x.lineWidth = 1.3; x.stroke();
+      // подветренная тень под гривой — растушёвана: узкая плотнее, широкая слабее; над гривой — светлый скат
+      fill3(crest.concat(lee.slice().reverse()), css(fog([156, 170, 190], zm), 0.13));
+      const lee2 = []; for (let i = 0; i <= 40; i++) lee2.push(at(i, rd[0] + 0.05));
+      fill3(crest.concat(lee2.reverse()), css(fog([156, 170, 190], zm), 0.12));
+      const up = []; for (let i = 0; i <= 40; i++) up.push(at(i, rd[0] - 0.1));
+      fill3(up.concat(crest.slice().reverse()), css(fog([240, 243, 246], zm), 0.18));
     });
-    // светлая кромка гребня у стены
+    // мягкая светлая кромка гребня у стены
     x.beginPath(); top.forEach((p, i) => { const s = P(p[0], p[1], p[2]); if (i) x.lineTo(s[0], s[1]); else x.moveTo(s[0], s[1]); });
-    x.strokeStyle = css(fog([232, 236, 240], zm), 0.8); x.lineWidth = 1.5; x.stroke();
+    x.strokeStyle = css(fog([236, 239, 243], zm), 0.45); x.lineWidth = 1.2; x.stroke();
   }
   // снег на плоской крыше: передняя грань снежной плиты над стеной X = xw с нависающим карнизом и сосульками
   function roofSnowSide(xw, z0, z1, yt, th, seed) {
@@ -614,6 +623,16 @@
     // стена из профнастила, грязь снизу, цокольный отлив, угловой нащельник
     fill3([[xw, yf, z0], [xw, yt, z0], [xw, yt, z1], [xw, yf, z1]], sideFill(wallC, 'L', xw, z0, z1));
     ribs(xw, z0, z1, yf + 0.2, yt - 0.05, 0.32, wallC, 'L');
+    // листы профнастила разного тона (±4 %) и выцветшие пятна краски — стена не одной заливкой
+    { const pr = Tex.rng(6105);
+      for (let z = z0; z < z1 - 0.1; z += 0.96) {
+        const v = pr() - 0.5, zb = Math.min(z1, z + 0.96);
+        fill3([[xw, yf, z], [xw, yt, z], [xw, yt, zb], [xw, yf, zb]], v > 0 ? 'rgba(236,214,196,' + (v * 0.16).toFixed(3) + ')' : 'rgba(40,24,20,' + (-v * 0.16).toFixed(3) + ')');
+      }
+      for (let k = 0; k < 4; k++) {
+        const zc = lerp(z0 + 1, z1 - 1, pr()), yc = lerp(yf + 0.6, yt - 0.6, pr()), dz = 0.4 + 0.6 * pr(), dy = 0.3 + 0.4 * pr();
+        fill3([[xw, yc - dy, zc - dz], [xw, yc + dy * 0.8, zc - dz * 0.7], [xw, yc + dy, zc + dz], [xw, yc - dy * 0.7, zc + dz * 0.8]], 'rgba(214,184,166,.13)');
+      } }
     [[0, 0.45, 0.2], [0.45, 0.9, 0.08]].forEach((b) => fill3([[xw, yf + b[0], z0], [xw, yf + b[1], z0], [xw, yf + b[1], z1], [xw, yf + b[0], z1]], 'rgba(46,34,30,' + b[2] + ')'));
     fill3([[xw, yf, z0], [xw, yf + 0.18, z0], [xw, yf + 0.18, z1], [xw, yf, z1]], sideFill([92, 96, 102], 'L', xw, z0, z1));
     fill3([[xw, yf, z1 - 0.14], [xw, yt, z1 - 0.14], [xw, yt, z1], [xw, yf, z1]], dk([214, 212, 204], z1));
@@ -739,6 +758,16 @@
     fill3([[xw, yf, z0], [xw, yf + 0.55, z0], [xw, yf + 0.55, z1], [xw, yf, z1]], sideFill([88, 106, 124], 'Rt', xw, z0, z1));
     x.lineCap = 'butt';
     [yf + 0.55, 2.65, 3.65].forEach((yy) => line3([xw, yy, z0], [xw, yy, z1], 1.3, css(lit([120, 118, 110], 'Rt', 9), 0.8)));
+    // сэндвич-панели чуть разного тона, рыжие подтёки у крепежа на стыках
+    { const pr = Tex.rng(6215);
+      for (let z = 1.5; z < z1; z += 3) {
+        const za = Math.max(z0, z), zb = Math.min(z1, z + 3), v = pr() - 0.5;
+        [[yf + 0.55, 2.65], [2.65, 3.65], [3.65, yt]].forEach((b, j) => {
+          const vv = v + (pr() - 0.5) * 0.5;
+          fill3([[xw, b[0], za], [xw, b[1], za], [xw, b[1], zb], [xw, b[0], zb]], vv > 0 ? 'rgba(246,244,236,' + (vv * 0.14).toFixed(3) + ')' : 'rgba(60,56,48,' + (-vv * 0.12).toFixed(3) + ')');
+        });
+      }
+      for (let z = 4.5; z < z1; z += 3) [2.65, 3.65].forEach((yy) => { if (pr() < 0.6) fill3([[xw, yy - 0.02, z - 0.05], [xw, yy - 0.02, z + 0.05], [xw, yy - 0.3 - 0.2 * pr(), z + 0.02], [xw, yy - 0.3, z - 0.02]], 'rgba(132,82,50,.35)'); }); }
     for (let z = 4.5; z < z1; z += 3) line3([xw, yf, z], [xw, yt, z], lw(0.03, z, 1.2), css(lit([128, 126, 118], 'Rt', z), 0.8));
     fill3([[xw, yf, z1 - 0.14], [xw, yt, z1 - 0.14], [xw, yt, z1], [xw, yf, z1]], lt([150, 152, 150], z1));
     // грязь и соль по цоколю, потёки от карниза
@@ -782,7 +811,8 @@
   // Тамбур входа ДЭС: закрытая будка на стойках, дверь и табличка — на торце лицом к камере;
   // перед дверью площадка, от неё прямой марш вдоль стены к камере (низ — у тропы с дороги)
   function vestibule(xw, yf) {
-    const vx = 5.8, vz0 = 10.2, vz1 = 12.4, vy = 3.45, vc = [166, 170, 166], gr = [74, 80, 84];
+    // в отличие от металлической лестницы лаборатории — деревянное крыльцо: дощатые ступени, обшитый бок
+    const vx = 5.8, vz0 = 10.2, vz1 = 12.4, vy = 3.45, vc = [166, 170, 166], gr = [118, 100, 80];
     const sn = { F: [228, 232, 237], S: [232, 236, 240], T: [236, 240, 244] }, rise = yf / 4;
     [[5.95, 12.25], [5.95, 10.35], [5.95, 9.3], [7.05, 9.3]].forEach((p) => post(p[0], p[1], 0.06, 0, yf, [66, 70, 76]));
     box(vx, xw, yf - 0.06, vy, vz0, vz1, { F: vc, S: vc, T: [226, 230, 234] });
@@ -817,14 +847,22 @@
       const yy = yf - (i + 1) * rise, za = 9.2 - (i + 1) * 0.32, zb = 9.2 - i * 0.32;
       box(5.9, 7.1, yy - 0.05, yy, za, zb, gr); box(5.93, 7.07, yy, yy + 0.045, za + 0.02, zb - 0.03, sn);
     }
-    fill3([[5.87, yf + 0.02, 9.2], [5.87, 0.02, 7.92], [5.87, -0.18, 7.92], [5.87, yf - 0.18, 9.2]], css(lit([64, 70, 74], 'Rt', 8.6)));
-    // перила: стойки, поручень (на нём полоска снега), средний пруток
-    const rc = css(lit([58, 66, 70], 'Rt', 9)), rw = (z) => lw(0.045, z, 1.3);
-    [[vz0 - 0.05, yf], [9.2, yf], [8.56, yf - 2 * rise], [7.98, 0.12]].forEach((s) => line3([5.86, s[1], s[0]], [5.86, s[1] + 1.0, s[0]], rw(s[0]), rc));
-    line3([5.86, yf + 1.0, vz0 - 0.05], [5.86, yf + 1.0, 9.2], rw(9.7), rc);
-    line3([5.86, yf + 1.0, 9.2], [5.86, 1.12, 7.98], rw(8.6), rc);
-    line3([5.86, yf + 1.04, vz0 - 0.05], [5.86, yf + 1.04, 9.2], 1.2, 'rgba(234,238,242,.85)');
-    line3([5.86, yf + 0.5, vz0 - 0.05], [5.86, yf + 0.5, 9.2], rw(9.7) * 0.7, rc);
+    // бок крыльца обшит досками до земли (закрытый, без просветов), низ занесён снегом
+    const wd = [104, 88, 70];
+    fill3([[5.87, yf + 0.02, vz0], [5.87, yf + 0.02, 9.2], [5.87, 0.02, 7.92], [5.87, 0, 7.92], [5.87, 0, vz0]], css(lit(wd, 'Rt', 9)));
+    x.lineCap = 'butt';
+    for (let yy = 0.16; yy < yf; yy += 0.16) {
+      const zs = Math.max(7.92, 9.2 - (yf - yy) / yf * 1.28);
+      line3([5.869, yy, zs], [5.869, yy, vz0], 1, css(lit([70, 58, 46], 'Rt', 9), 0.55));
+    }
+    fill3([[5.87, 0, 7.92], [5.87, 0.22, 8.1], [5.87, 0.3, 9.4], [5.87, 0.18, vz0], [5.87, 0, vz0]], css(fog([214, 220, 228], 9)));
+    // деревянные перила: толстые стойки и брус-поручень со снегом сверху
+    const rc = css(lit([92, 76, 60], 'Rt', 9)), rw = (z) => lw(0.08, z, 1.6);
+    [[vz0 - 0.05, yf], [9.2, yf], [7.98, 0.12]].forEach((s) => line3([5.86, s[1], s[0]], [5.86, s[1] + 0.95, s[0]], rw(s[0]), rc));
+    line3([5.86, yf + 0.95, vz0 - 0.05], [5.86, yf + 0.95, 9.2], rw(9.7), rc);
+    line3([5.86, yf + 0.95, 9.2], [5.86, 1.07, 7.98], rw(8.6), rc);
+    line3([5.86, yf + 1.0, vz0 - 0.05], [5.86, yf + 1.0, 9.2], 1.6, 'rgba(234,238,242,.85)');
+    line3([5.86, yf + 1.0, 9.2], [5.86, 1.12, 7.98], 1.4, 'rgba(234,238,242,.7)');
   }
 
   // ---------- Линия электропередачи справа: деревянные опоры, траверсы, провисающие провода ----------
@@ -886,7 +924,9 @@
     const n = Tex.perlin(seed), rr = Tex.rng(seed + 1), f = dir < 0 ? 0.9 : 1.0;
     // полоса грани отвала между долями t0..t1 высоты (от подошвы к гребню); туман — градиентом по глубине
     const strip = (crest, foot, t0, t1, rgb) => {
-      const at = (i, t) => { const c = crest[i], q = foot[i], k = t > 0 && t < 1 ? clamp(t + 0.07 * n(c[2] * 0.9 + t * 10, 4.4), 0, 1) : t; return [lerp(q[0], c[0], k), c[1] * k, c[2]]; };
+      // волнистость сдвигает все полосы одинаково (монотонно по t) — полосы не пересекаются, переход плавный;
+      // профиль скруглён: верх грани выпуклый (k^0.7 по высоте)
+      const at = (i, t) => { const c = crest[i], q = foot[i], k = clamp(t + 0.05 * Math.sin(Math.PI * t) * n(c[2] * 0.9, 4.4), 0, 1); return [lerp(q[0], c[0], k), c[1] * Math.pow(k, 0.7), c[2]]; };
       const lo = [], hi = [];
       for (let i = 0; i < crest.length; i++) { lo.push(at(i, t0)); hi.push(at(i, t1)); }
       path3(lo.concat(hi.reverse()));
@@ -904,16 +944,17 @@
       }
       // внутренняя грань слоями от ножа грейдера: у подошвы — серая слякоть с песком, выше — чистый снег,
       // гребень на свету; уступы между слоями дают рельеф
-      strip(crest, foot, 0, 0.14, [186, 186, 184]);
-      strip(crest, foot, 0.14, 0.52, [198, 206, 216]);
-      strip(crest, foot, 0.52, 0.86, [214, 221, 229]);
-      strip(crest, foot, 0.86, 1, [234, 238, 242]);
+      // плавный профиль: серая слякоть у подошвы → голубовато-серый склон → светлый скруглённый гребень.
+      // 12 узких полос с соседними цветами читаются как градиент поперёк вала, без граней и обводок.
+      const prof = [[0, [182, 182, 180]], [0.12, [190, 196, 204]], [0.4, [200, 208, 218]], [0.72, [216, 223, 231]], [0.9, [232, 236, 241]], [1, [238, 241, 245]]];
+      const pc = (t) => { let k = 1; while (k < prof.length - 1 && prof[k][0] < t) k++; const a = prof[k - 1], b = prof[k]; return mix(a[1], b[1], sm(a[0], b[0], t)); };
+      const NS = K > 0.5 ? 12 : 5;
+      for (let s = 0; s < NS; s++) { const t0 = s / NS, t1 = (s + 1) / NS + (s < NS - 1 ? 0.01 : 0); strip(crest, foot, t0, Math.min(1, t1), pc((t0 + t1) / 2)); }
       const zm = Math.sqrt(sg[0] * sg[1]);
       x.lineJoin = 'round';
+      // одна чёткая кромка надува на гребне (тонкая, полупрозрачная)
       x.beginPath(); crest.forEach((p, i) => { const s = P(p[0], p[1], p[2]); if (i) x.lineTo(s[0], s[1]); else x.moveTo(s[0], s[1]); });
-      x.strokeStyle = css(fog([242, 245, 248], zm), 0.9); x.lineWidth = 1.5; x.stroke();
-      x.beginPath(); foot.forEach((p, i) => { const s = P(p[0], 0, p[2]); if (i) x.lineTo(s[0], s[1]); else x.moveTo(s[0], s[1]); });
-      x.strokeStyle = 'rgba(96,100,108,.3)'; x.lineWidth = 1.2; x.stroke();
+      x.strokeStyle = css(fog([244, 246, 249], zm), 0.55); x.lineWidth = 1.2; x.stroke();
       // комья, скатившиеся с отвала на обочину: немного, у камеры
       if (K > 0.5) {
         for (let k = 0; k < 4; k++) {
@@ -1004,14 +1045,17 @@
   const RUTS = [
     { x: 0.32, hw: 0.17, k: 0.95, s: 1 }, { x: 2.22, hw: 0.17, k: 0.95, s: 2 },
     { x: -2.45, hw: 0.16, k: 0.8, s: 3 }, { x: -0.62, hw: 0.16, k: 0.85, s: 4 },
-    { x: 1.0, hw: 0.27, k: 0.7, s: 5, turn: 3.93, z1: 18.4 }, { x: 3.04, hw: 0.27, k: 0.7, s: 6, turn: 3.93, z1: 18.4 }
+    { x: 1.0, hw: 0.27, k: 0.7, s: 5, turn: 3.93, z1: 24.6 }, { x: 3.04, hw: 0.27, k: 0.7, s: 6, turn: 3.93, z1: 24.6 }
   ];
   const rutN = Tex.perlin(5204);
   function rutX(r, Z) {
-    const X = r.x + 0.12 * rutN(Z * 0.045, r.s * 3.7) + 0.025 * rutN(Z * 0.4, r.s * 1.3);
-    return r.turn ? X + r.turn * sm(9.5, 18.2, Z) : X;
+    // колея виляет: медленный увод (у пары — свой, поэтому колеи то сходятся, то расходятся) + мелкая дрожь
+    const X = r.x + 0.3 * rutN(Z * 0.05, r.s * 3.7) + 0.11 * rutN(Z * 0.16 + 3, r.s * 0.9) + 0.03 * rutN(Z * 0.5, r.s * 1.3);
+    return r.turn ? X + r.turn * sm(12, 24.3, Z) : X;
   }
-  const rutW = (r, Z) => r.hw * (1 + 0.18 * rutN(Z * 0.3 + 11, r.s * 2.1));
+  const rutW = (r, Z) => r.hw * (1 + 0.38 * rutN(Z * 0.22 + 11, r.s * 2.1));
+  // сила колеи вдоль дороги: местами заметена, у гусениц обрывается у стоянки
+  const rutA = (r, Z) => r.k * (r.z1 ? sm(r.z1 + 0.2, r.z1 - 1.6, Z) : sm(130, 45, Z)) * clamp(0.7 + 0.75 * rutN(Z * 0.2 + 5, r.s), 0.12, 1);
   // полоса на земле между X = xa(Z) и xb(Z) от z0 до z1; col(Z) → [r, g, b, a]; заливка — градиент по экранной y
   function groundBand(xa, xb, z0, z1, col) {
     const N = 40, L = [], Q = [];
@@ -1030,8 +1074,10 @@
   function ruts() {
     RUTS.forEach(function (r) {
       const z1 = r.z1 || 120, c = (Z) => rutX(r, Z), w = (Z) => rutW(r, Z);
-      const al = (Z) => r.k * (r.z1 ? sm(r.z1 + 0.2, r.z1 - 1.6, Z) : sm(130, 45, Z)) * clamp(0.7 + 0.75 * rutN(Z * 0.2 + 5, r.s), 0.12, 1);
-      const band = (fa, fb, rgb, a, fz) => groundBand(fa, fb, 2.85, z1, (Z) => [rgb[0], rgb[1], rgb[2], a * al(Z) * (fz ? fz(Z) : 1)]);
+      // ближе 24 м колея рисуется попиксельно в ground(); здесь — только дальний хвост к точке схода
+      if (z1 < 17) return;
+      const al = (Z) => rutA(r, Z) * sm(16, 24, Z);
+      const band = (fa, fb, rgb, a, fz) => groundBand(fa, fb, 15, z1, (Z) => [rgb[0], rgb[1], rgb[2], a * al(Z) * (fz ? fz(Z) : 1)]);
       band((Z) => c(Z) - w(Z) - 0.055, (Z) => c(Z) - w(Z), [238, 241, 244], 0.6);
       band((Z) => c(Z) - w(Z), (Z) => c(Z) - w(Z) * 0.55, [144, 158, 178], 0.72);
       band((Z) => c(Z) - w(Z) * 0.55, (Z) => c(Z) + w(Z) * 0.6, r.turn ? [188, 192, 197] : [172, 174, 176], 0.5);
@@ -1049,9 +1095,9 @@
       const zEnd = 8.2, step = 0.2;
       for (let Z = 2.9; Z < zEnd; Z += step * (0.92 + 0.16 * rr())) {
         const keep = rutN(Z * 0.9 + r.s * 5, 3.3) + 0.2;
-        if (keep < 0 || rr() < 0.15) continue;
-        const xc = rutX(r, Z), w = rutW(r, Z) * (r.turn ? 0.85 : 0.62), lwd = lw(0.02, Z, 1.2), a = Math.min(1, keep * 2.2) * sm(zEnd, zEnd - 2.5, Z);
-        const dk = css(fog([126, 138, 156], Z), (r.turn ? 0.2 : 0.34) * a), lt = css(fog([240, 243, 246], Z), (r.turn ? 0.1 : 0.2) * a);
+        if (keep < 0.12 || rr() < 0.35) { Z += step * rr() * 2; continue; }   // рваный шаг: протектор виден клочьями
+        const xc = rutX(r, Z), w = rutW(r, Z) * (r.turn ? 0.85 : 0.5) * (0.8 + 0.3 * rr()), lwd = lw(0.02, Z, 1.2), a = Math.min(1, keep * 2.2) * sm(zEnd, zEnd - 2.5, Z);
+        const dk = css(fog([112, 106, 98], Z), (r.turn ? 0.2 : 0.3) * a), lt = css(fog([176, 170, 162], Z), (r.turn ? 0.1 : 0.14) * a);
         if (r.turn) {
           line3([xc - w, 0, Z], [xc + w, 0, Z], lwd, dk); line3([xc - w, 0, Z + 0.035], [xc + w, 0, Z + 0.035], lwd, lt);
           continue;
@@ -1108,21 +1154,18 @@
         return pts;
       };
       const yN = gy(p[1] - p[3] * 1.3), yF = gy(p[1] + p[3] * 1.3), g = x.createLinearGradient(0, yN, 0, yF);
-      g.addColorStop(0, css(fog([184, 194, 206], p[1]), 0.55)); g.addColorStop(0.5, css(fog([204, 212, 222], p[1]), 0.62)); g.addColorStop(1, css(fog([228, 233, 238], p[1]), 0.7));
+      g.addColorStop(0, css(fog([176, 184, 194], p[1]), 0.4)); g.addColorStop(0.5, css(fog([196, 203, 212], p[1]), 0.42)); g.addColorStop(1, css(fog([214, 220, 227], p[1]), 0.45));
       // мягкий край: внешняя кайма слабее, ядро плотнее — лёд тонкий, по краям припорошен
-      poly2(shape(1.12)); x.fillStyle = css(fog([206, 214, 224], p[1]), 0.22); x.fill();
+      poly2(shape(1.14)); x.fillStyle = css(fog([200, 207, 216], p[1]), 0.14); x.fill();
       poly2(shape(1)); x.fillStyle = g; x.fill();
-      const core = shape(0.62);
-      poly2(core); x.fillStyle = css(fog([196, 206, 218], p[1]), 0.35); x.fill();
+      poly2(shape(0.6)); x.fillStyle = css(fog([170, 180, 192], p[1]), 0.22); x.fill();
+      // один мягкий отблеск светлого неба у дальнего края (эллипс в перспективе, без полос и прямоугольников)
       x.save(); poly2(shape(1)); x.clip();
-      // отражение тёмной рощи в конце улицы — мягкая вертикальная полоса; отблески светлого горизонта
-      const c0 = P(p[0] - p[2] * 0.25, 0, p[1]), c1 = P(p[0] + p[2] * 0.15, 0, p[1]), rg = x.createLinearGradient(0, yF, 0, yN);
-      rg.addColorStop(0, css(fog([120, 132, 138], p[1]), 0.22)); rg.addColorStop(1, css(fog([120, 132, 138], p[1]), 0));
-      x.fillStyle = rg; x.fillRect(c0[0], yF, Math.max(2, c1[0] - c0[0]), yN - yF);
-      for (let k = 0; k < 4; k++) {
-        const Z = p[1] + p[3] * (0.15 + 0.22 * k), a = P(p[0] - p[2] * 1.3, 0, Z), b = P(p[0] + p[2] * 1.3, 0, Z);
-        x.fillStyle = 'rgba(246,248,250,' + (0.12 + 0.08 * k).toFixed(2) + ')'; x.fillRect(a[0], a[1] - 1, b[0] - a[0], Math.max(1.2, lw(0.04, Z, 1)));
-      }
+      const hc = P(p[0] + p[2] * 0.1, 0, p[1] + p[3] * 0.45), rx = Math.max(4, F * p[2] * 0.9 / p[1]), ry = Math.max(2, gy(p[1]) - gy(p[1] + p[3] * 0.5));
+      x.translate(hc[0], hc[1]); x.scale(1, ry / rx);
+      const hg = x.createRadialGradient(0, 0, 0, 0, 0, rx);
+      hg.addColorStop(0, 'rgba(240,243,246,0.32)'); hg.addColorStop(1, 'rgba(240,243,246,0)');
+      x.fillStyle = hg; x.fillRect(-rx, -rx, rx * 2, rx * 2);
       x.restore();
     });
   }
@@ -1150,14 +1193,23 @@
     x.beginPath(); Q.forEach((p, i) => (i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]))); x.strokeStyle = css(fog([238, 241, 244], zm), 0.9); x.lineWidth = 2.2; x.stroke();
     x.beginPath(); L.forEach((p, i) => (i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]))); x.strokeStyle = css(fog([146, 160, 182], zm), 0.65); x.lineWidth = 1.6; x.stroke();
     // следы вразбежку вдоль оси тропы
-    x.fillStyle = css(fog([150, 160, 176], zm), 0.6);
+    // следы: левый/правый вразбежку, шаг ±25 %, разный размер и поворот; вмятина голубовато-серая,
+    // дальний край вмятины освещён; часть следов затоптана/заметена
+    let side = 1;
     for (let i = 0; i < pts.length - 1; i++) {
       const a = pts[i], b = pts[i + 1], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
-      for (let s = 0.15; s < len; s += 0.34) {
-        const t = s / len, X = lerp(a[0], b[0], t), Z = lerp(a[1], b[1], t) + ((Math.round(s / 0.34) & 1) ? 0.12 : -0.12) + (rr() - 0.5) * 0.05;
-        const q = [];
-        for (let k = 0; k < 8; k++) { const an = k / 8 * Math.PI * 2; q.push(P(X + Math.cos(an) * 0.075, 0, Z + Math.sin(an) * 0.045)); }
-        poly2(q); x.fill();
+      for (let s = 0.1 + rr() * 0.1; s < len; s += 0.34 * (0.75 + 0.5 * rr())) {
+        side = -side;
+        if (rr() < 0.2) continue;
+        const t = s / len, X = lerp(a[0], b[0], t) + (rr() - 0.5) * 0.06, Z = lerp(a[1], b[1], t) + side * (0.1 + 0.05 * rr());
+        const lx = 0.06 + 0.035 * rr(), lz = 0.035 + 0.02 * rr(), rot = (rr() - 0.5) * 0.8, dent = [], rim = [];
+        for (let k = 0; k < 7; k++) {
+          const an = k / 7 * Math.PI * 2, u = Math.cos(an) * lx * (0.85 + 0.3 * rr()), v = Math.sin(an) * lz * (0.85 + 0.3 * rr());
+          const du = u * Math.cos(rot) - v * Math.sin(rot), dv = u * Math.sin(rot) + v * Math.cos(rot);
+          dent.push(P(X + du, 0, Z + dv)); rim.push(P(X + du * 1.05, 0, Z + dv * 1.05 + 0.018));
+        }
+        poly2(rim); x.fillStyle = css(fog([236, 239, 242], zm), 0.5); x.fill();
+        poly2(dent); x.fillStyle = css(fog([146, 156, 172], zm), 0.4 + 0.25 * rr()); x.fill();
       }
     }
   }
@@ -1170,18 +1222,51 @@
   }
   // неправильный вытянутый ком: контактная тень, голубовато-серый бок, светлая верхняя грань
   function lump(X, Z, s, rr, dirty) {
-    const len = s * (1.4 + rr()), ang = (rr() - 0.5) * 0.9, hh = s * (0.45 + 0.35 * rr()), foot = [], tp = [];
-    for (let i = 0; i < 9; i++) {
-      const a = (i + rr() * 0.6) / 9 * Math.PI * 2, r = 0.7 + 0.45 * rr(), u = Math.cos(a) * len * r, v = Math.sin(a) * s * r;
-      const fx = X + u * Math.cos(ang) - v * Math.sin(ang), fz = Z + u * Math.sin(ang) + v * Math.cos(ang), k = 0.45 + 0.35 * rr();
-      foot.push([fx, fz]); tp.push([X + (fx - X) * k - hh * 0.1, hh * (0.75 + 0.35 * rr()), Z + (fz - Z) * k]);
+    // 5–7 угловатых точек, разный масштаб, часть утоплена в накат (низкий верх); цвет — грязно-серый
+    // слежавшийся снег с песком/бурым, без отдельной белой «крышки»
+    s *= 0.6 + 0.8 * rr();
+    const np = 5 + Math.floor(rr() * 3), len = s * (1.1 + 0.8 * rr()), ang = rr() * Math.PI, hh = s * (rr() < 0.4 ? 0.25 : 0.5 + 0.3 * rr()), foot = [], tp = [];
+    for (let i = 0; i < np; i++) {
+      const a = (i + rr() * 0.7) / np * Math.PI * 2, r = 0.6 + 0.6 * rr(), u = Math.cos(a) * len * r, v = Math.sin(a) * s * r;
+      const fx = X + u * Math.cos(ang) - v * Math.sin(ang), fz = Z + u * Math.sin(ang) + v * Math.cos(ang), k = 0.3 + 0.4 * rr();
+      foot.push([fx, fz]); tp.push([X + (fx - X) * k - hh * 0.15, hh * (0.6 + 0.5 * rr()), Z + (fz - Z) * k]);
     }
-    poly2(foot.map((q) => P(q[0] + hh * 1.2, 0, q[1] + hh * 0.6))); x.fillStyle = css(fog([118, 132, 156], Z), 0.26); x.fill();
+    poly2(foot.map((q) => P(q[0] + hh * 1.1, 0, q[1] + hh * 0.5))); x.fillStyle = css(fog([110, 118, 132], Z), 0.2); x.fill();
     const base = foot.map((q) => P(q[0], 0, q[1])), top = tp.map((q) => P(q[0], q[1], q[2]));
     const yT = P(X, hh, Z)[1], yB = P(X, 0, Z - s)[1], g = x.createLinearGradient(0, yT, 0, yB);
-    g.addColorStop(0, css(fog(dirty ? [192, 190, 186] : [208, 216, 226], Z))); g.addColorStop(1, css(fog(dirty ? [158, 156, 152] : [166, 180, 198], Z)));
+    const tint = dirty ? mix([176, 170, 160], [146, 132, 116], rr()) : mix([196, 200, 205], [180, 182, 184], rr());
+    g.addColorStop(0, css(fog(mul(tint, 1.08), Z))); g.addColorStop(1, css(fog(mul(tint, 0.82), Z)));
     poly2(hull(base.concat(top))); x.fillStyle = g; x.fill();
-    poly2(hull(top)); x.fillStyle = css(fog(dirty ? [212, 210, 206] : [238, 241, 244], Z)); x.fill();
+    poly2(hull(top)); x.fillStyle = css(fog(mul(tint, 1.12), Z), 0.6); x.fill();
+  }
+
+  // ---------- Мелочь на переднем плане: ливнёвка, оброненная доска, полузанесённая покрышка ----------
+  function fgProps() {
+    // решётка ливнёвки у правой обочины: вытаявший мокрый ореол, рама, прорези
+    const gX = 3.0, gZ = 6.3, gq = (x0, x1, z0, z1) => [P(x0, 0, z0), P(x1, 0, z0), P(x1, 0, z1), P(x0, 0, z1)];
+    poly2(gq(gX - 0.42, gX + 0.42, gZ - 0.32, gZ + 0.36)); x.fillStyle = css(fog([150, 152, 154], gZ), 0.45); x.fill();
+    poly2(gq(gX - 0.3, gX + 0.3, gZ - 0.2, gZ + 0.2)); x.fillStyle = css(fog([70, 72, 76], gZ)); x.fill();
+    poly2(gq(gX - 0.26, gX + 0.26, gZ - 0.17, gZ + 0.17)); x.fillStyle = css(fog([40, 42, 46], gZ)); x.fill();
+    for (let k = 0; k < 6; k++) { const zz = gZ - 0.15 + k * 0.06; poly2(gq(gX - 0.25, gX + 0.25, zz, zz + 0.022)); x.fillStyle = css(fog([96, 98, 100], gZ)); x.fill(); }
+    poly2(gq(gX - 0.3, gX + 0.3, gZ + 0.17, gZ + 0.2)); x.fillStyle = css(fog([214, 218, 222], gZ), 0.8); x.fill();
+    // доска, оброненная с саней: верхняя грань, торец, снег на одном конце, тень
+    const pl = (X, Z, len, ang, w) => [[0, -w], [len, -w], [len, w], [0, w]].map((q) => [X + q[0] * Math.cos(ang) - q[1] * Math.sin(ang), Z + q[0] * Math.sin(ang) + q[1] * Math.cos(ang)]);
+    const pX = -2.75, pZ = 5.2, ang = -0.35, th = 0.04;
+    poly2(pl(pX + 0.05, pZ + 0.03, 1.5, ang, 0.13).map((q) => P(q[0], 0, q[1]))); x.fillStyle = css(fog([120, 130, 148], pZ), 0.3); x.fill();
+    const top = pl(pX, pZ, 1.5, ang, 0.1);
+    poly2([P(top[0][0], 0, top[0][1]), P(top[1][0], 0, top[1][1]), P(top[1][0], th, top[1][1]), P(top[0][0], th, top[0][1])]); x.fillStyle = css(fog([92, 76, 60], pZ)); x.fill();
+    poly2(top.map((q) => P(q[0], th, q[1]))); x.fillStyle = css(fog([118, 104, 88], pZ)); x.fill();
+    x.strokeStyle = css(fog([104, 86, 68], pZ), 0.7); x.lineWidth = 1;
+    const m0 = P(lerp(top[0][0], top[3][0], 0.5), th, lerp(top[0][1], top[3][1], 0.5)), m1 = P(lerp(top[1][0], top[2][0], 0.5), th, lerp(top[1][1], top[2][1], 0.5));
+    x.beginPath(); x.moveTo(m0[0], m0[1]); x.lineTo(m1[0], m1[1]); x.stroke();
+    { const c = pl(pX + 1.05 * Math.cos(ang), pZ + 1.05 * Math.sin(ang), 0.45, ang, 0.12), q = [c[0], [lerp(c[0][0], c[1][0], 0.6), lerp(c[0][1], c[1][1], 0.6) - 0.03], c[1], [lerp(c[1][0], c[2][0], 0.5) + 0.02, lerp(c[1][1], c[2][1], 0.5)], c[2], [lerp(c[3][0], c[2][0], 0.3), lerp(c[3][1], c[2][1], 0.3) + 0.03], c[3]]; poly2(q.map((p) => P(p[0], th + 0.01, p[1]))); x.fillStyle = css(fog([222, 226, 231], pZ), 0.6); x.fill(); }
+    // покрышка, лежащая плашмя у подошвы правого отвала: чёрный бок, верх с протектором, снег в середине и шапкой на дальней половине
+    const tX = 3.45, tZ = 10.6, tr = 0.38, ell = (r, y, a0, a1) => { const p = []; for (let i = 0; i <= 20; i++) { const a = a0 + (a1 - a0) * i / 20; p.push(P(tX + Math.cos(a) * r, y, tZ + Math.sin(a) * r)); } return p; };
+    poly2(ell(tr * 1.15, 0, 0, Math.PI * 2).map((q) => [q[0] + 3, q[1] + 1])); x.fillStyle = css(fog([110, 120, 138], tZ), 0.25); x.fill();
+    poly2(ell(tr, 0, Math.PI, Math.PI * 2).concat(ell(tr, 0.18, Math.PI, Math.PI * 2).reverse())); x.fillStyle = css(fog([46, 47, 49], tZ)); x.fill();
+    poly2(ell(tr, 0.18, 0, Math.PI * 2)); x.fillStyle = css(fog([66, 67, 69], tZ)); x.fill();
+    poly2(ell(tr * 0.6, 0.18, 0, Math.PI * 2)); x.fillStyle = css(fog([36, 37, 39], tZ)); x.fill();
+    poly2(ell(tr * 0.56, 0.1, 0, Math.PI * 2)); x.fillStyle = css(fog([200, 207, 216], tZ)); x.fill();
   }
 
   // ---------- Вертикальные цилиндры: бочки, баки ----------
@@ -1250,15 +1335,23 @@
       g.addColorStop(0, 'rgba(110,64,40,.35)'); g.addColorStop(1, 'rgba(110,64,40,0)');
       x.fillStyle = g; x.fillRect(p0[0] - 1.2, p0[1], 2.4, p1[1] - p0[1]);
     }
-    if (label) textF(label, X + r * 0.12, h * 0.62, Z - r * 0.99, 0.42, css(fog([116, 68, 58], Z), 0.78));
+    // название — на плоском привинченном щите (не «наклейкой» по цилиндру)
+    if (label) {
+      const lx0 = X + r * 0.12 - 0.85, lx1 = X + r * 0.12 + 0.85, ly = h * 0.62, pz = Z - r * 1.02;
+      fill3([[lx0, ly - 0.36, pz], [lx1, ly - 0.36, pz], [lx1, ly + 0.36, pz], [lx0, ly + 0.36, pz]], css(lit([206, 204, 196], 'F', Z)));
+      fill3([[lx0, ly - 0.36, pz], [lx1, ly - 0.36, pz], [lx1, ly - 0.3, pz], [lx0, ly - 0.3, pz]], css(lit([120, 116, 108], 'F', Z), 0.7));
+      textF(label, X + r * 0.12, ly, pz - 0.01, 0.4, css(fog([120, 62, 52], Z)));
+    }
     // вертикальная лестница с дугами ограждения у левого края
     const lx = X - r * 0.62, lz = Z - r * 0.78, lc = css(fog([64, 68, 72], Z));
     line3([lx - 0.22, 0.3, lz], [lx - 0.22, h + 1.0, lz], 1.3, lc); line3([lx + 0.22, 0.3, lz], [lx + 0.22, h + 1.0, lz], 1.3, lc);
     for (let yy = 0.6; yy < h; yy += 0.3) line3([lx - 0.22, yy, lz], [lx + 0.22, yy, lz], 1, lc);
     for (let yy = 2.4; yy < h + 1; yy += 0.9) { const a = P(lx, yy, lz - 0.35), rw = F * 0.38 / lz; x.beginPath(); x.ellipse(a[0], a[1], rw, rw * 0.18, 0, 0, Math.PI); x.strokeStyle = lc; x.lineWidth = 1; x.stroke(); }
     // перила по верху и снег на кромке крыши
-    const tr = ring(X, h + 1.0, Z, r * 0.98, Math.PI, 0, 16);
-    x.beginPath(); tr.forEach((p, i) => (i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]))); x.strokeStyle = lc; x.lineWidth = 1.2; x.stroke();
+    // поручень на 6 стойках, концы опущены на кромку крыши (не висит в воздухе)
+    const tr = ring(X, h + 0.85, Z, r * 0.96, Math.PI * 0.92, Math.PI * 0.08, 16), sb = ring(X, h + 0.08, Z, r * 0.96, Math.PI * 0.92, Math.PI * 0.08, 5), st = ring(X, h + 0.85, Z, r * 0.96, Math.PI * 0.92, Math.PI * 0.08, 5);
+    x.beginPath(); x.moveTo(sb[0][0], sb[0][1]); tr.forEach((p) => x.lineTo(p[0], p[1])); x.lineTo(sb[5][0], sb[5][1]); x.strokeStyle = lc; x.lineWidth = 1.2; x.stroke();
+    sb.forEach((p, i) => { x.beginPath(); x.moveTo(p[0], p[1]); x.lineTo(st[i][0], st[i][1]); x.lineWidth = 1.1; x.stroke(); });
     const t0 = ring(X, h, Z, r * 1.01, Math.PI, 0, 18), t1 = ring(X, h + 0.16, Z, r * 0.97, 0, Math.PI, 18);
     poly2(t0.concat(t1)); x.fillStyle = css(fog([228, 232, 236], Z)); x.fill();
   }
@@ -1410,7 +1503,7 @@
     fill3([[dx0, 0, z0 + 0.05], [dx1, 0, z0 + 0.05], [dx1, 0.7, z0 + 0.05], [dx0, 0.7, z0 + 0.05]], 'rgba(60,54,48,.25)');
     fill3([[cx - 4.6, 0, z0], [cx - 3.7, 0, z0], [cx - 3.7, 2.05, z0], [cx - 4.6, 2.05, z0]], css(lit([96, 76, 64], 'F', z0)));
     // «СКЛАД 3» — трафарет на торце левее ворот, весь на виду (ворота частично за модулем ДЭС)
-    textF('СКЛАД 3', cx - 3.25, 4.1, z0 - 0.02, 0.36, css(fog([60, 64, 72], z0), 0.88));
+    textF('СКЛАД 3', cx - 3.8, 3.7, z0 - 0.02, 0.35, css(fog([60, 64, 72], z0), 0.88));
     fill3([[cx - 4.45, 3.8, z0 - 0.01], [cx - 2.05, 3.8, z0 - 0.01], [cx - 2.05, 3.84, z0 - 0.01], [cx - 4.45, 3.84, z0 - 0.01]], css(fog([60, 64, 72], z0), 0.6));
     box(cx + 0.1, cx + 0.5, dh + 1.4, dh + 1.55, z0 - 0.35, z0, [80, 84, 90]);
     // грязь и соль у земли на торце, потёки ржавчины и грязи от кромки арки
@@ -1432,7 +1525,7 @@
   // с разной разметкой болтов, поддерживающие ролики, ленивец и ведущая звезда, траки ≥ 3 px; нижняя
   // треть в грязном снегу; на крыше кунга багажник и выключенный проблесковый маячок. Цвет — выцветший
   // оранжево-красный (насыщенность ≈ 0,35). След гусениц сворачивает к стоянке с дороги (см. RUTS).
-  const VH = { x0: 4.75, x1: 7.15, z0: 18.2, z1: 23.6 };
+  const VH = { x0: 4.75, x1: 7.15, z0: 24.4, z1: 29.8 };   // за первой опорой: столб не режет вездеход
   SHADOW_EXTRA.push((boxS) => boxS(VH.x0, VH.x1, 0.2, 2.95, VH.z0, VH.z1));
   AO_EXTRA.push((foot) => foot(VH.x0 - 0.3, VH.x1 + 0.25, VH.z0 - 0.25, VH.z1 + 0.2));
   function vehicle() {
@@ -1454,29 +1547,45 @@
     // грязный снег на нижней трети: брызги с гусениц на корпусе и на кунге снизу
     fill3([kd(kz0, 1.32), kd(kz0, 1.62), kd(kz1, 1.52), kd(kz1, 1.32)], 'rgba(96,84,70,.3)');
     fill3([[x0 + 0.19, 0.55, z0 + 0.06], [x0 + 0.19, 1.05, z0 + 0.06], [x0 + 0.19, 1.0, z1], [x0 + 0.19, 0.55, z1]], 'rgba(84,74,62,.35)');
-    // левая гусеница: обвод, катки, ролики, ленивец и звезда, траки
-    fill3([sd(z0 + 0.12, 0.08), sd(z0 + 0.12, 0.88), sd(z1 - 0.1, 0.88), sd(z1 - 0.1, 0.08)], css(lit([34, 36, 38], 'Rt', 21)));
-    const disc = (zc, yc, r, c, n) => { const p = []; for (let k = 0; k < (n || 16); k++) { const a = k / (n || 16) * Math.PI * 2; p.push(sd(zc + Math.cos(a) * r, yc + Math.sin(a) * r)); } path3(p); x.fillStyle = css(lit(c, 'Rt', zc)); x.fill(); };
-    [[z0 + 0.38, 0.5], [z1 - 0.38, 0.55]].forEach((w, i) => { disc(w[0], w[1], 0.3, [60, 62, 64]); disc(w[0], w[1], 0.2, i ? [92, 90, 86] : [104, 106, 104], i ? 10 : 16); disc(w[0], w[1], 0.07, [52, 54, 56]); });
-    for (let i = 0; i < 6; i++) {
-      const zc = z0 + 0.95 + i * (z1 - z0 - 1.9) / 5;
-      disc(zc, 0.36, 0.33, [56, 58, 60]); disc(zc, 0.36, 0.26, [98, 102, 102]); disc(zc, 0.36, 0.1, [74, 76, 78]);
-      const ph = rr() * Math.PI;
-      for (let k = 0; k < 5; k++) { const a = ph + k / 5 * Math.PI * 2, p = P.apply(null, sd(zc + Math.cos(a) * 0.17, 0.36 + Math.sin(a) * 0.17)); x.fillStyle = css(lit([60, 62, 64], 'Rt', zc)); x.fillRect(p[0] - 0.8, p[1] - 0.8, 1.6, 1.6); }
+    // левая гусеница: контактная тень, сплошная лента со скруглёнными концами, звезда спереди (у кабины),
+    // ленивец сзади, 5 катков с тёмными ступицами внутри обвода, снег на верхней ветви
+    const TS = (u, v) => P.apply(null, sd(u, v));
+    fill3([[sx - 0.25, 0, z0 - 0.15], [sx + 0.55, 0, z0 - 0.15], [sx + 0.6, 0, z1 + 0.1], [sx - 0.2, 0, z1 + 0.1]], 'rgba(70,78,92,.32)');
+    const loop = (ins) => {
+      const R0 = 0.45 - ins, yc = 0.46, za = z0 + 0.5, zb = z1 - 0.5, pts = [];
+      for (let k = 0; k <= 10; k++) { const a = Math.PI / 2 + k / 10 * Math.PI; pts.push(TS(za + Math.cos(a) * R0, yc + Math.sin(a) * R0)); }
+      for (let k = 0; k <= 10; k++) { const a = -Math.PI / 2 + k / 10 * Math.PI; pts.push(TS(zb + Math.cos(a) * R0, yc + Math.sin(a) * R0)); }
+      return pts;
+    };
+    poly2(loop(0)); x.fillStyle = css(lit([36, 38, 40], 'Rt', 21)); x.fill();
+    poly2(loop(0.08)); x.fillStyle = css(lit([62, 64, 66], 'Rt', 21)); x.fill();
+    const disc = (zc, yc, r, c, n, tooth) => {
+      const p = [], m = n || 16;
+      for (let k = 0; k < m; k++) { const a = k / m * Math.PI * 2, rr2 = tooth && (k & 1) ? r * 0.82 : r; p.push(sd(zc + Math.cos(a) * rr2, yc + Math.sin(a) * rr2)); }
+      path3(p); x.fillStyle = css(lit(c, 'Rt', zc)); x.fill();
+    };
+    // звезда (ведущее колесо) с зубьями и ленивец
+    disc(z1 - 0.5, 0.5, 0.31, [72, 74, 76], 20, true); disc(z1 - 0.5, 0.5, 0.19, [96, 96, 92]); disc(z1 - 0.5, 0.5, 0.07, [46, 48, 50]);
+    disc(z0 + 0.5, 0.48, 0.3, [70, 72, 74]); disc(z0 + 0.5, 0.48, 0.22, [104, 106, 104]); disc(z0 + 0.5, 0.48, 0.08, [50, 52, 54]);
+    for (let i = 0; i < 5; i++) {
+      const zc = z0 + 1.15 + i * (z1 - z0 - 2.3) / 4;
+      disc(zc, 0.31, 0.28, [64, 66, 68]); disc(zc, 0.31, 0.22, [112, 114, 112]); disc(zc, 0.31, 0.08, [52, 54, 56]);
     }
-    for (let i = 0; i < 3; i++) disc(z0 + 1.6 + i * 1.3, 0.8, 0.085, [96, 98, 100], 10);
-    // траки: верхняя и нижняя ветви — поперечные звенья через 0,15 м
+    // звенья: поперечные риски на нижней и верхней ветвях
     x.lineCap = 'butt';
-    for (let z = z0 + 0.25; z < z1 - 0.2; z += 0.15) {
-      line3(sd(z, 0.86), sd(z, 0.95), lw(0.03, z, 1), css(lit([82, 84, 86], 'Rt', z)));
-      line3(sd(z, 0.0), sd(z, 0.07), lw(0.03, z, 1), css(lit([70, 72, 74], 'Rt', z)));
+    for (let z = z0 + 0.5; z < z1 - 0.45; z += 0.16) {
+      line3(sd(z, 0.84), sd(z, 0.9), lw(0.025, z, 1), css(lit([78, 80, 82], 'Rt', z), 0.8));
+      line3(sd(z, 0.02), sd(z, 0.08), lw(0.025, z, 1), css(lit([70, 72, 74], 'Rt', z), 0.8));
     }
-    line3(sd(z0 + 0.15, 0.95), sd(z1 - 0.15, 0.95), lw(0.02, 21, 1), css(lit([96, 98, 100], 'Rt', 21)));
-    // снег, набитый в ходовую: рваная полоса по низу катков
+    // снег, набитый на верхнюю ветвь и между катками у земли
+    const top = [];
+    for (let i = 0; i <= 12; i++) top.push(sd(lerp(z0 + 0.5, z1 - 0.6, i / 12), 0.92 + 0.05 * Math.abs(Math.sin(i * 1.9)) + 0.03 * rr()));
+    top.push(sd(z1 - 0.6, 0.88), sd(z0 + 0.5, 0.88));
+    fill3(top, css(lit([218, 222, 226], 'Rt', 21)));
     const cake = [];
-    for (let i = 0; i <= 14; i++) cake.push(sd(lerp(z0 + 0.15, z1 - 0.15, i / 14), 0.16 + 0.1 * Math.sin(i * 2.1) + 0.07 * rr()));
-    cake.push(sd(z1 - 0.15, 0.0), sd(z0 + 0.15, 0.0));
-    fill3(cake, css(lit([200, 200, 196], 'Rt', 21), 0.85));
+    for (let i = 0; i <= 14; i++) cake.push(sd(lerp(z0 + 0.3, z1 - 0.3, i / 14), 0.1 + 0.07 * Math.sin(i * 2.1) + 0.05 * rr()));
+    cake.push(sd(z1 - 0.3, 0.0), sd(z0 + 0.3, 0.0));
+    fill3(cake, css(lit([204, 206, 204], 'Rt', 21), 0.9));
     // надгусеничная полка с налипшим снегом
     box(x0 - 0.1, x0 + 0.45, 0.95, 1.02, z0 + 0.1, z1 - 0.1, { F: dark, S: [58, 60, 62], T: [214, 220, 226] });
     fill3([sd(z0 + 0.1, 1.02), sd(z0 + 0.1, 1.07), sd(z1 - 0.3, 1.06), sd(z1 - 0.3, 1.02)], css(lit([214, 220, 226], 'Rt', 21)));
@@ -1508,7 +1617,8 @@
   // заструги у камеры, продольная фактура наката на дороге. Колеи, протектор, лёд — векторами.
   function ground() {
     const n = Tex.perlin(5201), n2 = Tex.perlin(5202), n3 = Tex.perlin(5203);
-    const snow = [217, 222, 227], lee = [166, 180, 200], sunny = [232, 235, 238], road = [198, 203, 209], dirt = [174, 174, 170];
+    const snow = [217, 222, 227], lee = [166, 180, 200], sunny = [232, 235, 238], road = [186, 189, 193], dirt = [166, 163, 157];
+    let rowY = -1, rowR = [], occ = 0;
     const ca = Math.cos(0.45), sa = Math.sin(0.45), fine = K > 0.5;
     // высота гривы (гребенчатый шум, вытянут по ветру) и застругов
     const hD = (u, v) => 1 - Math.abs(n(u * 0.05, v * 0.22));
@@ -1536,6 +1646,35 @@
         let rc = mix(road, dirt, 0.22 * dd + 0.1 * sm(8, 40, Z));
         rc = mul(rc, 1 + 0.035 * n2(X * 2.4, Z * 0.11) * (0.4 + 0.6 * near));
         if (Z < 7 && fine) rc = mul(rc, 1 + 0.03 * n(X * 7, Z * 5) * sm(7, 3, Z));
+        // колеи ближе 24 м: укатанное буро-серое дно с гроздьями песка, теневая левая стенка,
+        // освещённая правая, рыхлые бортики. Центры колей считаются раз на строку (Z в строке один).
+        if (Z < 24) {
+          if (ly !== rowY) { rowY = ly; rowR = RUTS.map((r) => [rutX(r, Z), rutW(r, Z) * 1.15, rutA(r, Z) * (1 - sm(16, 24, Z)), r.turn]); }
+          for (let i = 0; i < rowR.length; i++) {
+            const q = rowR[i];
+            if (q[2] <= 0.01) continue;
+            const d = (X - q[0]) / q[1], ad = Math.abs(d);
+            if (ad > 1.4) continue;
+            const s = q[2], b = 1 - sm(0.42, 0.72, ad), wl = sm(0.42, 0.72, ad) * (1 - sm(0.9, 1.08, ad)), rim = sm(0.92, 1.06, ad) * (1 - sm(1.12, 1.4, ad));
+            const gr = sm(0.15, 0.55, n2(X * 5 + i * 7, Z * 1.3));
+            const bot = q[3] ? [176, 176, 174] : mix([168, 162, 154], [132, 120, 106], gr * 0.7);
+            rc = mix(rc, bot, (q[3] ? 0.45 : 0.62) * b * s);
+            rc = d < 0 ? mix(rc, [140, 152, 172], 0.55 * wl * s) : mix(rc, [214, 217, 220], 0.4 * wl * s);
+            rc = mix(rc, [234, 237, 240], 0.5 * rim * s);
+            occ = Math.max(occ, s * (1 - sm(1.0, 1.4, ad)));
+          }
+          // ветровая рябь (мелкие заструги) на рыхлом снегу между колеями: косые гребни поперёк ветра,
+          // пятнами; светлая наветренная сторона гребня и голубоватая подветренная
+          const patch = sm(-0.05, 0.3, n3(X * 0.35 + 4, Z * 0.25));
+          if (patch > 0 && occ < 0.9) {
+            const ph = (X * 0.85 + Z * 0.5) * 6.5 + 2.6 * n(X * 0.5 + 7, Z * 0.4), cr = Math.cos(ph);
+            const k = patch * (1 - occ) * sm(16, 6, Z) * 0.6;
+            rc = cr > 0 ? mix(rc, [232, 235, 239], 0.35 * cr * k) : mix(rc, [158, 170, 188], -0.3 * cr * k);
+          }
+          occ = 0;
+        }
+        // накат у камеры темнее: низ кадра не должен быть самой светлой полосой
+        rc = mul(rc, 0.9 + 0.1 * sm(3, 16, Z));
         col = mix(col, rc, rm);
       }
       col = fog(col, Z);
@@ -1577,6 +1716,7 @@
     footpath([[-3.45, 8.6], [-4.3, 8.5], [-5.2, 8.35], [-6.2, 8.2]], 0.8, 6421);
     footpath([[3.5, 8.25], [4.4, 8.1], [5.3, 7.95], [6.3, 7.85]], 0.8, 6422);
     if (K > 0.5) roadDetail();
+    fgProps();
     berm(-1, [[4.3, 7.4], [9.4, 20.5], [25.5, 120]], 6301);
     berm(1, [[3.9, 6.9], [8.9, 11.2], [24.5, 27.2], [31.5, 120]], 6302);
     shadows();

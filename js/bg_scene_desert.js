@@ -9,7 +9,7 @@
 (function () {
   const VX = 960, HOR = 500, F = 1300, EYE = 1.6, CAMX = -0.6;
   const XL = -5.5, XR = 5.5, CURB = 4.0, WALK = 0.15;
-  const KX = 0.743, KU = 0.70;
+  const KX = 0.5, KU = 0.47;
   const U_END = 54;                 // конец рядов домов, дальше лестница и площадь с куполом
   const SW = 1920, SH = 1080;
 
@@ -22,9 +22,10 @@
     const r = clamp(Math.round(c[0]), 0, 255), g = clamp(Math.round(c[1]), 0, 255), b = clamp(Math.round(c[2]), 0, 255);
     return a === undefined ? 'rgb(' + r + ',' + g + ',' + b + ')' : 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
   }
-  const HAZE = [204, 194, 176];
+  const HAZE = [218, 204, 176];
   // воздушная дымка: чем дальше, тем ближе цвет к цвету пыльного воздуха
-  const hz = (c, u) => mix(c, HAZE, 0.9 * (1 - Math.exp(-u / 260)));
+  const hzk = (u) => 0.86 * (1 - Math.exp(-u / 115));
+  const hz = (c, u) => mix(c, HAZE, hzk(u));
   const hzs = (c, u, a) => rgb(hz(c, u), a);
 
   // проекция точки мира на экран; экранный x плоскости X = xf на глубине u
@@ -79,8 +80,8 @@
 
   // ---------- Палитра ----------
   const C = {
-    asph: [172, 163, 148], walk: [196, 184, 162], curb: [182, 170, 152], sand: [212, 190, 150],
-    shadow: [120, 125, 154],          // множитель тени (multiply): жёсткое солнце — тень вдвое темнее
+    asph: [192, 181, 162], walk: [212, 198, 172], curb: [200, 188, 166], sand: [222, 200, 160],
+    shadow: [150, 140, 142],          // множитель тени (multiply): тёплый отражённый свет от песка, небо подсинивает слабо
   };
   // материалы стен: l — на солнце, s — в тени (с тёплым отражённым светом от улицы)
   const MAT = {
@@ -100,7 +101,10 @@
   // wu — центры окон верхних этажей (общие по вертикали), ww/wh — размер, ws — стиль (shut/arch/mod),
   // bal — балконы [этаж, u0, u1], paint — краска ставен, gm — облицовка первого этажа, bands — пояса на всех этажах
   const HOUSES = [
-    { s: -1, u0: -40, u1: 3.0, h: 9.6, ghost: true },          // ряд позади камеры: только тень
+    // ряд позади камеры: только тень; рваная линия крыш (разные высоты, бак у края) даёт ступенчатый край тени
+    { s: -1, u0: -40, u1: -3.0, h: 9.6, ghost: true }, { s: -1, u0: -3.0, u1: -0.6, h: 11.2, ghost: true },
+    { s: -1, u0: -0.6, u1: 1.4, h: 8.8, ghost: true }, { s: -1, u0: 0.1, u1: 1.0, h: 11.6, xo: 0.5, ghost: true },
+    { s: -1, u0: 1.4, u1: 3.0, h: 10.0, ghost: true }, { s: -1, u0: 2.0, u1: 2.25, h: 10.5, ghost: true },
     { s: -1, u0: 3.0, u1: 11.2, h: 10.4, fl: [4.2, 3.0, 2.6], m: 'cream', seed: 11, paint: 'teal',
       wu: [7.5, 10.0], ww: 1.0, wh: 1.45, ws: 'shut', gf: [['shop', 6.6, 9.4, 'rugs'], ['door', 9.9, 10.8]] },
     { s: -1, u0: 13.0, u1: 24.0, h: 13.6, fl: [4.0, 3.2, 3.2, 2.6], m: 'sand', gm: 'stone', seed: 12, paint: 'green', bands: true,
@@ -160,11 +164,11 @@
   function sky(x) {
     const g = x.createLinearGradient(0, 0, 0, HOR);
     // зенит темнее (под шапкой интерфейса читается текст), у горизонта — пыльная светлая дымка
-    g.addColorStop(0, rgb([62, 84, 110]));
-    g.addColorStop(0.28, rgb([90, 114, 140]));
-    g.addColorStop(0.6, rgb([148, 160, 166]));
-    g.addColorStop(0.86, rgb([194, 188, 174]));
-    g.addColorStop(1, rgb([204, 194, 176]));
+    g.addColorStop(0, rgb([104, 136, 166]));
+    g.addColorStop(0.3, rgb([136, 160, 180]));
+    g.addColorStop(0.62, rgb([186, 186, 178]));
+    g.addColorStop(0.86, rgb([212, 200, 176]));
+    g.addColorStop(1, rgb(HAZE));
     x.fillStyle = g; x.fillRect(0, 0, SW, HOR + 2);
   }
 
@@ -229,11 +233,40 @@
     for (const b of HOUSES) {
       if (b.s > 0) continue;
       const pts = [];
-      for (const X of [XL, XL - 14]) for (const U of [b.u0, b.u1]) { pts.push([X, U]); pts.push([X + b.h * KX, U + b.h * KU]); }
+      const xe = XL - (b.xo || 0);
+      for (const X of [xe, xe - 14]) for (const U of [b.u0, b.u1]) { pts.push([X, U]); pts.push([X + b.h * KX, U + b.h * KU]); }
       groundPoly(g, hull(pts));
     }
     if (extra) extra(g);
     x.save(); x.globalCompositeOperation = 'multiply'; x.drawImage(L.c, 0, 0, SW, SH); x.restore();
+  }
+
+  // Над камерой натянуты полосы ткани и тростниковые маты (сами вне кадра): на солнечной части дороги
+  // у камеры — полосатая тень с рваными краями и тени двух верёвок. Ткань чуть просвечивает: маска светлее
+  // тени домов и кладётся через darken, чтобы не высветлить их тень.
+  function canopyShadows(g) {
+    const r = Tex.rng(5151), span = 9.2;
+    const tg = (X, Y, U) => { const q = toGround(X, Y, U); return [q[0], q[2]]; };
+    const Yc = (X) => 6.7 - 0.45 * Math.sin(Math.PI * clamp((X - XL) / span, 0, 1));
+    g.save(); g.globalCompositeOperation = 'darken';
+    let u = -1.6;
+    while (u < 4.8) {
+      const w = 0.45 + r() * 0.7, mat = r() < 0.35;
+      g.fillStyle = rgb(mix(C.shadow, [255, 250, 240], mat ? 0.12 : 0.22));
+      const xe = XL + 5.2 + r() * 4.4, top = [], bot = [], sk = (r() - 0.5) * 0.7, ph = r() * 6;
+      for (let X = XL - 3; X <= xe + 0.01; X += 0.35) {
+        const q = (X - XL) / span, wv = 0.07 * Math.sin(X * 2.1 + ph), lip = X > xe - 1.2 ? (r() - 0.3) * 0.25 : 0;
+        const a = u + sk * q + wv + (r() - 0.5) * 0.05 + lip, b = u + sk * q + w - wv * 0.6 + (r() - 0.5) * (mat ? 0.04 : 0.1) - lip;
+        top.push(tg(X, Yc(X), a)); bot.unshift(tg(X, Yc(X), Math.max(a + 0.08, b)));
+      }
+      groundPoly(g, top.concat(bot));
+      u += w + 0.35 + r() * 0.75;
+    }
+    // верёвки вдоль улицы, на которых висят полосы
+    g.beginPath();
+    for (const X of [-2.3, 0.9]) { const a = tg(X, Yc(X) + 0.05, -1.6), b = tg(X, Yc(X) + 0.05, 5.0); line3(g, [[a[0], 0, Math.max(0.7, a[1])], [b[0], 0, b[1]]]); }
+    g.strokeStyle = rgb(C.shadow); g.lineWidth = 3; g.stroke();
+    g.restore();
   }
 
   // ---------- Фасады: основа с дымкой вдоль глубины ----------
@@ -526,7 +559,7 @@
   const PALMS = [
     { X: 4.3, Y0: WALK, U: 15.6, h: 5.5, lx: -0.45, lu: 0.25, n: 16, fl: 2.5, seed: 61, near: true },
     { X: -4.3, Y0: PLAT, U: 60.4, h: 8.2, lx: 0.45, lu: -0.2, n: 14, fl: 2.7, seed: 62, far: true },
-    { X: 4.7, Y0: PLAT, U: 61.2, h: 6.9, lx: -0.5, lu: 0.1, n: 13, fl: 2.5, seed: 63, far: true },
+    { X: 4.9, Y0: PLAT, U: 61.6, h: 5.1, lx: -1.1, lu: 0.35, n: 10, fl: 2.0, seed: 67, far: true },
     { X: -8.6, Y0: 0, U: 41.3, h: 12.8, lx: 0.7, lu: 0.2, n: 14, fl: 2.8, seed: 64, alley: true },
   ];
   const PGEO = new Map();
@@ -825,22 +858,41 @@
     niche(x, b, u0, u1, 0.12, top, 0.24, 0, (xi, a0, a1, b0, b1) => {
       x.beginPath(); fr(x, xi, a0, b0, a1, b1); fillp(x, hzs(lit ? [66, 58, 50] : [46, 40, 36], uc));
       const r2 = Tex.rng(b.seed * 31 + Math.round(u0 * 10)), q = (u, v, w, h, c) => { x.beginPath(); fr(x, xi, u, v, u + w, v + h); fillp(x, dk(c)); };
+      if (LO && type === 'rugs') {      // миниатюра: дешёвая замена коврам — три цветных полотна
+        const w = (a1 - a0 - 0.3) / 3;
+        [[150, 64, 52], [62, 72, 104], [176, 132, 72]].forEach((c, k) => q(a0 + 0.08 + k * (w + 0.07), b0 + 0.3 + k * 0.1, w, b1 - b0 - 0.65 - k * 0.1, c));
+      }
       if (!LO && up > 0) {
         if (type === 'rugs') {           // ковры на задней стене: кайма, медальон, бахрома
           const RUG = [[[150, 64, 52], [214, 190, 140]], [[62, 72, 104], [196, 170, 120]], [[176, 132, 72], [120, 52, 44]], [[120, 50, 46], [70, 82, 110]]];
-          for (let u = a0 + 0.08, k = 0; u < a1 - 0.5; u += 0.78, k++) {
-            const w = Math.min(0.7, a1 - 0.08 - u), c = RUG[k % 4], v0 = b0 + 0.3 + (k % 2) * 0.15, v1 = b1 - 0.32;
+          // три разных ковра: медальон, килим с зигзагами, полосатый дорожкой; разная ширина и высота подвеса;
+          // четвёртый перекинут через перекладину (видна только свисающая половина)
+          const lw = clamp(F * 0.03 / uc, 0.8, 4), WID = [0.72, 0.52, 0.62, 0.6];
+          for (let u = a0 + 0.06, k = 0; u < a1 - 0.4; k++) {
+            const w = Math.min(WID[k % 4], a1 - 0.06 - u), c = RUG[k % 4], mot = k % 4;
+            const v1 = b1 - 0.28 - (k % 3) * 0.12, v0 = mot === 3 ? v1 - 0.9 : b0 + 0.25 + ((k * 7) % 3) * 0.12;
             q(u, v0, w, v1 - v0, c[0]);
-            x.beginPath(); fr(x, xi, u + w * 0.12, v0 + 0.12, u + w * 0.88, v1 - 0.12); x.strokeStyle = dk(c[1]); x.lineWidth = clamp(F * 0.03 / uc, 0.8, 4); x.stroke();
             const cu = u + w / 2, cv = (v0 + v1) / 2;
-            x.beginPath(); poly3(x, [[xi, cv + 0.32, cu], [xi, cv, cu + w * 0.25], [xi, cv - 0.32, cu], [xi, cv, cu - w * 0.25]]); fillp(x, dk(c[1]));
-            // узкая вторая кайма и ряд мелких ромбов вдоль неё
-            x.beginPath(); fr(x, xi, u + w * 0.2, v0 + 0.22, u + w * 0.8, v1 - 0.22); x.strokeStyle = dk(mix(c[0], c[1], 0.55)); x.lineWidth = clamp(F * 0.012 / uc, 0.6, 2); x.stroke();
-            x.beginPath();
-            for (let vv = v0 + 0.3; vv < v1 - 0.3; vv += 0.16) for (const uu of [u + w * 0.07, u + w * 0.93]) poly3(x, [[xi, vv + 0.04, uu], [xi, vv, uu + 0.025], [xi, vv - 0.04, uu], [xi, vv, uu - 0.025]]);
-            fillp(x, dk(c[1]));
-            x.beginPath(); for (let f = u + 0.04; f < u + w; f += 0.06) line3(x, [[xi, v0, f], [xi, v0 - 0.08, f]]);
+            if (mot === 0) {
+              x.beginPath(); fr(x, xi, u + w * 0.12, v0 + 0.12, u + w * 0.88, v1 - 0.12); x.strokeStyle = dk(c[1]); x.lineWidth = lw; x.stroke();
+              x.beginPath(); poly3(x, [[xi, cv + 0.3, cu], [xi, cv, cu + w * 0.24], [xi, cv - 0.3, cu], [xi, cv, cu - w * 0.24]]); fillp(x, dk(c[1]));
+              x.beginPath(); poly3(x, [[xi, cv + 0.12, cu], [xi, cv, cu + w * 0.1], [xi, cv - 0.12, cu], [xi, cv, cu - w * 0.1]]); fillp(x, dk(c[0]));
+            } else if (mot === 1) {          // килим: ряды зигзагов поперёк
+              x.beginPath();
+              for (let v = v0 + 0.14; v < v1 - 0.1; v += 0.24) {
+                const pts = [];
+                for (let i = 0; i <= 6; i++) pts.push([xi, v + (i % 2) * 0.1, u + w * (0.06 + 0.88 * i / 6)]);
+                line3(x, pts);
+              }
+              x.strokeStyle = dk(c[1]); x.lineWidth = lw; x.stroke();
+            } else {                         // полосы разной ширины
+              for (let v = v0 + 0.08, i = 0; v < v1 - 0.06; v += 0.1 + ((i * 5) % 4) * 0.06, i++) q(u, v, w, 0.04 + (i % 2) * 0.04, i % 3 ? c[1] : [214, 200, 170]);
+            }
+            if (mot === 3) { q(u - 0.03, v1, w + 0.06, 0.06, [110, 84, 60]); }   // перекладина
+            // рваная бахрома снизу: нити разной длины
+            x.beginPath(); for (let f = u + 0.03; f < u + w; f += 0.05) line3(x, [[xi, v0, f], [xi, v0 - 0.04 - r2() * 0.07, f + (r2() - 0.5) * 0.02]]);
             x.strokeStyle = dk([200, 186, 160]); x.lineWidth = 1; x.stroke();
+            u += w + 0.06 + r2() * 0.1;
           }
         } else if (type === 'cafe') {    // стойка, полка с посудой, кофемашина, меловая доска
           q(a0 + 0.15, b0, (a1 - a0) * 0.62, 1.05, [120, 86, 60]);
@@ -879,12 +931,25 @@
           const jars = type === 'spice';
           for (let v = b0 + 0.45; v < b0 + 2.0; v += 0.42) {
             q(a0, v, a1 - a0, 0.05, [96, 84, 70]);
-            for (let u = a0 + 0.1; u < a1 - 0.2; u += (jars ? 0.13 : 0.18) + r2() * (jars ? 0.06 : 0.3)) {
+            // группы товара разной формы: высокие банки с крышкой, низкие жестянки, коробки, пузатые кувшины; между группами пусто
+            for (let u = a0 + 0.08 + r2() * 0.15; u < a1 - 0.25;) {
+              const kind = Math.floor(r2() * 4), n = 2 + Math.floor(r2() * 4);
               const c = jars ? [[170, 90, 56], [190, 150, 70], [126, 96, 64], [120, 130, 76], [200, 190, 170]][Math.floor(r2() * 5)]
                 : [[150, 120, 80], [120, 130, 120], [170, 150, 120], [130, 90, 70], [180, 170, 150]][Math.floor(r2() * 5)];
-              const w = jars ? 0.09 : 0.12 + r2() * 0.2, h = jars ? 0.16 + r2() * 0.06 : 0.13 + r2() * 0.18;
-              q(u, v + 0.05, w, h, c);
-              if (jars) q(u - 0.005, v + 0.05 + h, w + 0.01, 0.03, [210, 204, 190]);
+              for (let i = 0; i < n && u < a1 - 0.2; i++) {
+                if (kind === 0) { q(u, v + 0.05, 0.08, 0.24, c); q(u - 0.005, v + 0.29, 0.09, 0.035, [204, 196, 180]); u += 0.11; }
+                else if (kind === 1) { q(u, v + 0.05, 0.1, 0.1, mix(c, [170, 170, 168], 0.5)); q(u, v + 0.09, 0.1, 0.03, c); u += 0.12; }
+                else if (kind === 2) { const h = 0.16 + r2() * 0.14; q(u, v + 0.05, 0.2, h, mix(c, [190, 170, 130], 0.4)); u += 0.23; }
+                else {
+                  x.beginPath(); poly3(x, [[xi, v + 0.05, u + 0.03], [xi, v + 0.05, u + 0.11], [xi, v + 0.17, u + 0.14], [xi, v + 0.27, u + 0.1], [xi, v + 0.3, u + 0.1], [xi, v + 0.3, u + 0.04], [xi, v + 0.27, u + 0.04], [xi, v + 0.17, u]]);
+                  fillp(x, dk(mix(c, [150, 90, 60], 0.5))); u += 0.16;
+                }
+              }
+              u += 0.06 + r2() * 0.3;
+            }
+            // связки сушёного перца/трав под верхней полкой
+            if (jars && v > b0 + 1.6) for (let u = a0 + 0.3; u < a1 - 0.3; u += 0.7 + r2() * 0.5) {
+              x.beginPath(); poly3(x, [[xi, v + 0.42, u - 0.05], [xi, v + 0.42, u + 0.05], [xi, v + 0.12, u + 0.09], [xi, v + 0.05, u], [xi, v + 0.12, u - 0.09]]); fillp(x, dk(r2() < 0.5 ? [150, 56, 40] : [120, 120, 70]));
             }
           }
         }
@@ -1097,7 +1162,7 @@
           sand = Math.max(sand, clamp((ax - 2.7) / 1.25, 0, 1) * clamp(0.45 + 1.1 * fbm2(n1, X * 0.8 + 7, U * 0.4), 0, 1) * 0.5);
           // языки песка, нанесённые ветром наискось через полосы
           const sv = fbm2(n3, (X * 0.9 + U * 0.35) * 0.55, (U * 0.9 - X * 0.35) * 0.11);
-          sand += clamp((sv - 0.11) / 0.13, 0, 1) * 0.52;
+          sand += clamp((sv - 0.03) / 0.12, 0, 1) * 0.6;
           // разметка: осевая пунктирная (3 м штрих, 5 м разрыв) и «зебра»; краска стёрта по колеям и пятнами
           paint = cov(ax, 0.06, px) * cov(Math.abs(((U % 8) + 8) % 8 - 1.5), 1.5, pu);
           if (U > ZEB.u0 - 0.3 && U < ZEB.u1 + 0.3) {
@@ -1114,7 +1179,7 @@
         if (paint > 0) { r += (PA[0] * (1 + t * 0.6) - r) * paint; gg += (PA[1] * (1 + t * 0.6) - gg) * paint; bb += (PA[2] * (1 + t * 0.6) - bb) * paint; }
         sand = Math.min(sand, 0.85);
         r += (S[0] - r) * sand; gg += (S[1] - gg) * sand; bb += (S[2] - bb) * sand;
-        const hk = 0.9 * (1 - Math.exp(-U / 260)), q = (j * w + i) * 4;
+        const hk = hzk(U), q = (j * w + i) * 4;
         d[q] = r + (HAZE[0] - r) * hk; d[q + 1] = gg + (HAZE[1] - gg) * hk; d[q + 2] = bb + (HAZE[2] - bb) * hk; d[q + 3] = 255;
       }
     }
@@ -1223,8 +1288,8 @@
     while (i < pts.length - 2) {
       const n = 5 + Math.floor(r() * 10), seg = pts.slice(i, Math.min(pts.length, i + n));
       if (sealed) groundStrip(x, seg, 0.08, 0.07, [34, 32, 32], 0.26);
-      groundStrip(x, seg, w * 3.5, w * 2, [218, 202, 168], 0.16);
-      groundStrip(x, seg, w, w * 0.4, [32, 29, 27], 0.8);
+      groundStrip(x, seg, w * 5, w * 2.5, [222, 204, 166], 0.22);
+      groundStrip(x, seg, w * 1.5, w * 0.35, [40, 35, 31], 0.75);
       i += n + 2 + Math.floor(r() * 5);
     }
   }
@@ -1234,7 +1299,7 @@
     for (const [k, a] of [[1.15, 0.06], [1, 0.08], [0.75, 0.05]]) {
       x.beginPath(); poly3(x, ringPts(Xc, Uc, rx * k, ru * k, 16, 0.2, r)); fillp(x, hzs([58, 54, 52], Uc, a));
     }
-    const sx = 0.2, su = 0.26, nx = Math.ceil(rx * 2 / sx) + 1, nu = Math.ceil(ru * 2 / su) + 1, N = [];
+    const sx = 0.3, su = 0.4, nx = Math.ceil(rx * 2 / sx) + 1, nu = Math.ceil(ru * 2 / su) + 1, N = [];
     for (let i = 0; i < nx; i++) {
       N.push([]);
       for (let j = 0; j < nu; j++) N[i].push([Xc - rx + i * sx + (j % 2) * sx * 0.45 + (r() - 0.5) * sx * 0.7, Uc - ru + j * su + (r() - 0.5) * su * 0.7]);
@@ -1249,8 +1314,9 @@
     }
     x.beginPath(); for (const q of seams) poly3(x, q); fillp(x, hzs([206, 190, 158], Uc, 0.16));
     for (const q of plates) { x.beginPath(); poly3(x, q); fillp(x, hzs([64, 60, 58], Uc, 0.06 + r() * 0.12)); }
-    x.beginPath(); for (const q of seams) poly3(x, q);
-    x.lineJoin = 'round'; pen(x, 0.006, Uc, [34, 31, 29], 0.38); x.stroke();
+    // тёмные швы только у части плит (обрывками), без сетки
+    x.beginPath(); seams.forEach((q, i) => { if (r() < 0.35) line3(x, [[q[i % 4][0], 0, q[i % 4][2]], [q[(i + 1) % 4][0], 0, q[(i + 1) % 4][2]]]); });
+    x.lineJoin = 'round'; pen(x, 0.012, Uc, [40, 36, 33], 0.4); x.stroke();
   }
   // заплата с пропилом: чуть темнее, мягкая кайма, герметик только по части сторон (маска sides)
   function patch(x, x0, u0, x1, u1, sides, a) {
@@ -1259,10 +1325,14 @@
     x.beginPath(); gr(x, x0 - e, u0 - e, x1 + e, u1 + e, 0); fillp(x, hzs([66, 64, 64], u0, a * 0.45));
     x.beginPath(); gr(x, x0, u0, x1, u1, 0); fillp(x, hzs([72, 70, 70], u0, a));
     const c = [[x0, u0], [x1, u0], [x1, u1], [x0, u1]];
-    for (let i = 0; i < 4; i++) {
-      if (!(sides & (1 << i))) continue;
+    for (let i = 0; i < 4; i++) {           // пропил с герметиком по всему контуру, неяркий
       const a = c[i], b = c[(i + 1) % 4];
-      groundStrip(x, [[a[0], 0, a[1]], [b[0], 0, b[1]]], 0.035, 0.035, [30, 29, 29], 0.24);
+      groundStrip(x, [[a[0], 0, a[1]], [b[0], 0, b[1]]], 0.05, 0.05, [44, 42, 42], 0.16);
+    }
+    const rr = Tex.rng(Math.round(u0 * 31 + x0 * 7));   // заплата грубее: пара светлых выкрошенных пятен
+    for (let i = 0; i < 2; i++) {
+      const X = lerp(x0 + 0.2, x1 - 0.2, rr()), U = lerp(u0 + 0.2, u1 - 0.2, rr());
+      x.beginPath(); poly3(x, ringPts(X, U, 0.12 + rr() * 0.15, 0.15 + rr() * 0.2, 9, 0.6, rr)); fillp(x, hzs([206, 194, 170], U, 0.3));
     }
   }
   function manhole(x, X, U, LO) {
@@ -1316,13 +1386,23 @@
       alligator(x, r, 2.35, 8.6, 0.6, 1.0);
       alligator(x, r, -1.0, 27.0, 0.7, 1.4);
       // выбоина: выкрошенная светлая кромка, тёмная яма, песок на дне
-      x.beginPath(); poly3(x, ringPts(-2.35, 7.8, 0.36, 0.28, 14, 0.5, r)); fillp(x, hzs([184, 172, 150], 7.8, 0.5));
-      x.beginPath(); poly3(x, ringPts(-2.35, 7.8, 0.27, 0.2, 14, 0.45, r)); fillp(x, hzs([58, 52, 48], 7.8, 0.85));
-      x.beginPath(); poly3(x, ringPts(-2.32, 7.84, 0.15, 0.1, 10, 0.5, r)); fillp(x, hzs([168, 148, 116], 7.8, 0.85));
+      // выбоина: рваная кромка; дальняя стенка ямы обращена к камере и светлее, ближнюю половину дна
+      // закрывает тень от левого края (солнце слева), на дне песок и крошка
+      const PH = [-2.35, 7.8], hole = ringPts(PH[0], PH[1], 0.3, 0.24, 13, 0.55, r);
+      x.beginPath(); poly3(x, ringPts(PH[0], PH[1] + 0.03, 0.44, 0.34, 15, 0.45, r)); fillp(x, hzs([210, 198, 172], 7.8, 0.45));
+      x.beginPath(); poly3(x, hole); fillp(x, hzs([128, 114, 96], 7.8));
+      x.save(); x.beginPath(); poly3(x, hole); x.clip();
+      x.beginPath(); poly3(x, hole.map((p) => [p[0] + 0.1, 0, p[2] - 0.07])); fillp(x, hzs([62, 56, 50], 7.8));
+      x.beginPath(); poly3(x, ringPts(PH[0] + 0.06, PH[1] - 0.05, 0.13, 0.08, 9, 0.6, r)); fillp(x, hzs([150, 130, 100], 7.8, 0.8));
+      x.restore();
+      for (let i = 0; i < 6; i++) {           // отколотые куски асфальта у кромки
+        const a = r() * Math.PI * 2, d = 0.4 + r() * 0.25, X = PH[0] + Math.cos(a) * d, U = PH[1] + Math.sin(a) * d * 0.8;
+        x.beginPath(); poly3(x, ringPts(X, U, 0.035 + r() * 0.04, 0.03 + r() * 0.03, 5, 0.6, r)); fillp(x, hzs([84, 78, 72], U, 0.85));
+      }
       // масляные пятна посреди полос: мягкие, двухслойные
       for (const [X, u, s] of [[-2.0, 9.6, 0.5], [2.1, 13.8, 0.4], [-1.8, 19.0, 0.6], [1.9, 26.5, 0.5], [-2.1, 33.5, 0.55]]) {
-        x.beginPath(); poly3(x, ringPts(X, u, s, s * 1.5, 14, 0.4, r)); fillp(x, hzs([52, 48, 46], u, 0.1));
-        x.beginPath(); poly3(x, ringPts(X + 0.05, u + 0.1, s * 0.55, s * 0.8, 12, 0.5, r)); fillp(x, hzs([46, 42, 40], u, 0.12));
+        x.beginPath(); poly3(x, ringPts(X, u, s * 0.7, s * 1.1, 18, 0.75, r)); fillp(x, hzs([70, 62, 56], u, 0.2));
+        for (let i = 0; i < 3; i++) { x.beginPath(); poly3(x, ringPts(X + (r() - 0.5) * s * 1.6, u + (r() - 0.3) * s * 2.4, s * 0.12, s * 0.16, 7, 0.6, r)); fillp(x, hzs([60, 54, 50], u, 0.24)); }
       }
     }
     manhole(x, -1.45, 6.3, LO);
@@ -1342,7 +1422,7 @@
   };
   // [сторона, u0, u1, ткань, вылет, высота у стены, высота кромки, подзор, вид]
   const AWN = [
-    [-1, 6.5, 9.5, 'green', 1.05, 3.5, 2.98, 0.26, 'scal'], [-1, 15.9, 20.5, 'canvas', 1.75, 3.72, 2.92, 0.3, 'sag'],
+    [-1, 6.5, 9.5, 'green', 1.05, 3.5, 2.98, 0.26, 'flat'], [-1, 15.9, 20.5, 'canvas', 1.75, 3.72, 2.92, 0.3, 'sag'],
     [-1, 31.1, 34.6, 'blue', 0, 3.42, 0, 0, 'rolled'], [-1, 49.9, 53.5, 'sand', 1.2, 3.55, 2.9, 0.26, 'torn'],
     [1, 8.9, 14.1, 'red', 1.45, 3.62, 2.85, 0.3, 'scal'], [1, 17.3, 20.7, 'metal', 1.15, 3.32, 3.06, 0, 'metal'],
     [1, 39.1, 43.1, 'green', 0.95, 3.45, 3.02, 0.22, 'flat'],
@@ -1402,7 +1482,7 @@
           for (let j = 6; j >= 0; j--) {
             const t = j / 6, u = lerp(a, b2, t);
             let y = ye(u) - vh;
-            if (kind === 'scal') y -= 0.07 * Math.sin(Math.PI * t) - 0.03;
+            if (kind === 'scal') y -= 0.032 * Math.sin(Math.PI * t) - 0.012 + ((i * 7) % 3) * 0.01;   // мягкая ткань, не полукруги
             if (kind === 'torn') y += (tear ? vh * 0.6 : 0) + (r() - 0.5) * 0.08;
             pts.push([xo, y, u]);
           }
@@ -1453,7 +1533,7 @@
     }
     return out;
   }
-  const cableW = (u) => clamp(F * 0.022 / u, 1.25, 3);
+  const cableW = (u) => clamp(F * 0.03 / u, 2.1, 3.4);
   const CABLE = [44, 40, 38];
   // пролёты: в список выступающих предметов (сортируются по глубине вместе с маркизами и балконами)
   function wires(x, LO) {
@@ -1635,7 +1715,7 @@
       if (lit) wallShadowBox(xfOf(b) - 0.02, xfOf(b), v, v + 0.22, u0, u1);
     }
     blade(x, 1, 28.3, 0.15, 1.0, 4.1, 6.7, { text: 'H\nO\nT\nE\nL', bg: [46, 66, 92], fg: [236, 226, 200], frame: [226, 216, 192], w: 60, h: 220, fs: 0.78, seed: 6 }, LO);
-    blade(x, 1, 17.0, 0.12, 1.05, 3.75, 4.35, { text: 'AUTO', bg: [214, 196, 150], fg: [52, 60, 70], frame: [52, 60, 70], w: 150, h: 84, fs: 0.62, seed: 8 }, LO);
+    blade(x, 1, 14.4, 0.12, 1.05, 3.75, 4.35, { text: 'AUTO', bg: [214, 196, 150], fg: [52, 60, 70], frame: [52, 60, 70], w: 150, h: 84, fs: 0.62, seed: 8 }, LO);
     noEntry(x, 3.92, 27.25, LO);
   }
 
@@ -1927,8 +2007,8 @@
   }
   // открытый мешок: выпуклый силуэт (оболочка колец), теневая сторона справа, подвёрнутый светлый край,
   // горка товара над краем
-  function sack(x, X, U, y0, h, col, LO) {
-    const r = 0.26, y1 = y0 + h, burl = [178, 152, 112];
+  function sack(x, X, U, y0, h, col, LO, rs) {
+    const r = rs || 0.26, y1 = y0 + h, burl = [178, 152, 112];
     const ring = (y, k) => ringPts(X, U, r * k, r * k, 12).map((p) => [p[0], y, p[2]]);
     hullPath(x, ring(y0, 0.86).concat(ring(y0 + h * 0.45, 1.06), ring(y1, 0.98))); fillp(x, hzs(burl, U));
     hullPath(x, ring(y0, 0.86).concat(ring(y0 + h * 0.45, 1.06), ring(y1, 0.98)).filter((p) => p[0] > X + r * 0.25)); fillp(x, hzs(mul(burl, 0.72), U));
@@ -1962,14 +2042,67 @@
     crate(x, X0 + 0.08, X1 - 0.08, yb, yb + 0.42, U1 - 0.55, U1 - 0.05, false, null, LO);
     wheel(X1 + 0.05);
   }
+  // двухколёсная тачка зеленщика посреди левой полосы: высокий дощатый короб с арбузами и дынями,
+  // ручки к камере, упор-ножки; стоит на границе тени (левый край в тени дома, правый на солнце)
+  const BAR = { X0: 0.25, X1: 1.2, U0: 7.7, U1: 9.3, yb: 0.46, yt: 0.88, rw: 0.38 };
+  function barrowPts() {
+    const b = BAR, pts = [];
+    for (const X of [b.X0, b.X1]) for (const U of [b.U0, b.U1]) for (const y of [b.yb, b.yt + 0.12]) pts.push([X, y, U]);
+    pts.push([b.X0 + 0.1, 0.8, b.U0 - 1.5], [b.X1 - 0.1, 0.8, b.U0 - 1.5]);
+    return pts;
+  }
+  function barrowShadow(g) {
+    const h = hull(barrowPts().map((p) => { const q = toGround(p[0], p[1], p[2]); return [q[0], q[2]]; }));
+    groundPoly(g, h);
+  }
+  function barrow(x, LO) {
+    const b = BAR, uw = (b.U0 + b.U1) / 2 + 0.15, lit = { l: [168, 128, 86], s: [96, 78, 62] };
+    const wheel = (X) => {
+      const ring = (r) => { const p = []; for (let i = 0; i < 20; i++) { const a = i / 20 * Math.PI * 2; p.push([X, b.rw + Math.sin(a) * r, uw + Math.cos(a) * r]); } return p; };
+      x.beginPath(); poly3(x, ring(b.rw)); poly3(x, ring(b.rw * 0.8).reverse()); fillp(x, hzs([48, 42, 38], uw));
+      if (LO) return;
+      x.beginPath(); for (let i = 0; i < 4; i++) { const a = i / 4 * Math.PI + 0.3; line3(x, [[X, b.rw + Math.sin(a) * b.rw * 0.8, uw + Math.cos(a) * b.rw * 0.8], [X, b.rw - Math.sin(a) * b.rw * 0.8, uw - Math.cos(a) * b.rw * 0.8]]); }
+      x.strokeStyle = hzs([74, 60, 48], uw); x.lineWidth = clamp(F * 0.035 / uw, 1, 4); x.stroke();
+      x.beginPath(); poly3(x, ring(b.rw * 0.14)); fillp(x, hzs([60, 52, 46], uw));
+    };
+    wheel(b.X0 - 0.06);
+    // ручки и упор-ножки
+    x.beginPath();
+    for (const X of [b.X0 + 0.12, b.X1 - 0.12]) { line3(x, [[X, b.yb + 0.05, b.U0 + 0.2], [X, 0.82, b.U0 - 1.45]]); line3(x, [[X, b.yb, b.U0 + 0.15], [X, 0, b.U0 + 0.05]]); }
+    x.strokeStyle = hzs([88, 66, 48], b.U0); x.lineWidth = clamp(F * 0.045 / b.U0, 1.2, 6); x.lineCap = 'round'; x.stroke(); x.lineCap = 'butt';
+    box(x, b.X0, b.X1, b.yb, b.yt, b.U0, b.U1, lit, false);
+    // доски короба: щели, у левой (теневой) части темнее
+    if (!LO) {
+      x.beginPath();
+      for (const k of [0.34, 0.67]) { const y = lerp(b.yb, b.yt, k); line3(x, [[b.X0, y, b.U0], [b.X1, y, b.U0]]); }
+      x.strokeStyle = hzs([70, 52, 40], b.U0); x.lineWidth = clamp(F * 0.016 / b.U0, 0.8, 2); x.stroke();
+    }
+    // арбузы (крупные, полосатые) и дыни горкой над бортом
+    const r = Tex.rng(919), fr = [];
+    for (let i = 0; i < 16; i++) fr.push([lerp(b.X0 + 0.14, b.X1 - 0.14, r()), lerp(b.U0 + 0.18, b.U1 - 0.18, r()), i % 3 === 2, i < 5 ? 0.12 : 0]);
+    fr.sort((p, q) => q[1] - p[1] || p[3] - q[3]);
+    for (const [X, U, melon, up] of fr) {
+      const rr = melon ? 0.09 : 0.125, yc = b.yt + rr * 0.5 + up, sun = true;
+      const col = melon ? [196, 168, 84] : [70, 98, 56];
+      x.beginPath(); poly3(x, ringPts(X, yc, rr * 1.1, rr, 14).map((p) => [p[0], p[2], U])); fillp(x, hzs(sun ? col : mul(col, 0.6), U));
+      x.beginPath(); poly3(x, ringPts(X - rr * 0.3, yc + rr * 0.35, rr * 0.45, rr * 0.3, 10).map((p) => [p[0], p[2], U - 0.01])); fillp(x, hzs(mix(col, [250, 240, 210], sun ? 0.3 : 0.12), U));
+      if (!melon && !LO) {
+        x.beginPath(); for (const d of [-0.5, 0, 0.5]) line3(x, [[X + d * rr * 0.9, yc + rr * 0.85, U - 0.02], [X + d * rr * 1.1, yc - rr * 0.8, U - 0.02]]);
+        x.strokeStyle = hzs(mul(col, sun ? 0.62 : 0.42), U); x.lineWidth = clamp(F * 0.02 / U, 0.8, 3); x.stroke();
+      }
+    }
+    wheel(b.X1 + 0.06);
+  }
   function groundProps(x, LO) {
+    ITEMS.push({ u: BAR.U0 - 1.5, f: () => barrow(x, LO) });
     ITEMS.push({ u: 7.0, f: () => handcart(x, LO) });
     for (const U of [17.0, 19.1]) ITEMS.push({ u: U - 0.75, f: () => cafeSet(x, -4.72, U, LO) });
     // пряности на низкой скамье у лавки справа и штабель ящиков
     ITEMS.push({ u: 9.6, f: () => {
       box(x, 4.56, 5.32, WALK, WALK + 0.34, 9.6, 12.8, { l: [130, 102, 74], s: [78, 64, 52] }, false);
       const SP = [[166, 84, 54], [196, 152, 72], [120, 92, 62], [118, 128, 72]];
-      for (let k = 3; k >= 0; k--) sack(x, 4.94, 9.98 + k * 0.8, WALK + 0.34, 0.5, SP[k], LO);
+      const SH = [[0.44, 0.24, 4.9], [0.58, 0.27, 4.98], [0.34, 0.31, 4.9], [0.5, 0.21, 5.02]];
+      for (let k = 3; k >= 0; k--) sack(x, SH[k][2], 9.98 + k * 0.8, WALK + 0.34, SH[k][0], SP[k], LO, SH[k][1]);
     } });
     ITEMS.push({ u: 13.2, f: () => {
       crate(x, 4.5, 5.3, WALK, WALK + 0.45, 13.2, 13.85, true, null, LO);
@@ -1996,6 +2129,9 @@
       const xf = xfOf(b), lit = b.s > 0, R = Tex.rng(b.seed * 101 + 7), um = (b.u0 + b.u1) / 2;
       // грязный цоколь: на теневой стороне сильнее
       x.beginPath(); fr(x, xf, b.u0, 0, b.u1, 1.1); fillp(x, wallFade(x, xf, um, 0, 1.1, [58, 46, 36], lit ? 0.22 : 0.34, 0));
+      // AO: под карнизом и в стыке стены с тротуаром — узкие тёмные полосы
+      x.beginPath(); fr(x, xf, b.u0, b.h - 0.55, b.u1, b.h - 0.15); fillp(x, wallFade(x, xf, um, b.h - 0.15, b.h - 0.55, [40, 30, 24], lit ? 0.22 : 0.18, 0));
+      x.beginPath(); fr(x, xf, b.u0, WALK, b.u1, WALK + 0.3); fillp(x, wallFade(x, xf, um, WALK, WALK + 0.3, [36, 28, 22], 0.35, 0));
       if (LO || Math.abs(sxOf(xf, b.u1) - sxOf(xf, b.u0)) < 60) continue;
       // потёки под подоконниками окон верхних этажей
       let v = b.fl[0];
@@ -2010,19 +2146,21 @@
       }
       // отбитая штукатурка: 1–2 пятна там, где нет проёмов; внутри — ряды камня, светлая кромка сверху
       const busy = (u) => b.gf.some((g) => u > g[1] - 0.5 && u < g[2] + 0.5) || b.wu.some((w) => Math.abs(w - u) < b.ww / 2 + 0.45);
-      for (let k = 0; k < 3; k++) {
-        const uc = lerp(b.u0 + 0.6, b.u1 - 0.6, R()), vc = k === 0 ? 0.9 + R() * 0.8 : b.fl[0] + 0.6 + R() * 1.6;
+      const nearB = b.u0 < 20, nk = nearB ? 6 : 3;
+      for (let k = 0; k < nk; k++) {
+        const uc = lerp(b.u0 + 0.6, b.u1 - 0.6, R()), vc = k % 3 === 0 ? 0.9 + R() * 0.8 : b.fl[0] + 0.6 + R() * (b.h - b.fl[0] - 1.6);
         if (busy(uc)) continue;
-        const ru = 0.35 + R() * 0.35, rv = 0.28 + R() * 0.3, pts = [];
+        const ru = (0.35 + R() * 0.35) * (nearB ? 1.35 : 1), rv = (0.28 + R() * 0.3) * (nearB ? 1.3 : 1), pts = [], brick = nearB && k % 2 === 1;
         for (let i = 0; i < 11; i++) { const a = i / 11 * Math.PI * 2, q = 0.7 + R() * 0.45; pts.push([xf, vc + Math.sin(a) * rv * q, uc + Math.cos(a) * ru * q]); }
-        const st = lit ? [182, 146, 104] : [104, 86, 70];
+        const st = brick ? (lit ? [176, 118, 84] : [100, 70, 56]) : lit ? [182, 146, 104] : [104, 86, 70];
         x.beginPath(); poly3(x, pts.map((p) => [p[0], p[1] + 0.03, p[2] - 0.03])); fillp(x, hzs(mix(lit ? MAT[b.m].l : MAT[b.m].s, [255, 250, 240], 0.25), uc));
         x.beginPath(); poly3(x, pts); fillp(x, hzs(st, uc));
         x.save(); x.beginPath(); poly3(x, pts); x.clip();
         x.beginPath();
-        for (let y = Math.floor((vc - rv) / 0.22) * 0.22, row = 0; y < vc + rv; y += 0.22, row++) {
+        const ch = brick ? 0.075 : 0.22, cw = brick ? 0.24 : 0.4;
+        for (let y = Math.floor((vc - rv) / ch) * ch, row = 0; y < vc + rv; y += ch, row++) {
           line3(x, [[xf, y, uc - ru], [xf, y, uc + ru]]);
-          for (let u = uc - ru + (row % 2) * 0.2; u < uc + ru; u += 0.4) line3(x, [[xf, y, u], [xf, y + 0.22, u]]);
+          for (let u = uc - ru + (row % 2) * cw / 2; u < uc + ru; u += cw) line3(x, [[xf, y, u], [xf, y + ch, u]]);
         }
         x.strokeStyle = hzs(mul(st, 0.62), uc); x.lineWidth = clamp(F * 0.018 / uc, 0.7, 2.2); x.stroke();
         x.restore();
@@ -2051,9 +2189,9 @@
   // мягкое затемнение верхней полосы (как градиентный фильтр на объективе): под шапкой интерфейса
   // и подписями экранов фон спокойнее и темнее, ниже 230 px картинка не меняется
   function topShade(x) {
-    const g = x.createLinearGradient(0, 0, 0, 250);
-    g.addColorStop(0, rgb([150, 156, 168])); g.addColorStop(0.5, rgb([188, 192, 202])); g.addColorStop(0.8, rgb([232, 234, 238])); g.addColorStop(1, rgb([255, 255, 255]));
-    x.save(); x.globalCompositeOperation = 'multiply'; x.fillStyle = g; x.fillRect(0, 0, SW, 250); x.restore();
+    const g = x.createLinearGradient(0, 0, 0, 130);
+    g.addColorStop(0, rgb([204, 206, 212])); g.addColorStop(0.55, rgb([232, 233, 236])); g.addColorStop(1, rgb([255, 255, 255]));
+    x.save(); x.globalCompositeOperation = 'multiply'; x.fillStyle = g; x.fillRect(0, 0, SW, 130); x.restore();
   }
 
   // ---------- Сцена ----------
@@ -2070,6 +2208,8 @@
       g.strokeStyle = rgb(C.shadow);
       wireGroundShadows(g);
       roofShadows(g);
+      canopyShadows(g);
+      barrowShadow(g);
       for (const p of PALMS) if (p.near || p.alley) palmShadow(g, p, toGround, LO);
     });
     farEnd(x, LO);

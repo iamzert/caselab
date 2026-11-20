@@ -28,6 +28,7 @@
   // Попиксельный проход без лишних массивов: fn(x, y, o) кладёт цвет в o (x, y — координаты поля 512×192).
   // r — доля полного разрешения; при r < 1 результат мягко растягивается на весь холст.
   function shader(r, fn) {
+    r = Math.min(1, r * 2);   // плотнее сетка — рисунок резче (0.625 → полное разрешение)
     const w = Math.round(W * S * r), h = Math.round(H * S * r);
     const c = L.mk(w, h), ctx = c.getContext('2d'), img = ctx.createImageData(w, h), d = img.data;
     const kx = W / w, ky = H / h, o = [0, 0, 0];

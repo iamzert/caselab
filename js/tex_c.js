@@ -14,6 +14,8 @@
   // Попиксельный проход без лишних аллокаций: fn(x, y, out, i) пишет цвет (и при желании альфу out[3]) в out.
   // x, y — координаты поля 512×192; i — номер пикселя в сетке разрешения r. Результат растягивается до полного размера.
   function raster(r, fn) {
+    // плотнее сетка — рисунок резче; не трогаем, если fn берёт номер пикселя i (массивы под сетку r)
+    if (fn.length < 4) r = Math.min(1, r * 2);
     const w = Math.round(W * S * r), h = Math.round(H * S * r);
     const c = mk(w, h), ctx = c.getContext('2d'), img = ctx.createImageData(w, h), d = img.data;
     const kx = W / w, ky = H / h, o = [0, 0, 0, 255];

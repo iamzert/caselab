@@ -67,9 +67,9 @@ const Tex = (function () {
   function full() { return mk(W * S, H * S); }
 
   // Попиксельная генерация в пониженном разрешении r с последующим масштабированием
-  // r — доля разрешения; поднимаем её в 1.3 раза (не выше 1), чтобы узоры не размывались при растяжении
+  // r — доля разрешения; поднимаем её в 1.6 раза (не выше 1): 0.625 → полное разрешение, 0.5 → 0.8 — узоры без мыла
   function pixels(r, fn) {
-    r = Math.min(1, r * 1.3);
+    r = Math.min(1, r * 2);
     const w = Math.round(W * S * r), h = Math.round(H * S * r);
     const c = mk(w, h), ctx = c.getContext('2d'), img = ctx.createImageData(w, h), d = img.data;
     const kx = W / w, ky = H / h;

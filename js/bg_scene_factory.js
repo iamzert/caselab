@@ -749,6 +749,48 @@
     // крупная цифра на обшивке
     textS('3', X - 0.01, 4.6, 15.3, 17.6, 3.6, css(lit([206, 204, 192], 'Rt', 16), 0.75));
   }
+  // верх ангара: жалюзийные решётки, настенные светильники, кабельный лоток, наружная лестница с площадкой
+  function hangarExtra() {
+    const X = WALL_R, Xi = X - 0.02;
+    // жалюзийные решётки вентиляции: рамка, косые ламели, ржавый подтёк вниз
+    [[13.7, 15.0, 5.7, 6.7], [36.5, 38.5, 5.7, 6.7]].forEach(function (v) {
+      const zc = (v[0] + v[1]) / 2;
+      const g = P(Xi, v[2], zc), gb = P(Xi, v[2] - 2.2, zc), gr = x.createLinearGradient(0, g[1], 0, gb[1]);
+      gr.addColorStop(0, 'rgba(98,62,40,.4)'); gr.addColorStop(1, 'rgba(98,62,40,0)');
+      fill3([[Xi, v[2] - 2.2, v[0] + 0.25], [Xi, v[2] - 2.2, v[1] - 0.35], [Xi, v[2], v[1] - 0.1], [Xi, v[2], v[0] + 0.1]], gr);
+      box(X - 0.12, X, v[2], v[3], v[0], v[1], [92, 98, 100]);
+      fill3([[X - 0.125, v[2] + 0.08, v[0] + 0.08], [X - 0.125, v[2] + 0.08, v[1] - 0.08], [X - 0.125, v[3] - 0.08, v[1] - 0.08], [X - 0.125, v[3] - 0.08, v[0] + 0.08]], css(lit([34, 36, 38], 'Rt', zc)));
+      x.beginPath();
+      for (let y = v[2] + 0.16; y < v[3] - 0.08; y += 0.12) { const p = P(X - 0.13, y, v[0] + 0.08), q = P(X - 0.13, y, v[1] - 0.08); x.moveTo(p[0], p[1]); x.lineTo(q[0], q[1]); }
+      x.strokeStyle = css(lit([128, 134, 134], 'Rt', zc)); x.lineWidth = lw(0.045, zc, 1.5); x.stroke();
+    });
+    // кабельный лоток под карнизом на кронштейнах
+    box(X - 0.4, X - 0.1, 7.55, 7.68, HG.z0, HG.z1, [96, 100, 100]);
+    for (let z = HG.z0 + 0.8; z < HG.z1; z += 2.4) line3([X, 7.8, z], [X - 0.4, 7.55, z], lw(0.04, z, 1.4), css(lit([70, 74, 76], 'Rt', z)));
+    // светильники на кронштейнах (тёплый плафон не горит — день)
+    [19.0, 33.0, 43.0].forEach(function (z) {
+      line3([X, 6.55, z], [X - 0.75, 6.4, z], lw(0.05, z, 1.8), css(lit([60, 64, 66], 'Rt', z)));
+      box(X - 0.95, X - 0.55, 6.2, 6.42, z - 0.22, z + 0.22, [74, 78, 80]);
+      box(X - 0.9, X - 0.6, 6.12, 6.2, z - 0.18, z + 0.18, [192, 190, 178]);
+    });
+    // наружная стальная лестница вдоль стены на площадку у двери (z 18 → 22, отметка 4,2 м)
+    const s0 = 18.2, s1 = 21.9, yt = 4.2, xo = X - 1.0, sc = [72, 80, 86];
+    fill3([[Xi, yt, s1 + 0.1], [Xi, yt, s1 + 1.2], [Xi, yt + 2.1, s1 + 1.2], [Xi, yt + 2.1, s1 + 0.1]], css(lit([62, 72, 80], 'Rt', 22.5)));
+    fill3([[Xi - 0.01, yt + 1.2, s1 + 0.25], [Xi - 0.01, yt + 1.2, s1 + 0.45], [Xi - 0.01, yt + 1.3, s1 + 0.45], [Xi - 0.01, yt + 1.3, s1 + 0.25]], css(lit([30, 30, 30], 'Rt', 22.5)));
+    box(xo, X, yt - 0.14, yt, s1, s1 + 1.6, sc);
+    for (let k = 0; k < 14; k++) {
+      const t = k / 14, z = lerp(s0, s1, t), yy = lerp(0, yt, t) + yt / 14;
+      box(xo, X - 0.05, yy - 0.04, yy, z, z + (s1 - s0) / 14 + 0.06, [88, 94, 98]);
+    }
+    line3([xo, 0, s0], [xo, yt, s1], lw(0.12, 20, 2.5), css(lit(sc, 'F', 20)));
+    [s1 + 0.05, s1 + 1.55].forEach((z) => line3([xo, 0, z], [xo, yt, z], lw(0.08, z, 2), css(lit(sc, 'F', z))));
+    // наклонный поручень марша (жёлтый) со стойками
+    const hc = css(lit([150, 132, 60], 'F', 20));
+    line3([xo, 1.0, s0], [xo, yt + 1.1, s1], lw(0.05, 20, 2), hc);
+    line3([xo, 0.5, s0], [xo, yt + 0.55, s1], lw(0.035, 20, 1.6), hc);
+    for (let k = 0; k <= 3; k++) { const t = k / 3, z = lerp(s0, s1, t), yb = lerp(0, yt, t); line3([xo, yb, z], [xo, yb + 1.05, z], lw(0.05, z, 2), hc); }
+    railing([[xo, s1], [xo, s1 + 1.6]], yt, 0.8, [150, 132, 60], 22.5);
+  }
   // контейнеры на площадке за ангаром (видны в просвете у торца)
   function containers() {
     const C = [[10.4, 50.5, 0, [126, 60, 46]], [10.4, 50.5, 1, [66, 92, 116]], [10.6, 64, 0, [72, 96, 76]], [10.6, 64, 1, [150, 138, 116]],
@@ -805,6 +847,14 @@
     pipeX(-9, 10, 6.5, 17.05, 0.12, [100, 70, 56]);
     pipeX(-9, 10, PB.y0 + 0.2 + 0.22, 16.66, 0.22, [130, 133, 131], 1.0);
     pipeX(-9, 10, 6.45, 16.62, 0.14, [150, 128, 64]);
+    // хомуты-опоры между узлами фермы и фланцы на газопроводе
+    for (let k = 0; k < 7; k++) {
+      const X = PB.xa + (PB.xb - PB.xa) * (k + 0.5) / 7;
+      fill3([[X - 0.05, PB.y0 + 0.12, 16.6], [X + 0.05, PB.y0 + 0.12, 16.6], [X + 0.05, 6.62, 16.6], [X - 0.05, 6.62, 16.6]], css(lit([58, 62, 64], 'F', 16.6)));
+      fill3([[X - 0.2, PB.y0 + 0.1, 16.6], [X + 0.2, PB.y0 + 0.1, 16.6], [X + 0.2, PB.y0 + 0.2, 16.6], [X - 0.2, PB.y0 + 0.2, 16.6]], css(lit([64, 70, 74], 'F', 16.6)));
+      const fX = X + 1.1;
+      fill3([[fX - 0.04, 6.27, 16.55], [fX + 0.04, 6.27, 16.55], [fX + 0.04, 6.63, 16.55], [fX - 0.04, 6.63, 16.55]], css(lit([120, 104, 54], 'F', 16.6)));
+    }
     // передняя ферма, стойки с подкосами, опорные плиты
     trussFace(zf, st);
     [PB.xa, PB.xb].forEach(function (X) {
@@ -828,6 +878,57 @@
     textF('ГАБАРИТ 4,5 м', 0, 4.9, zf - 0.22, 0.2, css(lit([34, 34, 34], 'F', zf)));
     // гильзы труб в стенах
     box(-9, -8.75, 5.5, 6.8, 16.35, 17.6, [96, 92, 86]);
+  }
+  // перила: стойки через шаг, поручень и средний пруток, бортовая полоса — по ломаной pts на высоте y0
+  function railing(pts, y0, step, col, z) {
+    const wr = (zz) => lw(0.05, zz, 2), c = css(lit(col, 'F', z)), cd = css(lit(mul(col, 0.7), 'F', z));
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i], b = pts[i + 1], L = Math.hypot(b[0] - a[0], b[1] - a[1]), n = Math.max(1, Math.round(L / step));
+      fill3([[a[0], y0, a[1]], [b[0], y0, b[1]], [b[0], y0 + 0.12, b[1]], [a[0], y0 + 0.12, a[1]]], cd);
+      for (let k = 0; k <= n; k++) {
+        const X = lerp(a[0], b[0], k / n), Z = lerp(a[1], b[1], k / n);
+        line3([X, y0, Z], [X, y0 + 1.1, Z], wr(Z), c);
+      }
+      line3([a[0], y0 + 1.1, a[1]], [b[0], y0 + 1.1, b[1]], wr(Math.min(a[1], b[1])), c);
+      line3([a[0], y0 + 0.58, a[1]], [b[0], y0 + 0.58, b[1]], lw(0.035, Math.min(a[1], b[1]), 1.6), c);
+    }
+  }
+  // ходовой мостик по верху эстакады: решётчатый настил (видна изнанка), перила, лестница с ограждением
+  function catwalk() {
+    const st = [70, 78, 84], y = PB.y1 + 0.05, z0 = PB.zf - 0.85, z1 = PB.zf + 0.1, xa = PB.xa - 0.2, xb = PB.xb + 0.2;
+    // изнанка настила: тёмная, с поперечными несущими полосами решётки
+    fill3([[xa, y, z0], [xb, y, z0], [xb, y, z1], [xa, y, z1]], css(lit([46, 50, 52], 'B', 16)));
+    x.beginPath();
+    for (let X = xa; X <= xb; X += 0.45) { const p = P(X, y, z0), q = P(X, y, z1); x.moveTo(p[0], p[1]); x.lineTo(q[0], q[1]); }
+    x.strokeStyle = css(lit([96, 102, 104], 'B', 16), 0.55); x.lineWidth = 1.2; x.stroke();
+    // кронштейны-консоли под настилом у каждого узла фермы
+    for (let k = 0; k <= 7; k++) {
+      const X = PB.xa + (PB.xb - PB.xa) * k / 7;
+      line3([X, PB.y1 - 0.6, PB.zf], [X, y, z0 + 0.05], lw(0.06, 16, 1.5), css(lit(st, 'F', 16)));
+    }
+    // торцевая обвязка настила (швеллер) и перила по краю
+    box(xa, xb, y, y + 0.16, z0, z0 + 0.06, mul(st, 1.15));
+    railing([[xa, z0], [xb, z0]], y + 0.16, 1.27, [92, 100, 104], z0);
+    railing([[xa, z0], [xa, z1 + 1.2]], y + 0.16, 0.7, [92, 100, 104], z0);
+    // жёлтая полоса на поручне над проездом
+    line3([-3.6, y + 1.27, z0], [3.6, y + 1.27, z0], lw(0.05, z0, 2), css(lit([186, 156, 52], 'F', z0), 0.9));
+    // лестница с ограждением-клеткой на правой стойке
+    const LX = PB.xb, LZ = PB.zf - 0.5, lx0 = LX - 0.22, lx1 = LX + 0.22, lc = [104, 108, 106];
+    [lx0, lx1].forEach((X) => line3([X, 0.15, LZ], [X, y + 1.1, LZ], lw(0.05, LZ, 2), css(lit(lc, 'F', LZ))));
+    x.beginPath();
+    for (let yy = 0.45; yy < y; yy += 0.3) { const p = P(lx0, yy, LZ), q = P(lx1, yy, LZ); x.moveTo(p[0], p[1]); x.lineTo(q[0], q[1]); }
+    x.strokeStyle = css(lit(lc, 'F', LZ), 0.9); x.lineWidth = lw(0.03, LZ, 1.5); x.stroke();
+    const cz = LZ - 0.38, hoop = (yy) => { const pts = []; for (let i = 0; i <= 12; i++) { const t = Math.PI * i / 12; pts.push([LX - 0.36 * Math.cos(t), yy, cz - 0.36 * Math.sin(t) + 0.0]); } return pts; };
+    x.strokeStyle = css(lit(lc, 'F', LZ - 0.4)); x.lineWidth = lw(0.04, LZ, 1.8);
+    for (let yy = 2.3; yy <= y + 1.0; yy += 0.75) {
+      const h = hoop(yy).map((p) => P(p[0], p[1], p[2])); x.beginPath(); h.forEach((p, i) => (i ? x.lineTo(p[0], p[1]) : x.moveTo(p[0], p[1]))); x.stroke();
+    }
+    [0, Math.PI / 2, Math.PI].forEach((t) => line3([LX - 0.36 * Math.cos(t), 2.3, cz - 0.36 * Math.sin(t)], [LX - 0.36 * Math.cos(t), y + 1.0, cz - 0.36 * Math.sin(t)], lw(0.03, LZ, 1.5), css(lit(lc, 'F', LZ), 0.85)));
+  }
+  // перила на козырьке рампы (служебная площадка у двери второго этажа)
+  function dockRail() {
+    const X = WALL_L, y = 5.86;
+    railing([[X, 24.0], [X + 2.3, 24.0], [X + 2.3, 30.0], [X, 30.0]], y, 1.0, [74, 80, 84], 27);
   }
 
   // ---------- Фонари и провода ----------
@@ -1240,7 +1341,7 @@
       x.globalAlpha = 0.52 + 0.4 * sm(4, 40, Z); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'low';
       x.drawImage(r, x0 * rw / W, y0 * rh / H, (x1 - x0) * rw / W, (y1 - y0) * rh / H, x0, y0, x1 - x0, y1 - y0);
       x.globalAlpha = 1;
-      x.fillStyle = css(fog([180, 186, 190], Z), 0.1 + 0.08 * sm(5, 40, Z)); x.fillRect(x0, y0, x1 - x0, y1 - y0);
+      x.fillStyle = css(fog([188, 194, 198], Z), 0.17 + 0.1 * sm(5, 40, Z)); x.fillRect(x0, y0, x1 - x0, y1 - y0);
       x.restore();
       path(); x.strokeStyle = css(fog([38, 39, 38], Z), 0.42); x.lineWidth = Math.max(1.4, F * 0.02 / Z); x.lineJoin = 'round'; x.stroke();
     });
@@ -1514,9 +1615,10 @@
     const v = x.createRadialGradient(CX, CY, H * 0.45, CX, CY, W * 0.68);
     v.addColorStop(0, 'rgba(12,14,16,0)'); v.addColorStop(1, 'rgba(12,14,16,.32)');
     x.fillStyle = v; x.fillRect(0, 0, W, H);
-    const t = x.createLinearGradient(0, 0, 0, 140);
-    t.addColorStop(0, 'rgba(14,16,20,.22)'); t.addColorStop(1, 'rgba(14,16,20,0)');
-    x.fillStyle = t; x.fillRect(0, 0, W, 140);
+    // спокойная верхняя полоса под заголовки экранов: пасмурное затемнение верха
+    const t = x.createLinearGradient(0, 0, 0, 180);
+    t.addColorStop(0, 'rgba(14,16,20,.36)'); t.addColorStop(0.55, 'rgba(14,16,20,.12)'); t.addColorStop(1, 'rgba(14,16,20,0)');
+    x.fillStyle = t; x.fillRect(0, 0, W, 180);
   }
 
   // ---------- Сборка ----------
@@ -1533,9 +1635,9 @@
     run('far', () => { chimney(); plume(); mainHall(); crane(); buildingL2(); });
     run('brickL', brickWallL);
     run('facadeL', facadeL);
-    run('floorL', groundFloorL);
-    run('hangar', () => { containers(); hangarWall(); hangarDetails(); hangarFront(); });
-    run('bridge', () => { for (let i = LAMPS.length - 1; i >= 0; i--) lampPost(LAMPS[i][0], LAMPS[i][1], i === 1); pipeBridge(); });
+    run('floorL', () => { groundFloorL(); dockRail(); });
+    run('hangar', () => { containers(); hangarWall(); hangarDetails(); hangarExtra(); hangarFront(); });
+    run('bridge', () => { for (let i = LAMPS.length - 1; i >= 0; i--) lampPost(LAMPS[i][0], LAMPS[i][1], i === 1); pipeBridge(); catwalk(); });
     run('puddles', puddles);
     run('props', props);
     run('wires', wires);

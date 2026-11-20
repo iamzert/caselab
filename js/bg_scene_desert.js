@@ -385,7 +385,7 @@
       }
     }
     // купол: выгоревшая известь с охрой; 16 долей, 8 рёбер; навершие
-    dome(x, D.X, D.Yb + 0.3, D.U, D.R, D.H, { l: [222, 200, 160], s: [118, 112, 114] }, 16, 8);
+    dome(x, D.X, D.Yb + 0.3, D.U, D.R, D.H, { l: [222, 200, 160], s: [118, 112, 114] }, LO ? 8 : 16, LO ? 4 : 8);
     const ap = D.Yb + 0.3 + D.H;
     x.beginPath(); line3(x, [[D.X, ap - 0.1, D.U], [D.X, ap + 1.6, D.U]]);
     x.strokeStyle = hzs([86, 74, 58], D.U); x.lineWidth = Math.max(1.2, F * 0.1 / D.U); x.stroke();
@@ -834,6 +834,11 @@
             x.beginPath(); fr(x, xi, u + w * 0.12, v0 + 0.12, u + w * 0.88, v1 - 0.12); x.strokeStyle = dk(c[1]); x.lineWidth = clamp(F * 0.03 / uc, 0.8, 4); x.stroke();
             const cu = u + w / 2, cv = (v0 + v1) / 2;
             x.beginPath(); poly3(x, [[xi, cv + 0.32, cu], [xi, cv, cu + w * 0.25], [xi, cv - 0.32, cu], [xi, cv, cu - w * 0.25]]); fillp(x, dk(c[1]));
+            // узкая вторая кайма и ряд мелких ромбов вдоль неё
+            x.beginPath(); fr(x, xi, u + w * 0.2, v0 + 0.22, u + w * 0.8, v1 - 0.22); x.strokeStyle = dk(mix(c[0], c[1], 0.55)); x.lineWidth = clamp(F * 0.012 / uc, 0.6, 2); x.stroke();
+            x.beginPath();
+            for (let vv = v0 + 0.3; vv < v1 - 0.3; vv += 0.16) for (const uu of [u + w * 0.07, u + w * 0.93]) poly3(x, [[xi, vv + 0.04, uu], [xi, vv, uu + 0.025], [xi, vv - 0.04, uu], [xi, vv, uu - 0.025]]);
+            fillp(x, dk(c[1]));
             x.beginPath(); for (let f = u + 0.04; f < u + w; f += 0.06) line3(x, [[xi, v0, f], [xi, v0 - 0.08, f]]);
             x.strokeStyle = dk([200, 186, 160]); x.lineWidth = 1; x.stroke();
           }
@@ -1035,7 +1040,7 @@
   // земля: асфальт (масляные полосы, колеи, выкрошенные пятна, зерно), бетонный лоток со швами,
   // стёртая разметка (осевая и «зебра»), бордюрный камень и плитка тротуаров со швами; пишем готовый цвет
   function groundTex(x, o) {
-    const k = 0.5 * Math.min(1, o.scale * 2.5), w = Math.ceil(SW * k), h = Math.ceil((SH - HOR) * k);
+    const k = o.scale < 0.5 ? o.scale : 0.5, w = Math.ceil(SW * k), h = Math.ceil((SH - HOR) * k);
     const L = pixCanvas(w, h), d = L.img.data;
     const n1 = Tex.perlin(101), n2 = Tex.perlin(102), n3 = Tex.perlin(103), n4 = Tex.perlin(104);
     const A = C.asph, Wk = C.walk, S = C.sand, GT = [178, 170, 154], CB = [206, 196, 176], PA = [224, 220, 206];
@@ -1092,7 +1097,7 @@
           sand = Math.max(sand, clamp((ax - 2.7) / 1.25, 0, 1) * clamp(0.45 + 1.1 * fbm2(n1, X * 0.8 + 7, U * 0.4), 0, 1) * 0.5);
           // языки песка, нанесённые ветром наискось через полосы
           const sv = fbm2(n3, (X * 0.9 + U * 0.35) * 0.55, (U * 0.9 - X * 0.35) * 0.11);
-          sand += clamp((sv - 0.16) / 0.14, 0, 1) * 0.42;
+          sand += clamp((sv - 0.11) / 0.13, 0, 1) * 0.52;
           // разметка: осевая пунктирная (3 м штрих, 5 м разрыв) и «зебра»; краска стёрта по колеям и пятнами
           paint = cov(ax, 0.06, px) * cov(Math.abs(((U % 8) + 8) % 8 - 1.5), 1.5, pu);
           if (U > ZEB.u0 - 0.3 && U < ZEB.u1 + 0.3) {
@@ -1119,7 +1124,7 @@
   // стены: пятна, потёки, ремонтные заплаты, грязь у земли, тёплый отражённый свет снизу на теневой стороне,
   // разнотон камней; слой светлит/темнит поверх основы фасадов
   function wallTex(x, o) {
-    const k = 0.5 * Math.min(1, o.scale * 2.5), w = Math.ceil(SW * k), h = Math.ceil(SH * k);
+    const k = o.scale < 0.5 ? o.scale : 0.5, w = Math.ceil(SW * k), h = Math.ceil(SH * k);
     const L = pixCanvas(w, h), d = L.img.data;
     const n1 = Tex.perlin(201), n2 = Tex.perlin(202), n3 = Tex.perlin(203);
     const rows = HOUSES.filter((b) => !b.ghost);
@@ -1185,10 +1190,6 @@
       pts.push([X, 0, U]);
     }
     return pts;
-  }
-  function crack(x, pts, wm, col, a) {
-    if (pts.length < 2) return;
-    x.beginPath(); line3(x, pts); pen(x, wm, pts[0][2], col, a); x.stroke();
   }
   // полоса на земле по мировой ломаной; ширина (м) меняется от w0 к w1. Ракурс честный: поперечная
   // трещина сжимается по вертикали так же, как сама дорога, и не читается проводом
@@ -1486,6 +1487,7 @@
   }
   // кабели по фасадам: жгут под карнизом на скобах через 1.2 м, спуски к распределительным коробкам
   function wallRuns(x, LO) {
+    if (LO) return;                 // на миниатюре тонкие кабели по стенам не видны
     for (const b of HOUSES) {
       if (b.ghost) continue;
       const s = b.s, xf = xfOf(b), X = xf - s * 0.05, lit = s > 0, top = b.fl.reduce((a, c) => a + c, 0) - 0.42;
@@ -1716,7 +1718,7 @@
     if (lit) wallShadowBox(x0, x1, v0 - 0.05, v1, u0, u1);
     ITEMS.push({ u: u0, f: () => {
       x.beginPath();
-      for (const u of [u0 + 0.08, u1 - 0.08]) line3(x, [[xf, v0 - 0.3, u], [xo, v0, u]]);
+      for (const u of [u0 + 0.08, u1 - 0.08]) { line3(x, [[xf, v0 - 0.3, u], [xo, v0 - 0.02, u]]); line3(x, [[xf, v0 - 0.02, u], [xo - Math.sign(xo - xf) * 0.02, v0 - 0.02, u]]); }
       x.strokeStyle = hzs(IRON, uc); x.lineWidth = clamp(F * 0.02 / uc, 0.7, 2.5); x.stroke();
       box(x, x0, x1, v0, v1, u0, u1, m, !lit);
       if (LO) return;
@@ -2028,7 +2030,23 @@
     }
   }
 
-  // @@PARTS
+  // сухие пальмовые листья, сорванные ветром: лежат на дороге у лотка и на тротуаре под пальмой
+  function fallenFronds(x, LO) {
+    const r = Tex.rng(777);
+    for (const [X0, U0, X1, U1, y] of [[3.05, 18.0, 3.45, 20.4, 0.01], [4.75, 14.4, 4.95, 15.5, WALK + 0.01], [-3.3, 25.2, -3.0, 26.6, 0.01]]) {
+      const pts = [];
+      for (let i = 0; i <= 8; i++) { const t = i / 8; pts.push([lerp(X0, X1, t) + Math.sin(t * 3) * 0.08, y, lerp(U0, U1, t)]); }
+      if (!LO) {
+        x.beginPath();
+        for (let i = 1; i < 8; i++) {
+          const p = pts[i], ll = 0.32 * Math.sin(Math.PI * (0.15 + i / 9));
+          for (const sd of [-1, 1]) line3(x, [p, [p[0] + sd * ll * (0.8 + r() * 0.3), y, p[2] + ll * (0.5 + r() * 0.3)]]);
+        }
+        pen(x, 0.025, U0, [150, 124, 86], 0.9); x.lineCap = 'round'; x.stroke(); x.lineCap = 'butt';
+      }
+      groundStrip(x, pts.map((p) => [p[0], 0, p[2]]), 0.06, 0.02, [176, 148, 104], 0.95);
+    }
+  }
 
   // мягкое затемнение верхней полосы (как градиентный фильтр на объективе): под шапкой интерфейса
   // и подписями экранов фон спокойнее и темнее, ниже 230 px картинка не меняется
@@ -2046,6 +2064,7 @@
     groundBase(x);
     groundTex(x, o);
     roadDetail(x, LO);
+    fallenFronds(x, LO);
     curbs(x, LO);
     groundShadows(x, (g) => {
       g.strokeStyle = rgb(C.shadow);
@@ -2079,6 +2098,5 @@
     ITEMS.sort((a, b) => b.u - a.u);
     for (const it of ITEMS) it.f();
     topShade(x);
-    // @@DRAW
   });
 })();

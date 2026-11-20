@@ -213,6 +213,17 @@
     g.addColorStop(0, '#3a70a8'); g.addColorStop(0.35, '#538ac1'); g.addColorStop(0.7, '#88b4d5');
     g.addColorStop(0.92, '#bad4e3'); g.addColorStop(1, '#cfe0e8');
     x.fillStyle = g; x.fillRect(0, 0, 1920, HOR + 2);
+    const r = Tex.rng(45);
+    x.lineCap = 'round';
+    for (let i = 0; i < 9; i++) {
+      const cx = 520 + r() * 900, cy = 120 + r() * 150, L = 120 + r() * 260, d = (r() - 0.5) * 30;
+      for (let j = 0; j < 4; j++) {
+        const oy = (r() - 0.5) * 14;
+        x.strokeStyle = 'rgba(236,242,248,' + (0.05 + r() * 0.07).toFixed(3) + ')'; x.lineWidth = 2 + r() * 5;
+        x.beginPath(); x.moveTo(cx - L / 2, cy + oy); x.quadraticCurveTo(cx, cy + oy + d, cx + L / 2, cy + oy - d * 0.6 - L * 0.08); x.stroke();
+      }
+    }
+    x.lineCap = 'butt';
     cloud(1075, 476, 230, 30, 41, 0.92);
     cloud(918, 486, 120, 15, 42, 0.85);
     cloud(1185, 318, 170, 44, 43, 0.8);
@@ -235,6 +246,15 @@
         x.fillStyle = r() < 0.5 ? 'rgba(212,228,236,' + (0.16 + r() * 0.18).toFixed(2) + ')' : 'rgba(28,58,72,' + (0.12 + r() * 0.14).toFixed(2) + ')';
         x.fillRect(px, y, len, t);
       }
+    }
+    // у причала вода глубже и темнее, у самой стенки — её тень; искры на гребнях средней дали
+    const yn = sy(SEA, 80), gq = x.createLinearGradient(0, yn, 0, yq);
+    gq.addColorStop(0, 'rgba(22,54,66,0)'); gq.addColorStop(1, 'rgba(22,54,66,0.32)');
+    x.fillStyle = gq; x.fillRect(690, yn, 540, yq - yn);
+    x.fillStyle = 'rgba(16,40,50,0.4)'; x.fillRect(690, sy(SEA, 62.5), 540, yq - sy(SEA, 62.5));
+    for (let i = 0; i < 70; i++) {
+      const z = 90 + Math.pow(r(), 1.6) * 600, y = sy(SEA, z), len = 1 + r() * 4 * F / z / 6;
+      x.fillStyle = 'rgba(240,246,248,' + (0.35 + r() * 0.4).toFixed(2) + ')'; x.fillRect(700 + r() * 520, y, len, 1);
     }
   }
   // мыс за бухтой: холмы в дымке, посёлок, колокольня и пинии; слева — низкий дальний берег
@@ -277,43 +297,84 @@
     for (let X = -1600; X <= -380; X += 40) x.lineTo(sx(X, zl), sy(SEA + 25 + 40 * Math.sin((X + 1600) / 400) + n(X / 90, 7.5) * 12, zl));
     x.lineTo(sx(-380, zl), sy(SEA, zl) + 1); x.closePath(); x.fill();
   }
-  // мол: стенка из бетонных блоков к гавани, парапет со стороны моря, камни у головы
-  function breakwater() {
-    const top = SEA + 2.6, par = SEA + 3.8, segs = [[-12, 176], [34, 160], [96, 136]];
-    for (let i = 0; i < segs.length - 1; i++) {
-      const a = segs[i], b = segs[i + 1], zm = (a[1] + b[1]) / 2;
-      // парапет (чуть дальше стенки)
-      x.fillStyle = cs([196, 190, 178], K_FR, zm);
-      wp([[a[0], top, a[1] + 4], [b[0], top, b[1] + 4], [b[0], par, b[1] + 4], [a[0], par, a[1] + 4]]); x.fill();
-      // стенка
-      x.fillStyle = cs([184, 178, 166], K_FR, zm);
-      wp([[a[0], SEA, a[1]], [b[0], SEA, b[1]], [b[0], top, b[1]], [a[0], top, a[1]]]); x.fill();
-      // мокрая полоса у воды
-      x.fillStyle = cs([70, 80, 68], 1, zm);
-      wp([[a[0], SEA, a[1]], [b[0], SEA, b[1]], [b[0], SEA + 0.6, b[1]], [a[0], SEA + 0.6, a[1]]]); x.fill();
-      // швы блоков
-      x.strokeStyle = cs([120, 116, 108], 1, zm, 0.8); x.lineWidth = 1;
-      x.beginPath();
-      for (let t = 0; t <= 1.001; t += 2.2 / Math.hypot(b[0] - a[0], b[1] - a[1])) {
-        const X = a[0] + (b[0] - a[0]) * t, Z = a[1] + (b[1] - a[1]) * t;
-        x.moveTo(sx(X, Z), sy(SEA + 0.6, Z)); x.lineTo(sx(X, Z), sy(top, Z));
-      }
-      x.stroke();
+  // мыс слева за маяком: тёмный маквис на склоне, скальный обрыв к воде, пара домиков и кипарисы —
+  // белая башня маяка читается на его фоне
+  function cape() {
+    const z = 650, n = vnoise(64, 32), r = Tex.rng(65), base = sy(SEA, z) + 0.5, top = [];
+    for (let X = -260; X <= -12; X += 2) {
+      const t = Math.min(1, (-12 - X) / 36), hm = 2 + 30 * t * t * (3 - 2 * t) + Math.max(0, (-48 - X) * 0.12) + n(X / 14, 2.5) * 3 + n(X / 4, 6.5) * 0.8;
+      top.push([sx(X, z), sy(SEA + hm, z)]);
     }
-    // камни вокруг головы мола
-    const r = Tex.rng(71);
-    for (let i = 0; i < 22; i++) {
-      const X = -17 + r() * 8, Z = 172 + r() * 6, s = 0.8 + r() * 1.4, k = F / Z;
-      x.fillStyle = cs([150 + r() * 30, 146 + r() * 26, 136 + r() * 20], r() < 0.6 ? K_FR : K_SH, Z);
-      x.beginPath(); x.ellipse(sx(X, Z), sy(SEA + s * 0.3, Z), s * k * 0.7, s * k * 0.42, 0, 0, Math.PI * 2); x.fill();
+    x.beginPath(); x.moveTo(top[0][0], base); top.forEach((p) => x.lineTo(p[0], p[1])); x.lineTo(top[top.length - 1][0], base); x.closePath();
+    x.fillStyle = cs([66, 86, 60], 1, z); x.fill();
+    x.save(); x.clip();
+    // скальный обрыв у воды и осыпи
+    x.fillStyle = cs([138, 128, 112], K_FR, z);
+    x.beginPath(); x.moveTo(sx(-60, z), base); x.lineTo(sx(-40, z), sy(SEA + 6, z)); x.lineTo(sx(-26, z), sy(SEA + 9, z)); x.lineTo(sx(-12, z), sy(SEA + 1.5, z)); x.lineTo(sx(-12, z), base); x.closePath(); x.fill();
+    for (let i = 0; i < 40; i++) {                      // тёмные купы маквиса
+      const X = -70 + r() * 56, hm = 4 + r() * 24;
+      x.fillStyle = cs([44, 62, 42], 1, z, 0.55); x.beginPath(); x.ellipse(sx(X, z), sy(SEA + hm, z), 1.5 + r() * 3, 1 + r() * 1.5, 0, 0, Math.PI * 2); x.fill();
+    }
+    x.restore();
+    [[-44, 20, 9, 6], [-33, 15, 7, 5]].forEach((d) => {   // домики на склоне
+      x.fillStyle = cs([232, 226, 214], K_FR, z); x.fillRect(sx(d[0], z), sy(SEA + d[1] + d[3], z), F * d[2] / z, F * d[3] / z);
+      x.fillStyle = cs([164, 92, 70], K_FR, z); x.fillRect(sx(d[0], z), sy(SEA + d[1] + d[3] + 1.2, z), F * d[2] / z, F * 1.2 / z);
+    });
+    for (let i = 0; i < 4; i++) {                         // кипарисы
+      const X = -52 + i * 3.2, hm = 22 + i * 1.5, w = F * 1.4 / z, hh = F * (7 + r() * 3) / z, cx = sx(X, z), cy = sy(SEA + hm, z);
+      x.fillStyle = cs([34, 50, 36], 1, z); x.beginPath(); x.ellipse(cx, cy - hh / 2, w, hh / 2, 0, 0, Math.PI * 2); x.fill();
     }
   }
-
-  // маяк на голове мола: белая башня, красный фонарь, галерея с перилами
+  // камни наброски: неровные многоугольники, светлая верхняя грань, тёмная мокрая кромка у воды
+  function rock(X, Z, s, r) {
+    const k = F / Z, cx = sx(X, Z), cy = sy(SEA, Z), n = 6, pts = [];
+    for (let i = 0; i < n; i++) {
+      const a = Math.PI + i / (n - 1) * Math.PI, f = 0.75 + r() * 0.4;
+      pts.push([cx + Math.cos(a) * s * k * 0.8 * f, cy + Math.sin(a) * s * k * 0.55 * f]);
+    }
+    const v = (r() - 0.5) * 16, c = [124 + v, 128 + v, 128 + v];
+    x.fillStyle = cs(c, K_SH, Z); spoly(pts); x.fill();
+    x.fillStyle = cs(tone(c, 0.12), K_FR, Z);              // освещённая верхняя грань
+    spoly([pts[1], pts[2], pts[3], pts[4], [cx + s * k * 0.15, cy - s * k * 0.2], [cx - s * k * 0.3, cy - s * k * 0.15]]); x.fill();
+    x.fillStyle = cs([44, 52, 56], 1, Z); x.fillRect(cx - s * k * 0.8, cy - Math.max(1, s * k * 0.08), s * k * 1.6, Math.max(1, s * k * 0.1));
+  }
+  // мол: стенка из бетонных блоков разного тона в два ряда, зелёная мокрая полоса у воды, парапет с карнизиком
+  function breakwater() {
+    const top = SEA + 2.6, par = SEA + 3.8, segs = [[-12, 176], [34, 160], [96, 136]], r = Tex.rng(73);
+    for (let i = 0; i < segs.length - 1; i++) {
+      const a = segs[i], b = segs[i + 1], zm = (a[1] + b[1]) / 2, L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const at = (t, y, dz) => [a[0] + (b[0] - a[0]) * t, y, a[1] + (b[1] - a[1]) * t + (dz || 0)];
+      x.fillStyle = cs([180, 174, 162], K_FR, zm); wp([at(0, top, 4), at(1, top, 4), at(1, par, 4), at(0, par, 4)]); x.fill();
+      x.fillStyle = cs([208, 202, 190], K_FR, zm); wp([at(0, par - 0.22, 4), at(1, par - 0.22, 4), at(1, par, 4), at(0, par, 4)]); x.fill();
+      x.fillStyle = cs([120, 116, 108], 1, zm); wp([at(0, par - 0.34, 4), at(1, par - 0.34, 4), at(1, par - 0.22, 4), at(0, par - 0.22, 4)]); x.fill();
+      const bw = 2.2 / L, hm = SEA + 1.3;
+      [[SEA, hm, 0], [hm, top, 0.5]].forEach((row) => {
+        for (let t = -row[2] * bw; t < 1; t += bw) {
+          const t0 = Math.max(0, t), t1 = Math.min(1, t + bw), v = (r() - 0.5) * 24;
+          x.fillStyle = cs([178 + v, 172 + v, 160 + v], K_FR, zm); wp([at(t0, row[0]), at(t1, row[0]), at(t1, row[1]), at(t0, row[1])]); x.fill();
+        }
+      });
+      x.fillStyle = cs([72, 84, 70], 1, zm); wp([at(0, SEA), at(1, SEA), at(1, SEA + 0.75), at(0, SEA + 0.75)]); x.fill();
+      x.fillStyle = cs([98, 104, 92], 1, zm, 0.5); wp([at(0, SEA + 0.75), at(1, SEA + 0.75), at(1, SEA + 1.0), at(0, SEA + 1.0)]); x.fill();
+      x.strokeStyle = cs([96, 92, 86], 1, zm, 0.9); x.lineWidth = 1.4; x.beginPath();
+      const ln = (p, q) => { const s0 = P(p[0], p[1], p[2]), s1 = P(q[0], q[1], q[2]); x.moveTo(s0[0], s0[1]); x.lineTo(s1[0], s1[1]); };
+      ln(at(0, hm), at(1, hm)); ln(at(0, top), at(1, top));
+      for (let t = 0; t <= 1.001; t += bw) { ln(at(t, SEA + 0.75), at(t, hm)); if (t + bw / 2 < 1) ln(at(t + bw / 2, hm), at(t + bw / 2, top)); }
+      x.stroke();
+    }
+  }
+  // камни у головы мола и вдоль её подножия — от дальних к ближним, поверх цоколя маяка
+  function headRocks() {
+    const r = Tex.rng(71), R = [];
+    for (let i = 0; i < 16; i++) R.push([-17.5 + r() * 9.5, 171 + r() * 6.5, 0.9 + r() * 1.3]);
+    for (let i = 0; i < 14; i++) { const t = r(); R.push([-8 + t * 40, 175 - t * 15 - r() * 1.5, 0.6 + r() * 0.9]); }
+    R.sort((p, q) => q[1] - p[1]).forEach((p) => rock(p[0], p[1], p[2], r));
+  }
+  // маяк: тёмный каменный цоколь, внизу башни — камень, выше белая штукатурка, тёмный фонарь
+  // с галереей и красный купол; в воде под ним — рваное отражение
   function lighthouse() {
     const X = -13, Z = 178, b = SEA + 3.0, h = 11.6, k = F / Z;
-    const W = [238, 236, 230], RED = [168, 62, 50];
-    // цилиндр освещён слева-спереди: градиент по нормали
+    const W = [238, 236, 230], RED = [158, 58, 48];
     const shade = (x0, x1, c) => {
       const g = x.createLinearGradient(x0, 0, x1, 0);
       for (let i = 0; i <= 6; i++) {
@@ -322,37 +383,42 @@
       }
       return g;
     };
-    // площадка
-    x.fillStyle = shade(sx(X - 3.2, Z), sx(X + 3.2, Z), [200, 194, 182]);
-    fr(Z, X - 3.2, SEA + 0.4, X + 3.2, b); x.fill();
-    x.fillStyle = cs([70, 80, 68], 1, Z); fr(Z, X - 3.2, SEA, X + 3.2, SEA + 0.5); x.fill();
-    // ствол (усечённый конус)
+    const r = Tex.rng(77);
+    for (let i = 0; i < 9; i++) {
+      const y0 = SEA - 0.25 - i * 1.3, hh = 0.35 + r() * 0.5, dx = (r() - 0.5) * 0.8, w = 1.2 + r() * 0.6;
+      x.fillStyle = 'rgba(218,226,226,' + (0.42 - i * 0.04).toFixed(3) + ')'; fr(Z, X - w + dx, y0 - hh, X + w + dx, y0); x.fill();
+    }
+    x.fillStyle = shade(sx(X - 3.2, Z), sx(X + 3.2, Z), [126, 126, 120]); fr(Z, X - 3.2, SEA + 0.4, X + 3.2, b); x.fill();
+    x.strokeStyle = cs([82, 84, 82], 1, Z, 0.85); x.lineWidth = 1; x.beginPath();
+    for (let y = SEA + 1.0; y < b; y += 0.65) { x.moveTo(sx(X - 3.2, Z), sy(y, Z)); x.lineTo(sx(X + 3.2, Z), sy(y, Z)); }
+    x.stroke();
+    x.fillStyle = cs([50, 58, 54], 1, Z); fr(Z, X - 3.2, SEA, X + 3.2, SEA + 0.6); x.fill();
     x.fillStyle = shade(sx(X - 1.6, Z), sx(X + 1.6, Z), W);
     wp([[X - 1.6, b, Z], [X + 1.6, b, Z], [X + 1.25, b + h, Z], [X - 1.25, b + h, Z]]); x.fill();
-    x.fillStyle = cs([40, 46, 52], 1, Z);
-    fr(Z, X - 0.75, b, X + 0.15, b + 2.0); x.fill();               // дверь
-    fr(Z, X - 0.25, b + 5.0, X + 0.2, b + 5.8); x.fill();          // окошки
-    fr(Z, X - 0.2, b + 8.4, X + 0.22, b + 9.2); x.fill();
-    // галерея
-    x.fillStyle = shade(sx(X - 1.95, Z), sx(X + 1.95, Z), RED);
-    fr(Z, X - 1.95, b + h, X + 1.95, b + h + 0.35); x.fill();
-    x.strokeStyle = cs([60, 50, 48], 1, Z); x.lineWidth = Math.max(1, 0.1 * k);
-    x.beginPath(); x.moveTo(sx(X - 1.9, Z), sy(b + h + 1.15, Z)); x.lineTo(sx(X + 1.9, Z), sy(b + h + 1.15, Z)); x.stroke();
-    x.lineWidth = Math.max(0.8, 0.06 * k); x.beginPath();
-    for (let i = -1.9; i <= 1.95; i += 0.48) { x.moveTo(sx(X + i, Z), sy(b + h + 0.35, Z)); x.lineTo(sx(X + i, Z), sy(b + h + 1.15, Z)); }
+    x.fillStyle = shade(sx(X - 1.6, Z), sx(X + 1.6, Z), [150, 146, 136]);
+    wp([[X - 1.6, b, Z], [X + 1.6, b, Z], [X + 1.56, b + 2.2, Z], [X - 1.56, b + 2.2, Z]]); x.fill();
+    x.fillStyle = cs([34, 38, 44], 1, Z);
+    fr(Z, X - 0.75, b, X + 0.15, b + 1.9); x.fill();
+    fr(Z, X - 0.25, b + 5.0, X + 0.2, b + 5.9); x.fill();
+    fr(Z, X - 0.2, b + 8.4, X + 0.22, b + 9.3); x.fill();
+    // галерея: тёмная плита, перила
+    x.fillStyle = shade(sx(X - 2.0, Z), sx(X + 2.0, Z), [92, 92, 90]); fr(Z, X - 2.0, b + h, X + 2.0, b + h + 0.4); x.fill();
+    x.strokeStyle = cs([40, 40, 42], 1, Z); x.lineWidth = Math.max(1.2, 0.12 * k);
+    x.beginPath(); x.moveTo(sx(X - 1.95, Z), sy(b + h + 1.2, Z)); x.lineTo(sx(X + 1.95, Z), sy(b + h + 1.2, Z)); x.stroke();
+    x.lineWidth = Math.max(0.9, 0.07 * k); x.beginPath();
+    for (let i = -1.9; i <= 1.95; i += 0.48) { x.moveTo(sx(X + i, Z), sy(b + h + 0.4, Z)); x.lineTo(sx(X + i, Z), sy(b + h + 1.2, Z)); }
     x.stroke();
-    // фонарь: тёмное стекло с переплётом, красный купол
-    x.fillStyle = shade(sx(X - 1.0, Z), sx(X + 1.0, Z), RED);
-    fr(Z, X - 1.0, b + h + 0.35, X + 1.0, b + h + 0.8); x.fill();
-    x.fillStyle = cs([44, 54, 62], 1, Z); fr(Z, X - 0.95, b + h + 0.8, X + 0.95, b + h + 2.4); x.fill();
-    x.fillStyle = cs([150, 170, 180], 1, Z, 0.35); fr(Z, X - 0.9, b + h + 1.6, X - 0.2, b + h + 2.3); x.fill();
-    x.strokeStyle = cs([150, 60, 50], 1, Z); x.lineWidth = Math.max(0.8, 0.07 * k); x.beginPath();
-    [-0.95, -0.32, 0.32, 0.95].forEach((u) => { x.moveTo(sx(X + u, Z), sy(b + h + 0.8, Z)); x.lineTo(sx(X + u, Z), sy(b + h + 2.4, Z)); });
+    // фонарь: тёмное стекло в переплёте, красный купол
+    x.fillStyle = shade(sx(X - 1.05, Z), sx(X + 1.05, Z), RED); fr(Z, X - 1.05, b + h + 0.4, X + 1.05, b + h + 0.85); x.fill();
+    x.fillStyle = cs([26, 32, 40], 1, Z); fr(Z, X - 1.0, b + h + 0.85, X + 1.0, b + h + 2.55); x.fill();
+    x.fillStyle = cs([150, 170, 180], 1, Z, 0.3); fr(Z, X - 0.92, b + h + 1.7, X - 0.3, b + h + 2.45); x.fill();
+    x.strokeStyle = cs([120, 50, 42], 1, Z); x.lineWidth = Math.max(0.9, 0.08 * k); x.beginPath();
+    [-1.0, -0.33, 0.33, 1.0].forEach((u) => { x.moveTo(sx(X + u, Z), sy(b + h + 0.85, Z)); x.lineTo(sx(X + u, Z), sy(b + h + 2.55, Z)); });
     x.stroke();
-    front(X, b + h + 2.4, Z, () => {
-      x.beginPath(); x.moveTo(-1.12, 0); x.quadraticCurveTo(-1.0, 0.95, 0, 1.0); x.quadraticCurveTo(1.0, 0.95, 1.12, 0); x.closePath();
-      x.fillStyle = shade(-1.12, 1.12, RED); x.fill();
-      x.fillStyle = cs([60, 50, 48], 1, Z); x.fillRect(-0.06, 0.9, 0.12, 0.9);
+    front(X, b + h + 2.55, Z, () => {
+      x.beginPath(); x.moveTo(-1.15, 0); x.quadraticCurveTo(-1.0, 0.98, 0, 1.04); x.quadraticCurveTo(1.0, 0.98, 1.15, 0); x.closePath();
+      x.fillStyle = shade(-1.15, 1.15, RED); x.fill();
+      x.fillStyle = cs([50, 44, 42], 1, Z); x.fillRect(-0.06, 0.95, 0.12, 0.95);
     });
   }
   // корпус лодки бортом к зрителю (метры, начало — середина ватерлинии)
@@ -423,17 +489,17 @@
   // s −1 — левая сторона (в тени), 1 — правая (на солнце); x — плоскость фасада; fl — высоты этажей
   // top: 'eave' — черепичный карниз с выносом, 'flat' — плоская крыша с парапетом
   const HOUSES = [
-    { s: -1, x: -5.8, z0: -12, z1: 10.5, fl: [4.0, 3.1, 3.1], top: 'eave', col: [208, 170, 112], sh: [58, 86, 66] },
-    { s: -1, x: -5.5, z0: 10.5, z1: 18, fl: [3.9, 3.1, 3.1, 3.1], top: 'eave', col: [228, 214, 186], sh: [92, 122, 96] },
+    { s: -1, x: -5.8, z0: -12, z1: 10.5, fl: [4.0, 3.1, 3.1], top: 'eave', col: [208, 170, 112], sh: [104, 124, 134] },
+    { s: -1, x: -5.5, z0: 10.5, z1: 18, fl: [3.9, 3.1, 3.1, 3.1], top: 'eave', col: [228, 214, 186], sh: [112, 136, 108] },
     // дом-мост над переулком: арка-проход внизу
-    { s: -1, x: -5.8, z0: 18, z1: 21.5, fl: [4.7, 3.0, 3.0], top: 'flat', col: [214, 190, 150], sh: [70, 96, 84], arch: true },
+    { s: -1, x: -5.8, z0: 18, z1: 21.5, fl: [4.7, 3.0, 3.0], top: 'flat', col: [214, 190, 150], sh: [116, 86, 62], arch: true },
     { s: -1, x: -5.8, z0: 21.5, z1: 29.5, fl: [4.0, 3.1, 3.1, 3.1], top: 'eave', col: [206, 152, 122], sh: [86, 108, 128] },
     { s: -1, x: -6.0, z0: 29.5, z1: 36.5, fl: [3.6, 3.0, 3.0], top: 'flat', col: [234, 230, 220], sh: [76, 110, 146] },
     { s: -1, x: -5.8, z0: 36.5, z1: 46, fl: [4.0, 3.1, 3.1, 3.1], top: 'eave', col: [222, 194, 132], sh: [62, 92, 70] },
     { s: 1, x: 6.4, z0: -12, z1: 12.5, fl: [4.0, 3.1, 3.1, 3.1], top: 'eave', col: [222, 180, 146], sh: [104, 78, 58] },
-    { s: 1, x: 6.4, z0: 12.5, z1: 19.5, fl: [3.8, 3.0, 3.0], top: 'eave', col: [236, 232, 222], sh: [70, 104, 80] },
-    { s: 1, x: 6.1, z0: 19.5, z1: 27.5, fl: [4.0, 3.1, 3.1, 3.1, 3.1], top: 'eave', col: [214, 176, 116], sh: [64, 110, 112] },
-    { s: 1, x: 6.4, z0: 27.5, z1: 35, fl: [3.6, 3.0, 3.0], top: 'flat', col: [198, 136, 104], sh: [92, 108, 72] },
+    { s: 1, x: 6.4, z0: 12.5, z1: 19.5, fl: [3.8, 3.0, 3.0], top: 'eave', col: [236, 232, 222], sh: [92, 126, 128] },
+    { s: 1, x: 6.1, z0: 19.5, z1: 27.5, fl: [4.0, 3.1, 3.1, 3.1, 3.1], top: 'eave', col: [214, 176, 116], sh: [128, 112, 92] },
+    { s: 1, x: 6.4, z0: 27.5, z1: 35, fl: [3.6, 3.0, 3.0], top: 'flat', col: [198, 136, 104], sh: [188, 182, 166] },
     { s: 1, x: 6.4, z0: 35, z1: 44, fl: [4.0, 3.1, 3.1, 3.1], top: 'eave', col: [222, 194, 180], sh: [62, 104, 112] },
   ];
   HOUSES.forEach((h, i) => {
@@ -473,28 +539,60 @@
     x.fillStyle = cs([60, 64, 62], 1, 60); x.fillRect(600, sy(QY, ZQ) - 0.5, 720, 2);
   }
 
-  // мостовая: брусчатка рядами, водостоки вдоль бордюров, дальше — тон с зерном
+  // неровное пятно на земле (сырость, масло, грязь): три вложенных контура — мягкий край. col — 'rgba(r,g,b,A)'
+  function gblob(Xc, Zc, rx, rz, seed, col, a, lift) {
+    const r = Tex.rng(seed), n = 12, f = [];
+    for (let i = 0; i < n; i++) f.push(0.65 + r() * 0.55);
+    for (let s = 0; s < 3; s++) {
+      const k = 1 - s * 0.24;
+      x.beginPath();
+      for (let i = 0; i < n; i++) {
+        const t = i / n * Math.PI * 2, X = Xc + Math.cos(t) * rx * f[i] * k, Z = Zc + Math.sin(t) * rz * f[i] * k, p = P(X, gY(Z) + (lift || 0), Z);
+        if (i) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]);
+      }
+      x.closePath(); x.fillStyle = col.replace('A', (a / 3).toFixed(3)); x.fill();
+    }
+  }
+  // трещина по земле: ломаная с ответвлениями (кучкой — переживает размытие), w — толщина в метрах
+  function gcrack(X, Z, len, ang, seed, w, lift, col) {
+    const r = Tex.rng(seed), h = lift || 0;
+    const seg = (X0, Z0, L, a, depth) => {
+      let px = X0, pz = Z0;
+      x.moveTo.apply(x, P(px, gY(pz) + h, pz));
+      const n = Math.max(2, Math.round(L / 0.12));
+      for (let i = 0; i < n; i++) {
+        a += (r() - 0.5) * 0.9; px += Math.cos(a) * L / n; pz += Math.sin(a) * L / n;
+        x.lineTo.apply(x, P(px, gY(pz) + h, pz));
+        if (depth < 1 && r() < 0.22) { const bx = px, bz = pz; seg(bx, bz, L * (0.25 + r() * 0.3), a + (r() < 0.5 ? 1 : -1) * (0.6 + r() * 0.6), depth + 1); x.moveTo.apply(x, P(bx, gY(bz) + h, bz)); }
+      }
+    };
+    x.beginPath(); seg(X, Z, len, ang, 0);
+    x.lineWidth = Math.max(1, F * w / Z); x.strokeStyle = col || 'rgba(40,36,34,0.7)'; x.lineCap = 'round'; x.stroke(); x.lineCap = 'butt';
+  }
+  // мостовая: брусчатка рядами, гладкая наезженная полоса, водосток посередине, заплаты, пятна
+  const CH0 = -0.1, CH1 = 0.5;                     // гранитный лоток посередине улицы
   function street() {
     const r = Tex.rng(81), x0 = CL + 0.34, x1 = CR - 0.34;
-    gquad(CL, CR, ZN, ZEND, 0, cs([116, 107, 98], K_TOP));
-    gquad(CL, CL + 0.34, ZN, ZEND, 0, cs([132, 126, 116], K_TOP));
-    gquad(CR - 0.34, CR, ZN, ZEND, 0, cs([132, 126, 116], K_TOP));
-    gquad(x0, x1, ZN, ZS + 0.2, 0, cs([70, 64, 58], K_TOP));   // швы
+    gquad(CL, CR, ZN, ZEND, 0, cs([128, 119, 109], K_TOP));
+    gquad(CL, CL + 0.34, ZN, ZEND, 0, cs([140, 134, 124], K_TOP));
+    gquad(CR - 0.34, CR, ZN, ZEND, 0, cs([140, 134, 124], K_TOP));
+    gquad(x0, x1, ZN, ZS + 0.2, 0, cs([72, 66, 60], K_TOP));   // швы
     let z = ZN, row = 0;
     while (z < ZS) {
       const dz = 0.2 + r() * 0.03, za = z + 0.014, zb = z + dz - 0.014, hp = F * EYE * dz / (z * z);
       let X = x0 - (row % 2 ? 0.11 : 0) - r() * 0.06;
       while (X < x1) {
         const w = 0.17 + r() * 0.08, xa = Math.max(x0, X + 0.014), xb = Math.min(x1, X + w - 0.014);
-        if (xb - xa > 0.03) {
-          const t = r(), v = (r() - 0.5) * 16;
-          const c = t < 0.12 ? [150, 138, 124] : t < 0.3 ? [112, 108, 104] : t < 0.42 ? [138, 112, 100] : [126 + v, 116 + v, 106 + v];
+        if (xb - xa > 0.03 && (xb < CH0 || xa > CH1)) {
+          const t = r(), v = (r() - 0.5) * 18, worn = xa > 1.0 && xb < 2.7;   // наезженная полоса — светлее и ровнее
+          let c = t < 0.12 ? [160, 148, 134] : t < 0.3 ? [124, 120, 116] : t < 0.42 ? [150, 124, 110] : [138 + v, 128 + v, 118 + v];
+          if (worn) c = mixc(c, [168, 160, 148], 0.45);
           const j = () => (r() - 0.5) * 0.02;
           x.fillStyle = cs(c, K_TOP);
           wp([[xa + j(), gY(za), za], [xb + j(), gY(za), za], [xb + j(), gY(zb), zb], [xa + j(), gY(zb), zb]]); x.fill();
           if (hp > 5 && S > 0.5) {                           // выпуклая середина камня
             const ia = xa + (xb - xa) * 0.22, ib = xb - (xb - xa) * 0.3, zc = za + (zb - za) * 0.2, zd = zb - (zb - za) * 0.35;
-            x.fillStyle = cs(mixc(c, [200, 192, 180], 0.18), K_TOP);
+            x.fillStyle = cs(mixc(c, [206, 198, 186], worn ? 0.3 : 0.18), K_TOP);
             wp([[ia, gY(zc), zc], [ib, gY(zc), zc], [ib, gY(zd), zd], [ia, gY(zd), zd]]); x.fill();
           }
         }
@@ -502,10 +600,13 @@
       }
       z += dz; row++;
     }
-    // дальше камни сливаются: редкие поперечные швы
-    x.strokeStyle = cs([78, 72, 66], K_TOP, 0, 0.45); x.lineWidth = 1; x.beginPath();
+    // дальше камни сливаются: редкие поперечные швы и светлая наезженная полоса
+    x.strokeStyle = cs([80, 74, 68], K_TOP, 0, 0.45); x.lineWidth = 1; x.beginPath();
     for (let zz = ZS; zz < ZEND - 1; zz += 0.62) { x.moveTo(sx(x0, zz), sy(gY(zz), zz)); x.lineTo(sx(x1, zz), sy(gY(zz), zz)); }
     x.stroke();
+    gquad(1.0, 2.7, ZS, ZEND - 1, 0, cs([176, 168, 156], K_TOP, 0, 0.22));
+    gutterChannel();
+    patches();
     if (S > 0.5) groundTex(CL, CR, ZN, ZEND - 0.5, texGrain(), 90, 0.5);
     // швы плит водостока
     x.strokeStyle = cs([84, 78, 72], K_TOP, 0, 0.7); x.lineWidth = 1.2; x.beginPath();
@@ -513,27 +614,150 @@
       [[CL, CL + 0.34], [CR - 0.34, CR]].forEach((s) => { x.moveTo(sx(s[0], zz), sy(gY(zz), zz)); x.lineTo(sx(s[1], zz), sy(gY(zz), zz)); });
     }
     x.stroke();
+    groundStains();
+  }
+  // гранитный лоток посередине: светлые плиты со швами, мокрая тёмная середина
+  function gutterChannel() {
+    const r = Tex.rng(83);
+    gquad(CH0 - 0.03, CH1 + 0.03, ZN, ZEND - 0.6, 0, cs([70, 66, 62], K_TOP));
+    for (let z = ZN; z < ZEND - 0.8;) {
+      const L = 0.85 + r() * 0.35, v = (r() - 0.5) * 14, g = Math.max(0.012, 1.3 * z / F);
+      gquad(CH0, CH1, z + g, Math.min(ZEND - 0.6, z + L - g), 0, cs([146 + v, 142 + v, 134 + v], K_TOP));
+      z += L;
+    }
+    // середина чуть ниже краёв: темнее, местами мокрая
+    gquad(CH0 + 0.15, CH1 - 0.15, ZN, ZEND - 0.6, 0, cs([96, 94, 92], K_TOP, 0, 0.5));
+    for (let i = 0; i < 9; i++) {
+      const z0 = ZN + r() * 30, z1 = z0 + 0.6 + r() * 2.5;
+      gquad(CH0 + 0.2, CH1 - 0.2, z0, Math.min(ZEND - 0.8, z1), 0.002, 'rgba(36,38,48,' + (0.3 + r() * 0.3).toFixed(2) + ')');
+    }
+  }
+  // заплаты: полоса перекладки поперёк улицы, бетон вокруг люка, асфальт на солнечной стороне, выпавшие камни
+  function patches() {
+    const r = Tex.rng(85);
+    // перекладка после траншеи: камни другого тона и размера, ровная сетка
+    const za = 14.1, zb = 14.75;
+    gquad(CL + 0.34, CH0, za, zb, 0, cs([74, 72, 70], K_TOP));
+    for (let X = CL + 0.36; X < CH0 - 0.05; X += 0.13) {
+      for (let z = za + 0.01; z < zb - 0.05; z += 0.13) {
+        const v = (r() - 0.5) * 12;
+        gquad(X, Math.min(CH0 - 0.01, X + 0.115), z, z + 0.115, 0.002, cs([150 + v, 150 + v, 148 + v], K_TOP));
+      }
+    }
+    // бетонная заплата и квадратный стальной люк
+    const cp = [[-2.9, 9.3], [-1.1, 9.2], [-1.0, 10.7], [-2.8, 10.9]];
+    x.beginPath(); gpath(cp, 0.003); x.fillStyle = cs([156, 152, 144], K_TOP); x.fill();
+    x.lineWidth = 1.5; x.strokeStyle = cs([96, 92, 86], K_TOP, 0, 0.8); x.stroke();
+    x.beginPath(); gpath([[-2.3, 9.65], [-1.6, 9.65], [-1.6, 10.35], [-2.3, 10.35]], 0.005); x.fillStyle = cs([82, 80, 78], K_TOP); x.fill();
+    x.strokeStyle = cs([128, 104, 82], K_TOP, 0, 0.7); x.lineWidth = 1.2; x.beginPath();
+    for (let i = 1; i < 5; i++) { const X = -2.3 + 0.14 * i; x.moveTo.apply(x, P(X, gY(9.65) + 0.006, 9.65)); x.lineTo.apply(x, P(X, gY(10.35) + 0.006, 10.35)); }
+    x.stroke();
+    gcrack(-2.7, 9.5, 0.9, 0.3, 7, 0.012, 0.004, 'rgba(70,64,58,0.8)');
+    // асфальтовая заплата у правого края (на солнце): тёмная, с битумным швом и трещинами
+    const ap = [[2.5, 5.1], [4.4, 5.0], [4.45, 6.9], [3.4, 7.1], [2.6, 6.8]];
+    x.beginPath(); gpath(ap, 0.003); x.fillStyle = cs([92, 94, 98], K_TOP); x.fill();
+    x.lineWidth = 3; x.strokeStyle = cs([52, 54, 58], K_TOP, 0, 0.9); x.stroke();
+    gcrack(2.8, 5.5, 1.2, 0.5, 9, 0.01, 0.004, 'rgba(36,38,42,0.85)');
+    gcrack(4.1, 5.3, 0.8, 1.9, 10, 0.01, 0.004, 'rgba(36,38,42,0.85)');
+    // дальняя заплата
+    x.beginPath(); gpath([[1.6, 22.2], [3.9, 22.0], [4.1, 24.6], [1.8, 24.8]], 0.003); x.fillStyle = cs([100, 100, 102], K_TOP); x.fill();
+    // выпавшие и просевшие камни
+    for (let i = 0; i < 16; i++) {
+      const X = CL + 0.5 + r() * (CR - CL - 1), z = ZN + 0.6 + r() * 11;
+      if (X > CH0 - 0.2 && X < CH1 + 0.2) continue;
+      x.beginPath(); gpath([[X, z], [X + 0.18, z], [X + 0.18, z + 0.2], [X, z + 0.2]], 0.002);
+      x.fillStyle = r() < 0.5 ? cs([56, 52, 48], K_TOP) : cs([96, 90, 84], K_TOP); x.fill();
+    }
+  }
+  // пятна: сырость у водостоков и порогов, масло там, где ставят мопеды
+  function groundStains() {
+    const r = Tex.rng(87);
+    for (let i = 0; i < 14; i++) {
+      const left = r() < 0.5, X = left ? CL + 0.2 + r() * 0.5 : CR - 0.2 - r() * 0.5, z = ZN + 1 + r() * 30;
+      gblob(X, z, 0.3 + r() * 0.4, 0.6 + r() * 1.4, 300 + i, 'rgba(44,42,46,A)', 0.35 + r() * 0.25);
+    }
+    [[3.6, 21.0], [4.0, 22.6], [-3.6, 15.6]].forEach((p, i) => gblob(p[0], p[1], 0.35 + r() * 0.2, 0.5 + r() * 0.4, 330 + i, 'rgba(26,26,32,A)', 0.55));
+    // лужица у рыбной лавки: тёмная мокрая брусчатка с отблеском неба
+    gblob(4.35, 14.2, 0.55, 1.6, 341, 'rgba(36,40,50,A)', 0.6);
+    gblob(4.5, 14.4, 0.25, 0.8, 342, 'rgba(176,196,214,A)', 0.3);
   }
 
-  // тротуары из известняковых плит и гранитные бордюры
+  // пучок травы в шве (лицом к зрителю): несколько травинок веером
+  function weeds(X, Y, Z, seed, sz) {
+    const r = Tex.rng(seed), k = F / Z;
+    if (k * sz * S < 4) return;
+    x.strokeStyle = cs([86, 110, 58], K_TOP, Z); x.lineWidth = Math.max(1, k * 0.012); x.beginPath();
+    for (let i = 0; i < 7; i++) {
+      const a = (r() - 0.5) * 1.6, L = sz * (0.4 + r() * 0.6), p = P(X + (r() - 0.5) * sz * 0.3, Y, Z);
+      x.moveTo(p[0], p[1]); x.quadraticCurveTo(p[0] + Math.sin(a) * L * k * 0.4, p[1] - L * k * 0.6, p[0] + Math.sin(a) * L * k, p[1] - Math.cos(a) * L * k * 0.9);
+    }
+    x.stroke();
+  }
+  // тротуары из известняковых плит: тёмные швы, разный тон, треснувшие плиты с отколотыми углами;
+  // гранитный бордюр со стыками и сколами; ржавые и сырые пятна под водостоками и кондиционерами
   function sidewalks() {
     const r = Tex.rng(91);
     [[-6.4, CL - 0.16, -1], [CR + 0.16, 6.8, 1]].forEach((sw) => {
-      gquad(sw[0], sw[1], ZN, ZEND, CURB, cs([186, 178, 162], K_TOP));
-      // плиты: поперечные швы, продольный шов посередине, разный тон
-      for (let z = ZN; z < 32; z += 0.62) {
-        for (let k = 0; k < 2; k++) {
-          const a = sw[0] + (sw[1] - sw[0]) * k / 2, b = sw[0] + (sw[1] - sw[0]) * (k + 1) / 2;
-          const v = (r() - 0.5) * 22;
-          gquad(a + 0.02, b - 0.02, z + 0.02, z + 0.6, CURB, cs([186 + v, 178 + v, 160 + v], K_TOP));
-        }
+      const W = sw[1] - sw[0];
+      gquad(sw[0], sw[1], ZN, ZEND, CURB, cs([108, 102, 92], K_TOP));                 // цвет швов
+      for (let z = ZN; z < ZEND - 0.3;) {
+        const L = 0.48 + r() * 0.32, g = Math.max(0.012, 1.6 * z / F), split = sw[0] + W * (0.36 + r() * 0.28);
+        [[sw[0], split], [split, sw[1]]].forEach((s) => {
+          const v = (r() - 0.5) * 26, st = r() < 0.12 ? 0.84 : 1, c = [(190 + v) * st, (182 + v) * st, (164 + v) * st];
+          const za = z + g / 2, zb = Math.min(ZEND - 0.3, z + L - g / 2), xa = s[0] + g / 2, xb = s[1] - g / 2;
+          gquad(xa, xb, za, zb, CURB, cs(c, K_TOP));
+          if (z < 26 && r() < 0.22 && vis(0.3, z, 5)) {
+            // трещина через плиту и отколотый угол — кусок темнее
+            const cr = r() < 0.5, cn = r() < 0.5, ex = cr ? xb : xa, ez = cn ? za : zb;
+            const A = [ex, ez + (cn ? 1 : -1) * (zb - za) * (0.35 + r() * 0.5)], B = [ex + (cr ? -1 : 1) * (xb - xa) * (0.3 + r() * 0.5), ez];
+            const M = [(A[0] + B[0]) / 2 + (r() - 0.5) * 0.08, (A[1] + B[1]) / 2 + (r() - 0.5) * 0.08];
+            x.beginPath(); gpath([[ex, ez], A, M, B], CURB + 0.001); x.fillStyle = cs(tone(c, -0.14), K_TOP); x.fill();
+            x.beginPath(); x.moveTo.apply(x, P(A[0], gY(A[1]) + CURB, A[1])); x.lineTo.apply(x, P(M[0], gY(M[1]) + CURB, M[1])); x.lineTo.apply(x, P(B[0], gY(B[1]) + CURB, B[1]));
+            x.lineWidth = Math.max(1, F * 0.014 / z); x.strokeStyle = 'rgba(58,52,46,0.85)'; x.stroke();
+            if (r() < 0.6) gcrack(M[0], M[1], 0.25 + r() * 0.3, Math.atan2(M[1] - ez, M[0] - ex), Math.floor(r() * 1e5), 0.008, CURB + 0.001, 'rgba(70,62,54,0.7)');
+          }
+        });
+        z += L;
       }
-      // бордюр: верх и грань
-      const cx0 = sw[2] < 0 ? CL - 0.16 : CR, cx1 = sw[2] < 0 ? CL : CR + 0.16, face = sw[2] < 0 ? CL : CR;
-      gquad(cx0, cx1, ZN, ZEND, CURB, cs([168, 164, 156], K_TOP));
+      // бордюр: верх, грань, стыки камней и сколы кромки
+      const cx0 = sw[2] < 0 ? CL - 0.16 : CR, cx1 = sw[2] < 0 ? CL : CR + 0.16, face = sw[2] < 0 ? CL : CR, inw = sw[2];
+      gquad(cx0, cx1, ZN, ZEND, CURB, cs([178, 174, 166], K_TOP));
       x.fillStyle = cs([150, 146, 140], sw[2] < 0 ? K_TOP : K_LIT);
       wp([[face, gY(ZN), ZN], [face, gY(ZEND), ZEND], [face, gY(ZEND) + CURB, ZEND], [face, gY(ZN) + CURB, ZN]]); x.fill();
+      x.strokeStyle = cs([92, 88, 82], K_TOP, 0, 0.85); x.lineWidth = 1.3; x.beginPath();
+      for (let z = ZN + 0.4; z < ZEND - 1; z += 0.95 + r() * 0.25) {
+        x.moveTo.apply(x, P(cx0, gY(z) + CURB, z)); x.lineTo.apply(x, P(cx1, gY(z) + CURB, z)); x.lineTo.apply(x, P(face, gY(z), z));
+      }
+      x.stroke();
+      for (let i = 0; i < 16; i++) {
+        const z = ZN + 0.3 + r() * 26, l = 0.08 + r() * 0.14;
+        x.fillStyle = cs([98, 94, 88], K_TOP);
+        x.beginPath(); gpath([[face, z], [face + inw * (0.04 + r() * 0.05), z + l * 0.4], [face, z + l]], CURB + 0.001); x.fill();
+        x.fillStyle = cs([118, 112, 104], sw[2] < 0 ? K_TOP : K_LIT);
+        wp([[face, gY(z) + CURB, z], [face, gY(z) + CURB - 0.03 - r() * 0.04, z + l * 0.5], [face, gY(z + l) + CURB, z + l]]); x.fill();
+      }
     });
+    // пятна: ржавчина и сырость под водостоками, капель кондиционеров, мокрый тротуар у рыбной лавки
+    Object.keys(PROPS).forEach((i) => {
+      const h = HOUSES[i];
+      PROPS[i].forEach((p) => {
+        if (p.u < ZN + 0.5) return;
+        if (p.k === 'pipe') {
+          gblob(h.x + h.n * 0.6, p.u + 0.1, 0.55, 0.24, Math.round(p.u * 10), 'rgba(64,54,46,A)', 0.6, CURB);
+          gblob(h.x + h.n * 0.3, p.u, 0.22, 0.12, Math.round(p.u * 10) + 1, 'rgba(122,76,46,A)', 0.45, CURB);
+        } else if (p.k === 'ac') gblob(h.x + h.n * 0.4, p.u + 0.42, 0.24, 0.2, Math.round(p.u * 10) + 2, 'rgba(50,48,52,A)', 0.55, CURB);
+      });
+    });
+    gblob(5.75, 14.3, 0.6, 1.3, 351, 'rgba(40,44,54,A)', 0.55, CURB);
+    // затоптанные сырые пятна у порогов
+    HOUSES.forEach((h) => (h.gf || []).forEach((g) => {
+      if (g.k === 'door' && g.u0 > ZN) gblob(h.x + h.n * 0.5, (g.u0 + g.u1) / 2, 0.32, 0.55, Math.round(g.u0 * 10) + 7, 'rgba(66,58,52,A)', 0.32, CURB);
+    }));
+    // трава в швах у стен и бордюров
+    for (let i = 0; i < 12; i++) {
+      const left = i % 2 === 0, z = ZN + 1.5 + r() * 18, X = left ? (r() < 0.5 ? -5.75 : CL - 0.2) : (r() < 0.5 ? 6.05 : CR + 0.2);
+      weeds(X, gY(z) + CURB, z, 500 + i, 0.14 + r() * 0.1);
+    }
   }
 
   // ---------- Падающие тени на землю ----------
@@ -579,7 +803,12 @@
   }
   function collectShadows() {
     SHADOWS.length = 0;
-    HOUSES.forEach((h) => { if (h.s < 0) boxShadow(h.x - 14, h.x, h.x + (h.top === 'eave' ? 0.55 : 0.1), h.roof, h.z0, h.z1); });
+    HOUSES.forEach((h, i) => { if (h.s < 0) boxShadow(h.x - 14, h.x, h.x + (h.top === 'eave' ? 0.55 : 0.1), h.roof, i ? h.z0 : 4.4, h.z1); });
+    // за кадром слева: высокий дом до z 1,2 и одноэтажная лавка 1,2…4,4 — над ней солнце косой полосой ложится на мостовую
+    boxShadow(-20, -5.8, -5.25, 11.6, -12, 1.2);
+    boxShadow(-20, -5.8, -5.7, 4.3, 1.2, 4.4);
+    boxShadow(-6.5, -5.9, -5.9, HOUSES[0].roof + 1.9, 6.0, 6.7);   // труба у самого карниза — ступенька на краю тени
+    boxShadow(-6.2, -5.5, -5.5, HOUSES[1].roof + 1.2, 13.2, 14.6); // будка выхода на крышу
     boxShadow(-9, -7.6, -7.6, HOUSES[0].roof + 1.6, 4, 5.2);     // трубы на крышах
     boxShadow(-8.5, -7.3, -7.3, HOUSES[2].roof + 1.5, 24, 25.1);
   }
@@ -588,7 +817,9 @@
     const q = S / 3, c = mk(1920 * q, 1080 * q), keep = x;
     x = c.getContext('2d'); x.setTransform(q, 0, 0, q, 0, 0);
     x.beginPath(); SHADOWS.forEach((p) => gpath(p, CURB * 0.5));
-    x.fillStyle = 'rgb(112,124,160)'; x.fill();
+    const g = x.createLinearGradient(200, 0, 1500, 0);      // к освещённой стороне — больше отражённого света
+    g.addColorStop(0, 'rgb(122,131,162)'); g.addColorStop(1, 'rgb(150,154,176)');
+    x.fillStyle = g; x.fill();
     x = keep;
     x.save(); x.globalCompositeOperation = 'multiply'; x.drawImage(c, 0, 0, 1920, 1080); x.restore();
   }
@@ -650,13 +881,19 @@
       q.fillStyle = gr; q.fillRect(cu - rr, cv - rr, rr * 2, rr * 2);
     };
     for (let i = 0; i < 10; i++) blob(U(u0 + r() * (u1 - u0)), V(swY(u1) + r() * (h.roof - swY(u1))), (1 + r() * 2.6) * g, '150,130,106', 0.08 + r() * 0.1);
-    const streak = (cu, v0, w, len, a) => {
-      const gr = q.createLinearGradient(0, V(v0), 0, V(v0 - len));
-      gr.addColorStop(0, 'rgba(98,86,72,' + a.toFixed(2) + ')'); gr.addColorStop(1, 'rgba(98,86,72,0)');
+    const streak = (cu, v0, w, len, a, col) => {
+      const gr = q.createLinearGradient(0, V(v0), 0, V(v0 - len)), cc = col || '98,86,72';
+      gr.addColorStop(0, 'rgba(' + cc + ',' + a.toFixed(2) + ')'); gr.addColorStop(1, 'rgba(' + cc + ',0)');
       q.fillStyle = gr; q.fillRect(U(cu) - w * g / 2, V(v0), w * g, len * g);
     };
     for (let i = 0; i < 8; i++) streak(u0 + r() * (u1 - u0), h.roof, 0.15 + r() * 0.5, 1.5 + r() * 5, 0.12 + r() * 0.14);
-    (h.ops || []).forEach((o) => { if (o.v0 > swY(u1) + 1.5) streak((o.u0 + o.u1) / 2, o.v0 - 0.08, (o.u1 - o.u0) * (0.6 + r() * 0.3), 0.8 + r() * 1.8, 0.1 + r() * 0.1); });
+    (h.ops || []).forEach((o) => {
+      if (o.v0 > swY(u1) + 1.5) streak((o.u0 + o.u1) / 2, o.v0 - 0.08, (o.u1 - o.u0) * (0.6 + r() * 0.3), 0.8 + r() * 1.8, 0.12 + r() * 0.12);
+      // с углов балконной плиты стекает вода: два узких потёка
+      if (o.k === 'fdoor') [o.u0 - 0.36, o.u1 + 0.36].forEach((u) => streak(u + (r() - 0.5) * 0.1, o.v0 - 0.16, 0.12 + r() * 0.14, 1.0 + r() * 1.8, 0.16 + r() * 0.12));
+    });
+    // ржавый потёк от капели кондиционера
+    (PROPS[HOUSES.indexOf(h)] || []).forEach((p) => { if (p.k === 'ac') streak(p.u + 0.42, h.base + p.v - 0.06, 0.2, 1.6 + r() * 1.6, 0.26, '110,78,52'); });
     const gt = q.createLinearGradient(0, V(h.roof), 0, V(h.roof - 1.8));
     gt.addColorStop(0, sh ? 'rgba(84,80,78,0.42)' : 'rgba(120,106,92,0.26)'); gt.addColorStop(1, 'rgba(120,106,92,0)');
     q.fillStyle = gt; q.fillRect(0, 0, W, V(h.roof - 1.8));
@@ -665,7 +902,7 @@
     const y0 = V(swY(u0)), top = [];
     for (let u = u0; u <= u1 + 0.5; u += 0.5) top.push([U(u), y0 - (0.55 + r() * 0.5) * g]);
     const gd = q.createLinearGradient(0, y0 - 1.1 * g, 0, y0);
-    gd.addColorStop(0, 'rgba(118,104,88,0)'); gd.addColorStop(0.45, 'rgba(118,104,88,0.16)'); gd.addColorStop(1, 'rgba(92,80,68,0.3)');
+    gd.addColorStop(0, 'rgba(118,104,88,0)'); gd.addColorStop(0.4, 'rgba(112,98,84,0.22)'); gd.addColorStop(1, 'rgba(86,74,62,0.4)');
     q.fillStyle = gd; q.beginPath(); q.moveTo(0, y0 + 4);
     top.forEach((p) => q.lineTo(p[0], p[1])); q.lineTo(W, y0 + 4); q.closePath(); q.fill();
     q.restore();
@@ -677,8 +914,8 @@
     const u1 = h.z1, X = h.x, top = h.roof, zm = (u0 + u1) / 2;
     const poly = [[X, swY(u0) - 0.02, u0], [X, swY(u1) - 0.02, u1], [X, top, u1], [X, top, u0]];
     // контактная тень на тротуаре вдоль стены
-    [[0.34, 0.12], [0.12, 0.16]].forEach((a) => {
-      x.fillStyle = 'rgba(28,30,44,' + a[1] + ')';
+    [[0.45, 0.13], [0.2, 0.17], [0.07, 0.2]].forEach((a) => {
+      x.fillStyle = 'rgba(40,34,34,' + a[1] + ')';
       wp([[X, swY(u0), u0], [X, swY(u1), u1], [fX(h, a[0]), swY(u1), u1], [fX(h, a[0]), swY(u0), u0]]); x.fill();
     });
     x.fillStyle = cs(h.col, lite(h, 'wall'), zm); wp(poly); x.fill();
@@ -695,8 +932,17 @@
   }
   // облупившаяся штукатурка: рваное пятно, под ним кирпич (b) или бутовый камень (s); [u, v от base, w, h, вид, seed]
   const PATCH = {
-    0: [[9.0, 0.95, 0.9, 0.55, 's', 1]], 1: [[16.0, 2.75, 0.8, 0.45, 'b', 2]], 3: [[25.0, 4.85, 0.75, 0.5, 'b', 3]],
-    6: [[10.0, 0.9, 0.85, 0.5, 's', 4]], 7: [[17.0, 4.6, 0.7, 0.42, 'b', 5]], 8: [[22.2, 5.5, 0.85, 0.55, 'b', 6], [25.0, 1.0, 0.9, 0.5, 's', 7]],
+    0: [[8.35, 1.0, 1.0, 0.65, 's', 1], [8.4, 5.5, 1.1, 0.8, 'b', 11]],
+    1: [[15.85, 3.1, 0.75, 0.9, 'b', 2], [13.3, 7.2, 1.3, 0.85, 'b', 12]],
+    2: [[18.55, 6.0, 0.9, 0.8, 'b', 13]],
+    3: [[24.4, 7.6, 0.8, 0.9, 'b', 3], [26.8, 10.8, 0.8, 0.9, 'b', 14]],
+    4: [[32.1, 6.0, 0.9, 0.8, 'b', 15]],
+    5: [[39.5, 7.6, 1.0, 0.8, 'b', 16]],
+    6: [[10.0, 0.9, 0.85, 0.5, 's', 4], [9.5, 8.6, 1.2, 1.0, 'b', 17]],
+    7: [[17.15, 5.2, 0.9, 1.0, 'b', 5]],
+    8: [[22.15, 5.6, 1.0, 1.1, 'b', 6], [24.85, 0.95, 1.1, 0.7, 's', 7], [24.85, 8.6, 1.0, 0.9, 'b', 18]],
+    9: [[30.0, 5.9, 1.0, 0.9, 'b', 19]],
+    10: [[38.05, 7.6, 1.2, 0.9, 'b', 20]],
   };
   function patch(h, u, v, w, hh, kind, seed) {
     if (!vis(0.3, u, 3)) return;
@@ -771,17 +1017,17 @@
   const PLAN = [
     { bays: [9.7], ww: 1.2, frame: 'band', stone: true, fc: [96, 70, 50], gf: [{ k: 'door', u0: 8.7, u1: 9.95, h: 2.75 }] },
     { bays: [12.0, 14.6, 17.0], ww: 1.15, frame: 'band', balc: { 1: [14.6] }, bands: true,
-      gf: [{ k: 'shop', u0: 10.9, u1: 13.5, sign: 'PANE' }, { k: 'door', u0: 14.2, u1: 15.3, h: 2.5 }, { k: 'win', u0: 16.4, u1: 17.3 }] },
+      gf: [{ k: 'shop', u0: 10.9, u1: 13.5, sign: 'ХЛЕБ', int: 'bread', fc: [176, 162, 132] }, { k: 'door', u0: 14.2, u1: 15.3, h: 2.5 }, { k: 'win', u0: 16.4, u1: 17.3 }] },
     { bays: [19.75], ww: 1.0, frame: 'band', gf: [{ k: 'arch', u0: 18.45, u1: 21.05 }] },
     { bays: [23.2, 25.6, 28.0], ww: 1.15, frame: 'stone', stone: true, balc: { 1: [23.2, 25.6] }, fc: [92, 70, 52],
-      gf: [{ k: 'shop', u0: 22.2, u1: 24.7, sign: 'FARMACIA' }, { k: 'door', u0: 26.9, u1: 28.3, h: 2.9, arch: true }] },
+      gf: [{ k: 'shop', u0: 22.2, u1: 24.7, sign: 'АПТЕКА', int: 'pharm' }, { k: 'door', u0: 26.9, u1: 28.3, h: 2.9, arch: true }] },
     { bays: [31.0, 33.2, 35.4], ww: 1.1, frame: 'none', balc: { 1: [31.0, 35.4] },
       gf: [{ k: 'garage', u0: 30.2, u1: 32.6 }, { k: 'door', u0: 34.2, u1: 35.2, h: 2.3 }] },
     { bays: [38.2, 40.8, 43.4], ww: 1.15, frame: 'band', balc: { 1: [38.2, 40.8, 43.4], 2: [40.8] }, lb: { 1: true }, bands: true,
-      gf: [{ k: 'door', u0: 37.6, u1: 38.8, h: 2.6 }, { k: 'shop', u0: 40.3, u1: 44.6, sign: 'BAR' }] },
-    { bays: [10.8], ww: 1.2, frame: 'band', stone: true, gf: [{ k: 'shop', u0: 9.3, u1: 12.0 }] },
+      gf: [{ k: 'door', u0: 37.6, u1: 38.8, h: 2.6 }, { k: 'shop', u0: 40.3, u1: 44.6, sign: 'БАР', int: 'bar' }] },
+    { bays: [10.8], ww: 1.2, frame: 'band', stone: true, gf: [{ k: 'shop', u0: 9.3, u1: 12.0, int: 'cafe', fc: [40, 50, 46] }] },
     { bays: [13.7, 16.0, 18.3], ww: 1.1, frame: 'band', balc: { 1: [13.7, 16.0] }, bands: true, fc: [70, 104, 80],
-      gf: [{ k: 'shop', u0: 13.0, u1: 15.9, sign: 'PESCE', roll: 0.4 }, { k: 'door', u0: 17.3, u1: 18.5, h: 2.5 }] },
+      gf: [{ k: 'shop', u0: 13.0, u1: 15.9, sign: 'РЫБА', int: 'fish', fc: [50, 76, 100], roll: 0.32 }, { k: 'door', u0: 17.3, u1: 18.5, h: 2.5 }] },
     { bays: [20.8, 23.5, 26.2], ww: 1.2, frame: 'stone', stone: true, balc: { 1: [20.8, 23.5, 26.2], 2: [23.5], 3: [20.8, 26.2] }, lb: { 1: true }, bands: true,
       gf: [{ k: 'door', u0: 20.1, u1: 21.7, h: 3.0, arch: true }, { k: 'win', u0: 23.1, u1: 24.0 }, { k: 'win', u0: 25.7, u1: 26.6 }] },
     { bays: [28.7, 31.2, 33.7], ww: 1.1, frame: 'none', balc: { 2: [31.2] },
@@ -790,6 +1036,8 @@
       gf: [{ k: 'door', u0: 38.8, u1: 40.3, h: 2.8 }, { k: 'win', u0: 36.0, u1: 37.0 }, { k: 'win', u0: 41.9, u1: 42.9 }] },
   ];
   HOUSES.forEach((h, i) => Object.assign(h, PLAN[i] || {}));
+  // у каждого дома свои перила: прямые прутья, пузатые кованые или каменная балюстрада
+  ['iron', 'iron', 'iron', 'belly', 'bal', 'iron', 'iron', 'belly', 'bal', 'iron', 'belly'].forEach((t, i) => (HOUSES[i].rail = t));
 
   // проёмы дома: первый этаж из программы, выше — окна и балконные двери по осям
   function layout(h) {
@@ -896,7 +1144,9 @@
   }
   // окно или балконная дверь: обрамление, ставни, проём, подоконник (выступы — в список E)
   function windowAt(h, o, E) {
-    const u0 = o.u0, u1 = o.u1, v0 = o.v0, v1 = o.v1, w = u1 - u0, sc = h.sh, fr = h.frame;
+    const u0 = o.u0, u1 = o.u1, v0 = o.v0, v1 = o.v1, w = u1 - u0, fr = h.frame;
+    // краска ставен выгорает по-разному: на солнечной стороне сильнее
+    const sc = mixc(h.sh, [206, 202, 190], Tex.rng(Math.round(u0 * 41 + v0 * 7))() * (h.s > 0 ? 0.36 : 0.22));
     if (fr === 'band') { x.fillStyle = hc(h, tone(h.col, 0.45), 'wall', u0); fq(h, u0 - 0.14, v0 - 0.1, u1 + 0.14, v1 + 0.14, 0); x.fill(); }
     if (fr === 'stone') { x.fillStyle = hc(h, [190, 182, 168], 'wall', u0); fq(h, u0 - 0.15, v0 - 0.06, u1 + 0.15, v1 + 0.15, 0); x.fill(); }
     if (o.shut === 'closed') { leaf(h, u0, u0 + w / 2, v0, v1, 0.01, sc); leaf(h, u0 + w / 2, u1, v0, v1, 0.01, sc); }
@@ -1033,10 +1283,156 @@
     x.restore();
     E.push({ u: u0 - 0.16, dr: () => fbox(h, u0 - 0.16, u1 + 0.16, b - 0.02, v0, 0, 0.4, [178, 172, 160]) });
   };
+  // ---------- Зал за витриной: своё убранство у каждой лавки (o.int) ----------
+  const KI = [0.66, 0.62, 0.56];                  // свет в зале: тёплые лампы, тусклее улицы
+  // эллипс-многоугольник в плоскости фасада d: центр (uc, vc), полуоси ru (вдоль улицы) и rv, поворот a
+  function sell(h, d, uc, vc, ru, rv, a) {
+    const X = fX(h, d), ca = Math.cos(a || 0), sa = Math.sin(a || 0), pts = [];
+    for (let i = 0; i < 12; i++) {
+      const t = i / 12 * Math.PI * 2, eu = Math.cos(t) * ru, ev = Math.sin(t) * rv;
+      pts.push([X, vc + eu * sa + ev * ca, uc + eu * ca - ev * sa]);
+    }
+    sub(pts);
+  }
+  // рыба на льду: веретено и хвост, тёмная спинка; L — длина, a — наклон
+  function sfish(h, d, uc, vc, L, a, c) {
+    const X = fX(h, d), ca = Math.cos(a), sa = Math.sin(a), w = L * 0.17;
+    const loc = [[0.5, 0], [0.3, 0.8], [0, 1], [-0.3, 0.75], [-0.42, 0.3], [-0.56, 0.95], [-0.5, 0], [-0.56, -0.95], [-0.42, -0.3], [-0.3, -0.75], [0, -1], [0.3, -0.8]];
+    const pt = (q) => [X, vc + q[0] * L * sa + q[1] * w * ca, uc + q[0] * L * ca - q[1] * w * sa];
+    x.fillStyle = cs(c, KI, uc); x.beginPath(); sub(loc.map(pt)); x.fill();
+    x.fillStyle = cs(tone(c, -0.35), KI, uc); x.beginPath(); sub([[0.45, 0.1], [0, 0.9], [-0.4, 0.3], [-0.4, 0.05], [0, 0.3]].map(pt)); x.fill();
+  }
+  // стеллаж: полки с мелким товаром (аптека, бар, лавка без вывески)
+  function shelves(h, u0, u1, v0, v1, d, rr, wall, board, items, iw, ih) {
+    x.fillStyle = cs(wall, KI, u0); x.beginPath(); fqs(h, u0, v0, u1, v1, d); x.fill();
+    if (!vis(0.06, u0, 2)) return;
+    for (let s = 0; s < 4; s++) {
+      const vs = v0 + 0.62 + s * 0.42;
+      x.fillStyle = cs(board, KI, u0); x.beginPath(); fqs(h, u0 + 0.05, vs - 0.03, u1 - 0.05, vs + 0.02, d); x.fill();
+      x.beginPath();
+      for (let t = u0 + 0.1; t < u1 - 0.12; t += iw * (0.9 + rr() * 0.9)) {
+        const c = items[Math.floor(rr() * items.length)];
+        x.fillStyle = cs(c, KI, u0); x.beginPath(); fqs(h, t, vs + 0.02, t + iw * (0.6 + rr() * 0.3), vs + 0.02 + ih * (0.6 + rr() * 0.6), d); x.fill();
+      }
+    }
+  }
+  const SHOPI = {
+    // пекарня: тёплый зал, два косых стеллажа с батонами, прилавок с мраморной доской, корзины с багетами
+    bread: function (h, o, u0, ud, v0, v1, d, rr) {
+      const di = d - 0.7, dc = d - 0.3, U1 = ud + 0.95, um = (u0 + ud) / 2;
+      x.fillStyle = cs([212, 190, 150], KI, u0); x.beginPath(); fqs(h, u0, v0, U1, v1, di); x.fill();
+      if (!vis(0.06, u0, 2)) return;
+      [[u0 + 0.08, um - 0.05], [um + 0.05, U1 - 0.1]].forEach((s) => {
+        x.fillStyle = cs([118, 84, 56], KI, u0); x.beginPath();
+        fqs(h, s[0], v0 + 0.95, s[0] + 0.05, v0 + 2.25, di); fqs(h, s[1] - 0.05, v0 + 0.95, s[1], v0 + 2.25, di); x.fill();
+        for (let j = 0; j < 3; j++) {
+          const vb = v0 + 1.08 + j * 0.38;
+          x.fillStyle = cs([150, 108, 70], KI, u0); x.beginPath(); fqs(h, s[0], vb - 0.02, s[1], vb + 0.07, di); x.fill();
+          x.fillStyle = cs([96, 66, 44], KI, u0); x.beginPath(); fqs(h, s[0], vb - 0.04, s[1], vb, di); x.fill();
+          for (let t = s[0] + 0.1; t < s[1] - 0.08; t += 0.13 + rr() * 0.06) {
+            const c = [[190, 134, 72], [166, 108, 56], [206, 160, 98], [148, 94, 50]][Math.floor(rr() * 4)];
+            x.fillStyle = cs(c, KI, u0); x.beginPath(); sell(h, di, t, vb + 0.15, 0.07, 0.1 + rr() * 0.03, 0.35 + (rr() - 0.5) * 0.3); x.fill();
+            x.fillStyle = cs(tone(c, 0.32), KI, u0); x.beginPath(); sell(h, di, t - 0.012, vb + 0.19, 0.03, 0.045, 0.35); x.fill();
+          }
+        }
+      });
+      // прилавок: деревянная тумба и мраморная доска, на ней плетёные корзины
+      x.fillStyle = cs([124, 88, 58], KI, u0); x.beginPath(); fqs(h, u0, v0, U1, v0 + 0.92, dc); x.fill();
+      x.fillStyle = cs([214, 208, 196], KI, u0); x.beginPath(); fqs(h, u0, v0 + 0.9, U1, v0 + 0.96, dc); x.fill();
+      [[u0 + 0.2, 0.42, 1], [um + 0.1, 0.36, 0], [U1 - 0.55, 0.4, 1]].forEach((bk) => {
+        const ua = bk[0], ub = ua + bk[1], vb = v0 + 0.96;
+        if (bk[2]) {                                    // багеты стоймя, вразнобой
+          for (let i = 0; i < 5; i++) {
+            const t = ua + 0.06 + i * (bk[1] - 0.12) / 4, c = i % 2 ? [204, 152, 86] : [184, 128, 66];
+            x.fillStyle = cs(c, KI, u0); x.beginPath(); sell(h, dc, t + 0.03, vb + 0.36, 0.028, 0.3, (i - 2) * 0.09); x.fill();
+          }
+        } else {
+          for (let i = 0; i < 3; i++) { x.fillStyle = cs([192, 140, 80], KI, u0); x.beginPath(); sell(h, dc, ua + 0.08 + i * 0.1, vb + 0.2, 0.06, 0.05, 0); x.fill(); }
+        }
+        const X = fX(h, dc);
+        x.fillStyle = cs([150, 112, 68], KI, u0); x.beginPath(); sub([[X, vb, ua + 0.03], [X, vb, ub - 0.03], [X, vb + 0.2, ub], [X, vb + 0.2, ua]]); x.fill();
+        x.strokeStyle = cs([104, 74, 44], KI, u0, 0.8); x.lineWidth = lw(0.012, u0, 0.7); x.beginPath();
+        [0.06, 0.12].forEach((y) => { const a = P(X, vb + y, ua), c = P(X, vb + y, ub); x.moveTo(a[0], a[1]); x.lineTo(c[0], c[1]); });
+        x.stroke();
+      });
+    },
+    // кафе: тёмный зал, полоса зеркала с бутылками, стойка с кофемашиной, столики с венскими стульями у стекла
+    cafe: function (h, o, u0, ud, v0, v1, d, rr) {
+      const di = d - 0.95, dc = d - 0.65, dt = d - 0.22, U1 = ud + 0.95;
+      x.fillStyle = cs([98, 76, 60], KI, u0); x.beginPath(); fqs(h, u0, v0, U1, v1, di); x.fill();
+      x.fillStyle = cs([166, 174, 176], KI, u0); x.beginPath(); fqs(h, u0, v0 + 1.5, U1, v0 + 1.98, di); x.fill();
+      if (!vis(0.06, u0, 2)) return;
+      x.fillStyle = cs([66, 48, 36], KI, u0); x.beginPath(); fqs(h, u0, v0 + 1.46, U1, v0 + 1.5, di); x.fill();
+      for (let t = u0 + 0.1; t < U1 - 0.1; t += 0.08 + rr() * 0.07) {
+        const c = [[58, 80, 62], [98, 62, 40], [184, 172, 150], [50, 54, 58]][Math.floor(rr() * 4)], hb = 0.16 + rr() * 0.12;
+        x.fillStyle = cs(c, KI, u0); x.beginPath(); fqs(h, t, v0 + 1.5, t + 0.05, v0 + 1.5 + hb, di); fqs(h, t + 0.017, v0 + 1.5 + hb, t + 0.033, v0 + 1.56 + hb, di); x.fill();
+      }
+      x.fillStyle = cs([80, 58, 44], KI, u0); x.beginPath(); fqs(h, u0, v0, U1, v0 + 1.05, dc); x.fill();
+      x.fillStyle = cs([190, 176, 154], KI, u0); x.beginPath(); fqs(h, u0, v0 + 1.02, U1, v0 + 1.08, dc); x.fill();
+      const em = u0 + 0.3 + rr() * 0.25;
+      x.fillStyle = cs([180, 182, 180], KI, u0); x.beginPath(); fqs(h, em, v0 + 1.08, em + 0.6, v0 + 1.44, dc); x.fill();
+      x.fillStyle = cs([58, 58, 60], KI, u0); x.beginPath(); fqs(h, em + 0.05, v0 + 1.22, em + 0.55, v0 + 1.3, dc);
+      fqs(h, em + 0.12, v0 + 1.12, em + 0.2, v0 + 1.22, dc); fqs(h, em + 0.4, v0 + 1.12, em + 0.48, v0 + 1.22, dc); x.fill();
+      x.fillStyle = cs([232, 230, 222], KI, u0); x.beginPath();
+      for (let i = 0; i < 4; i++) fqs(h, em + 0.07 + i * 0.13, v0 + 1.44, em + 0.14 + i * 0.13, v0 + 1.5, dc);
+      x.fill();
+      const ic = cs([44, 36, 32], KI, u0);
+      [u0 + 0.5, u0 + 1.32].forEach((tu, i) => {
+        if (tu > ud - 0.25) return;
+        x.fillStyle = ic; x.beginPath();
+        fqs(h, tu - 0.3, v0 + 0.72, tu + 0.3, v0 + 0.77, dt); fqs(h, tu - 0.02, v0, tu + 0.02, v0 + 0.72, dt); fqs(h, tu - 0.17, v0, tu + 0.17, v0 + 0.03, dt);
+        const cu = tu + (i ? -0.4 : 0.4), cb = cu + (i ? -0.17 : 0.17);
+        fqs(h, cu - 0.17, v0, cu - 0.15, v0 + 0.45, dt); fqs(h, cu + 0.15, v0, cu + 0.17, v0 + 0.45, dt);
+        fqs(h, cu - 0.19, v0 + 0.43, cu + 0.19, v0 + 0.47, dt);
+        const Xt = fX(h, dt), lb = (i ? -0.06 : 0.06);         // спинка с лёгким наклоном назад
+        sub([[Xt, v0 + 0.45, cb - 0.016], [Xt, v0 + 0.45, cb + 0.016], [Xt, v0 + 0.92, cb + lb + 0.016], [Xt, v0 + 0.92, cb + lb - 0.016]]);
+        x.fill();
+      });
+    },
+    // рыбная лавка: белый кафель, наклонный лоток со льдом и рыбой, весы
+    fish: function (h, o, u0, ud, v0, v1, d, rr) {
+      const di = d - 0.75, dt = d - 0.3, U1 = ud + 0.95, Xi = fX(h, di);
+      x.fillStyle = cs([214, 220, 218], KI, u0); x.beginPath(); fqs(h, u0, v0, U1, v1, di); x.fill();
+      if (!vis(0.05, u0, 2)) return;
+      x.strokeStyle = cs([164, 172, 172], KI, u0, 0.7); x.lineWidth = lw(0.012, u0, 0.7); x.beginPath();
+      for (let v = v0 + 0.15; v < v1; v += 0.15) { const a = P(Xi, v, u0), c = P(Xi, v, U1); x.moveTo(a[0], a[1]); x.lineTo(c[0], c[1]); }
+      for (let u = u0 + 0.15; u < U1; u += 0.15) { const a = P(Xi, v0, u), c = P(Xi, v1, u); x.moveTo(a[0], a[1]); x.lineTo(c[0], c[1]); }
+      x.stroke();
+      const va = v0 + 0.5, vb = v0 + 1.18, ue = ud - 0.04;
+      x.fillStyle = cs([150, 156, 160], KI, u0); x.beginPath(); fqs(h, u0 + 0.05, v0, ue, va - 0.06, dt); x.fill();
+      x.fillStyle = cs([234, 236, 234], KI, u0); x.beginPath(); fqs(h, u0 + 0.05, va - 0.07, ue, vb + 0.05, dt); x.fill();
+      x.fillStyle = cs([186, 202, 212], KI, u0); x.beginPath(); fqs(h, u0 + 0.1, va, ue - 0.05, vb, dt); x.fill();
+      x.fillStyle = cs([240, 246, 248], KI, u0, 0.85); x.beginPath();
+      for (let i = 0; i < 46; i++) { const uu = u0 + 0.12 + rr() * (ue - u0 - 0.22), vv = va + rr() * (vb - va - 0.03); fqs(h, uu, vv, uu + 0.025, vv + 0.022, dt); }
+      x.fill();
+      for (let i = 0; i < 9; i++) {
+        const uu = u0 + 0.28 + rr() * (ue - u0 - 0.5), vv = va + 0.12 + rr() * (vb - va - 0.24);
+        sfish(h, dt, uu, vv, 0.26 + rr() * 0.12, (rr() - 0.5) * 1.1, rr() < 0.25 ? [180, 106, 94] : [172, 182, 188]);
+      }
+      x.fillStyle = cs([70, 110, 60], KI, u0); x.beginPath();
+      for (let i = 0; i < 10; i++) { const uu = u0 + 0.2 + rr() * (ue - u0 - 0.4), vv = va + 0.02 + rr() * 0.08; fqs(h, uu, vv, uu + 0.05, vv + 0.035, dt); }
+      x.fill();
+      // весы у двери: белый короб, круглая шкала
+      const us = ud + 0.2;
+      x.fillStyle = cs([226, 228, 226], KI, u0); x.beginPath(); fqs(h, us, v0 + 0.95, us + 0.36, v0 + 1.12, di + 0.2); x.fill();
+      x.beginPath(); sell(h, di + 0.2, us + 0.18, v0 + 1.3, 0.14, 0.14, 0); x.fill();
+      x.fillStyle = cs([60, 64, 66], KI, u0); x.beginPath(); fqs(h, us + 0.17, v0 + 1.12, us + 0.19, v0 + 1.18, di + 0.2); x.fill();
+    },
+    pharm: function (h, o, u0, ud, v0, v1, d, rr) {
+      shelves(h, u0, ud + 0.95, v0, v1, d - 0.6, rr, [226, 228, 224], [236, 236, 232], [[216, 218, 214], [170, 204, 194], [228, 220, 194], [196, 212, 228], [214, 176, 166]], 0.1, 0.16);
+    },
+    bar: function (h, o, u0, ud, v0, v1, d, rr) {
+      shelves(h, u0, ud + 0.95, v0, v1, d - 0.8, rr, [88, 64, 52], [60, 44, 36], [[52, 76, 58], [110, 66, 42], [178, 164, 128], [48, 50, 54]], 0.07, 0.3);
+    },
+    shelf: function (h, o, u0, ud, v0, v1, d, rr) {
+      shelves(h, u0, ud + 0.95, v0, v1, d - 0.5, rr, [120, 104, 86], [96, 84, 70], [[168, 140, 96], [190, 186, 172], [120, 128, 104], [150, 96, 74]], 0.12, 0.3);
+    },
+  };
+
   // вывески над витринами: вид, цвет фриза (null — буквы прямо по штукатурке) и букв
   const SIGNS = {
-    PANE: { bg: null, fg: [128, 58, 44] }, FARMACIA: { bg: [52, 84, 66], fg: [236, 232, 220] },
-    PESCE: { bg: [44, 70, 104], fg: [236, 232, 222] }, BAR: { bg: [86, 40, 38], fg: [236, 226, 206] },
+    'ХЛЕБ': { bg: null, fg: [128, 58, 44] }, 'АПТЕКА': { bg: [52, 84, 66], fg: [236, 232, 220] },
+    'РЫБА': { bg: [44, 70, 104], fg: [236, 232, 222] }, 'БАР': { bg: [86, 40, 38], fg: [236, 226, 206] },
   };
   // витрина: рама, стекло с отражением, полки с товаром, дверь, жалюзи-ролета; над ней — вывеска
   OPEN.shop = function (h, o, E) {
@@ -1046,24 +1442,23 @@
     x.save(); x.beginPath(); fqs(h, u0, v0, u1, v1, 0); x.clip();
     x.fillStyle = cs(tone(h.col, 0.1), h.s < 0 ? [0.44, 0.47, 0.56] : K_FR, u0); x.fill();
     if (v1 > EYE) { x.fillStyle = cs(h.col, h.s < 0 ? K_DK : K_SH, u0); wp([[h.x, v1, u0], [h.x, v1, u1], [X, v1, u1], [X, v1, u0]]); x.fill(); }
-    // стекло: сверху отражение улицы, ниже полутёмный зал
+    const ud = u1 - 0.95;
+    // зал за стеклом — своё убранство у каждой лавки
+    x.save(); x.beginPath(); fqs(h, u0, v0, u1, v1, -r); x.clip();
+    (SHOPI[o.int] || SHOPI.shelf)(h, o, u0, ud, v0, v1, -r, rr);
+    x.restore();
+    // стекло: сверху отражение противоположной стороны улицы, к низу прозрачнее; косой блик у каждой витрины свой
     const a = P(X, v1, u0), bb = P(X, v0, u0), g = x.createLinearGradient(a[0], a[1], bb[0], bb[1]);
-    g.addColorStop(0, cs(h.s < 0 ? [170, 160, 140] : [112, 128, 140], 1, u0)); g.addColorStop(0.35, cs([70, 68, 64], 1, u0)); g.addColorStop(1, cs([44, 42, 40], 1, u0));
+    const refl = mixc(h.s < 0 ? [200, 182, 150] : [118, 134, 148], [150, 160, 168], rr() * 0.4);
+    g.addColorStop(0, cs(refl, 1, u0, 0.88)); g.addColorStop(0.24 + rr() * 0.12, cs(refl, 1, u0, 0.32));
+    g.addColorStop(0.7, cs([40, 40, 42], 1, u0, 0.05)); g.addColorStop(1, cs([24, 24, 26], 1, u0, 0.42));
     x.fillStyle = g; x.beginPath(); fqs(h, u0, v0, u1, v1, -r); x.fill();
-    if (vis(0.08, u0, 2)) {                     // полки с товаром
-      for (let s = 0; s < 3; s++) {
-        const vs = v0 + 0.7 + s * 0.55;
-        x.fillStyle = cs([96, 84, 70], 1, u0, 0.8); x.beginPath(); fqs(h, u0 + 0.1, vs, u1 - 0.1, vs + 0.04, -r - 0.3); x.fill();
-        for (let t = u0 + 0.15; t < u1 - 0.25; t += 0.12 + rr() * 0.2) {
-          const c = [[168, 140, 96], [190, 186, 172], [120, 128, 104], [150, 96, 74], [96, 112, 128]][Math.floor(rr() * 5)];
-          x.fillStyle = cs(c, 0.8, u0, 0.75); x.beginPath(); fqs(h, t, vs + 0.04, t + 0.08 + rr() * 0.1, vs + 0.16 + rr() * 0.22, -r - 0.3); x.fill();
-        }
-      }
-      x.fillStyle = cs(h.s < 0 ? [236, 228, 210] : [190, 210, 226], 1, u0, 0.12);        // блик отражения
-      x.beginPath(); sub([[X, v0 + 0.3, u0 + 0.2], [X, v0 + 0.3, u0 + 0.7], [X, v1, u0 + 1.5], [X, v1, u0 + 1.0]]); x.fill();
+    if (vis(0.08, u0, 2)) {
+      const p0 = 0.1 + rr() * 0.6, pw = 0.2 + rr() * 0.35;
+      x.fillStyle = cs(h.s < 0 ? [240, 232, 214] : [196, 214, 228], 1, u0, (0.07 + rr() * 0.08).toFixed(2));
+      x.beginPath(); sub([[X, v0 + 0.3, u0 + p0], [X, v0 + 0.3, u0 + p0 + pw], [X, v1, u0 + p0 + pw + 0.8], [X, v1, u0 + p0 + 0.8 - pw * 0.3]]); x.fill();
     }
     // рама витрины и дверь в дальнем конце
-    const ud = u1 - 0.95;
     x.fillStyle = cs(fc, k, u0); x.beginPath();
     fqs(h, u0, v0, u1, v0 + 0.45, -r); fqs(h, u0, v1 - 0.08, u1, v1, -r); fqs(h, u0, v0, u0 + 0.08, v1, -r); fqs(h, u1 - 0.08, v0, u1, v1, -r);
     fqs(h, ud - 0.08, v0, ud, v1, -r); fqs(h, u0, v1 - 0.6, u1, v1 - 0.54, -r); fqs(h, (u0 + ud) / 2 - 0.04, v0, (u0 + ud) / 2 + 0.04, v1, -r);
@@ -1129,51 +1524,137 @@
   };
 
   // ---------- Балконы и растения ----------
-  // куст в горшке (плоский, лицом к зрителю): листья мелкими пятнами, неровный силуэт; kind: 'ger' — герань,
-  // 'ivy' — свисающий плющ, 'bush' — зелень повыше. Рисуется в плоскости z = Z, единица — метр
-  function plant(X, Y, Z, sz, kind, seed, k) {
+  // ёмкость под растение (плоская, лицом к зрителю, единица — метр): возвращает высоту края
+  function potDraw(pot, sz, k, Z, r) {
+    const C = (c) => cs(c, k, Z);
+    if (pot === 'tin') {                      // старая жестянка из-под масла: выцветшая этикетка, ржавый край
+      x.fillStyle = C([150, 154, 148]); x.fillRect(-0.19 * sz, 0, 0.38 * sz, 0.4 * sz);
+      x.fillStyle = C([178, 150, 84]); x.fillRect(-0.19 * sz, 0.12 * sz, 0.38 * sz, 0.15 * sz);
+      x.fillStyle = C([120, 84, 58]); x.fillRect(-0.2 * sz, 0.37 * sz, 0.4 * sz, 0.035 * sz);
+      return 0.4 * sz;
+    }
+    if (pot === 'box') {                      // деревянный ящик: доски, тёмные щели
+      x.fillStyle = C([128, 98, 68]); x.fillRect(-0.3 * sz, 0, 0.6 * sz, 0.36 * sz);
+      x.fillStyle = C([88, 64, 44]); [-0.1, 0.1].forEach((u) => x.fillRect(u * sz - 0.006, 0, 0.012, 0.36 * sz)); x.fillRect(-0.3 * sz, 0.33 * sz, 0.6 * sz, 0.03 * sz);
+      return 0.36 * sz;
+    }
+    if (pot === 'amphora') {                  // высокая амфора
+      x.fillStyle = C([176, 108, 76]); x.beginPath(); x.moveTo(-0.09 * sz, 0);
+      x.quadraticCurveTo(-0.34 * sz, 0.32 * sz, -0.11 * sz, 0.68 * sz); x.lineTo(-0.14 * sz, 0.76 * sz); x.lineTo(0.14 * sz, 0.76 * sz); x.lineTo(0.11 * sz, 0.68 * sz);
+      x.quadraticCurveTo(0.34 * sz, 0.32 * sz, 0.09 * sz, 0); x.closePath(); x.fill();
+      x.fillStyle = C([140, 82, 58]); x.fillRect(-0.15 * sz, 0.72 * sz, 0.3 * sz, 0.04 * sz);
+      return 0.75 * sz;
+    }
+    if (pot === 'trough') {                   // каменное корыто
+      x.fillStyle = C([170, 164, 152]); x.fillRect(-0.46 * sz, 0, 0.92 * sz, 0.27 * sz);
+      x.fillStyle = C([128, 124, 116]); x.fillRect(-0.46 * sz, 0, 0.92 * sz, 0.06 * sz); x.fillRect(-0.47 * sz, 0.24 * sz, 0.94 * sz, 0.04 * sz);
+      return 0.27 * sz;
+    }
+    x.fillStyle = C([168, 96, 66]);           // терракота
+    x.beginPath(); x.moveTo(-0.2 * sz, 0); x.lineTo(0.2 * sz, 0); x.lineTo(0.26 * sz, 0.4 * sz); x.lineTo(-0.26 * sz, 0.4 * sz); x.closePath(); x.fill();
+    x.fillStyle = C([136, 76, 52]); x.fillRect(-0.27 * sz, 0.35 * sz, 0.54 * sz, 0.06 * sz);
+    return 0.4 * sz;
+  }
+  // острый лист-ромб в общий путь: основание (lx, ly), длина L, ширина w, направление a
+  function leafTo(lx, ly, L, w, a) {
+    const c = Math.cos(a), s = Math.sin(a);
+    x.moveTo(lx, ly); x.lineTo(lx + c * L * 0.45 - s * w, ly + s * L * 0.45 + c * w);
+    x.lineTo(lx + c * L, ly + s * L); x.lineTo(lx + c * L * 0.45 + s * w, ly + s * L * 0.45 - c * w); x.closePath();
+  }
+  // растение в ёмкости; kind: 'ger' — герань, 'ivy' — плющ, 'bush' — зелень, 'agave' — агава,
+  // 'lemon' — лимонное деревце, 'herbs' — розмарин. Листья острые, по цветам — одной заливкой
+  function plant(X, Y, Z, sz, kind, seed, k, pot) {
     const r = Tex.rng(seed), kk = F / Z;
     if (kk * sz * S < 3) return;
     front(X, Y, Z, () => {
-      x.fillStyle = cs([168, 96, 66], k, Z);                              // терракотовый горшок
-      x.beginPath(); x.moveTo(-sz * 0.22, 0); x.lineTo(sz * 0.22, 0); x.lineTo(sz * 0.26, sz * 0.32); x.lineTo(-sz * 0.26, sz * 0.32); x.closePath(); x.fill();
-      x.fillStyle = cs([138, 76, 52], k, Z); x.fillRect(-sz * 0.27, sz * 0.27, sz * 0.54, sz * 0.06);
-      const G = [[52, 78, 44], [70, 100, 52], [92, 122, 62], [44, 64, 40]];
-      const n = Math.min(130, Math.round(kk * sz * 2.4)), hgt = kind === 'bush' ? sz * 1.5 : sz * 0.85;
-      const g3 = () => (r() + r() + r() - 1.5) / 1.5;                     // плотнее к середине кроны
-      // тёмная масса кроны (тень внутри куста), поверх — листья светлее
-      const blobs = kind === 'ivy' ? 5 : 7;
-      for (let i = 0; i < blobs; i++) {
-        const lx = g3() * sz * 0.32, ly = kind === 'ivy' && i % 2 ? sz * 0.2 - r() * sz * 0.9 : sz * 0.3 + hgt * (0.2 + 0.55 * r());
-        x.fillStyle = cs([34, 50, 32], k, Z); x.beginPath(); x.ellipse(lx, ly, sz * (0.12 + 0.1 * r()), sz * (0.1 + 0.08 * r()), r() * 3, 0, Math.PI * 2); x.fill();
+      const rim = potDraw(pot || 'terra', sz, k, Z, r);
+      const G = [[50, 76, 44], [68, 98, 52], [90, 120, 62], [42, 62, 40]], P4 = [[], [], [], []];
+      const g3 = () => (r() + r() + r() - 1.5) / 1.5;
+      const fillAll = (cols) => cols.forEach((c, i) => { if (!P4[i].length) return; x.fillStyle = cs(c, k, Z); x.beginPath(); P4[i].forEach((f) => f()); x.fill(); });
+      if (kind === 'agave') {
+        for (let i = 0; i < 13; i++) {
+          const a = Math.PI * (0.06 + 0.88 * i / 12) + (r() - 0.5) * 0.2, L = sz * (0.45 + r() * 0.4), w = L * 0.09;
+          P4[i % 3 ? 0 : 1].push(() => { x.moveTo(-w, rim); x.lineTo(Math.cos(a) * L, rim + Math.sin(a) * L); x.lineTo(w, rim); x.closePath(); });
+        }
+        fillAll([[104, 134, 120], [128, 156, 138]]);
+        return;
+      }
+      if (kind === 'herbs') {
+        x.strokeStyle = cs([96, 116, 90], k, Z); x.lineWidth = Math.max(0.012, 1 / kk); x.beginPath();
+        for (let i = 0; i < 40; i++) { const bx = (r() - 0.5) * 0.8 * sz, a = Math.PI / 2 + (r() - 0.5) * 0.7, L = sz * (0.15 + r() * 0.25); x.moveTo(bx, rim); x.lineTo(bx + Math.cos(a) * L, rim + Math.sin(a) * L); }
+        x.stroke();
+        return;
+      }
+      let cy = rim + sz * 0.42, rx = sz * 0.36, ry = sz * 0.36, n = Math.min(110, Math.round(kk * sz * 2));
+      if (kind === 'lemon') {
+        x.fillStyle = cs([96, 74, 56], k, Z); x.fillRect(-0.025 * sz, rim - 0.02, 0.05 * sz, 0.9 * sz);
+        cy = rim + sz * 1.15; rx = sz * 0.48; ry = sz * 0.4; n = Math.min(160, n * 2);
+      } else if (kind === 'bush') { cy = rim + sz * 0.6; ry = sz * 0.55; }
+      for (let i = 0; i < 6; i++) {                       // тёмная масса кроны
+        x.fillStyle = cs([34, 50, 32], k, Z); x.beginPath(); x.ellipse(g3() * rx * 0.6, cy + g3() * ry * 0.5, rx * (0.35 + 0.2 * r()), ry * (0.3 + 0.2 * r()), r() * 3, 0, Math.PI * 2); x.fill();
       }
       for (let i = 0; i < n; i++) {
-        let lx, ly;
-        if (kind === 'ivy' && i % 2) { lx = g3() * sz * 0.45; ly = sz * 0.3 - r() * r() * sz * 1.5; }
-        else { const t = r(); lx = g3() * sz * (0.35 + 0.4 * t); ly = sz * 0.3 + hgt * (1 - t * t) * (0.25 + 0.6 * r()); }
-        const c = G[Math.floor(r() * 4)], f = 0.5 + 0.5 * r();
-        x.fillStyle = cs(c, k, Z); x.beginPath(); x.ellipse(lx, ly, sz * 0.075 * f, sz * 0.045 * f, r() * 3, 0, Math.PI * 2); x.fill();
+        let lx, ly, a;
+        if (kind === 'ivy' && i % 2) { lx = (r() < 0.5 ? -1 : 1) * sz * (0.15 + r() * 0.2); ly = rim - r() * r() * sz * 1.3; a = -Math.PI / 2 + (r() - 0.5) * 1.4; }
+        else { lx = g3() * rx; ly = cy + g3() * ry; a = Math.atan2(ly - cy, lx) + (r() - 0.5) * 1.3; }
+        const L = sz * (0.08 + r() * 0.07) * (kind === 'lemon' ? 0.8 : 1);
+        P4[Math.floor(r() * 4)].push(() => leafTo(lx, ly, L, L * 0.3, a));
       }
+      fillAll(G);
       if (kind === 'ger') {
         const FL = [[176, 56, 52], [196, 86, 104], [214, 206, 196]][seed % 3];
-        for (let i = 0; i < n / 4; i++) { x.fillStyle = cs(FL, k, Z); x.beginPath(); x.ellipse((r() - 0.5) * sz * 0.9, sz * 0.5 + r() * hgt * 0.6, sz * 0.05, sz * 0.045, 0, 0, Math.PI * 2); x.fill(); }
+        x.fillStyle = cs(FL, k, Z); x.beginPath();
+        for (let i = 0; i < 7; i++) {
+          const fx = g3() * rx * 0.9, fy = cy + ry * (0.1 + r() * 0.7);
+          for (let j = 0; j < 5; j++) { const a = j / 5 * Math.PI * 2; x.moveTo(fx + Math.cos(a) * sz * 0.035, fy + Math.sin(a) * sz * 0.035); x.arc(fx + Math.cos(a) * sz * 0.035, fy + Math.sin(a) * sz * 0.035, sz * 0.025, 0, Math.PI * 2); }
+        }
+        x.fill();
+      }
+      if (kind === 'lemon') {
+        x.fillStyle = cs([214, 190, 72], k, Z); x.beginPath();
+        for (let i = 0; i < 9; i++) { const fx = g3() * rx * 0.8, fy = cy + g3() * ry * 0.7; x.moveTo(fx + sz * 0.035, fy); x.ellipse(fx, fy, sz * 0.035, sz * 0.045, 0, 0, Math.PI * 2); }
+        x.fill();
       }
     });
   }
-  // перила: стойки и поручни по ломаной (точки по низу), высота ht
-  function rail(pts, ht, u, c) {
+  // перила по ломаной (точки по низу), высота ht. type: 'iron' — прямые прутья, 'belly' — пузатые кованые
+  // (низ лицевой стороны выгнут к улице, xf — плоскость лица, n — наружу), 'bal' — каменная балюстрада
+  function rail(pts, ht, u, c, type, k, xf, n) {
+    if (type === 'bal') { balustrade(pts, ht, u, k); return; }
+    const belly = type === 'belly', bul = (X, f) => (belly && X === xf ? n * 0.16 * Math.sin(Math.PI * Math.min(1, f / 0.72)) : 0);
     x.beginPath();
     for (let i = 0; i < pts.length - 1; i++) {
-      const a = pts[i], b = pts[i + 1], L = Math.hypot(b[0] - a[0], b[2] - a[2]), n = Math.max(1, Math.round(L / 0.11));
-      for (let j = 0; j <= n; j++) {
-        const t = j / n, X = a[0] + (b[0] - a[0]) * t, Z = a[2] + (b[2] - a[2]) * t, p = P(X, a[1], Z), q = P(X, a[1] + ht, Z);
-        x.moveTo(p[0], p[1]); x.lineTo(q[0], q[1]);
+      const a = pts[i], b = pts[i + 1], L = Math.hypot(b[0] - a[0], b[2] - a[2]), m = Math.max(1, Math.round(L / 0.11));
+      for (let j = 0; j <= m; j++) {
+        const t = j / m, X = a[0] + (b[0] - a[0]) * t, Z = a[2] + (b[2] - a[2]) * t, st = belly && X === xf ? 6 : 1;
+        for (let q = 0; q <= st; q++) { const f = q / st, p = P(X + bul(X, f), a[1] + ht * f, Z); if (q) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]); }
       }
     }
     x.lineWidth = lw(0.018, u, 0.9); x.strokeStyle = c; x.stroke();
-    [ht, 0.06].forEach((dy, i) => {
-      x.beginPath(); pts.forEach((p, j) => { const s = P(p[0], p[1] + dy, p[2]); if (j) x.lineTo(s[0], s[1]); else x.moveTo(s[0], s[1]); });
+    [[ht, 1], belly ? [ht * 0.36, 0.36] : [0.06, 0]].forEach((d, i) => {
+      x.beginPath(); pts.forEach((p, j) => { const s = P(p[0] + bul(p[0], d[1]), p[1] + d[0], p[2]); if (j) x.lineTo(s[0], s[1]); else x.moveTo(s[0], s[1]); });
       x.lineWidth = lw(i ? 0.03 : 0.045, u, 1.1); x.strokeStyle = c; x.stroke();
+    });
+  }
+  // каменная балюстрада: пузатые балясины, толстый поручень и цоколь
+  function balustrade(pts, ht, u, k) {
+    const c = [212, 206, 194];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = pts[i], b = pts[i + 1], L = Math.hypot(b[0] - a[0], b[2] - a[2]), m = Math.max(1, Math.round(L / 0.22));
+      for (let j = 0; j <= m; j++) {
+        const t = j / m, X = a[0] + (b[0] - a[0]) * t, Z = a[2] + (b[2] - a[2]) * t;
+        front(X, a[1], Z, () => {
+          x.fillStyle = cs(c, k, Z); x.beginPath(); x.moveTo(-0.045, 0.08); x.quadraticCurveTo(-0.12, ht * 0.32, -0.035, ht * 0.6); x.lineTo(-0.05, ht - 0.1);
+          x.lineTo(0.05, ht - 0.1); x.lineTo(0.035, ht * 0.6); x.quadraticCurveTo(0.12, ht * 0.32, 0.045, 0.08); x.closePath(); x.fill();
+          x.fillStyle = cs(tone(c, -0.35), k, Z, 0.45); x.fillRect(0.012, 0.12, 0.04, ht * 0.45);
+        });
+      }
+    }
+    [[ht - 0.12, ht + 0.02], [0, 0.1]].forEach((d, i) => {
+      for (let j = 0; j < pts.length - 1; j++) {
+        const a = pts[j], b = pts[j + 1];
+        x.fillStyle = cs(i ? tone(c, -0.1) : c, k, a[2]); wp([[a[0], a[1] + d[0], a[2]], [b[0], b[1] + d[0], b[2]], [b[0], b[1] + d[1], b[2]], [a[0], a[1] + d[1], a[2]]]); x.fill();
+      }
     });
   }
   // балкон a..b на уровне пола v: плита на консолях, кованые перила, горшки, полотенце на перилах
@@ -1186,18 +1667,19 @@
     }
     const Xf = fX(h, dp - 0.05), X0 = fX(h, 0.02), ht = 0.98;
     const pots = [];
-    for (let u = a + 0.25; u < b - 0.2; u += 0.45 + r() * 0.5) if (r() < 0.7) pots.push([u, ['ger', 'ivy', 'bush'][Math.floor(r() * 3)], Math.floor(r() * 1000)]);
+    for (let u = a + 0.25; u < b - 0.2; u += 0.45 + r() * 0.5) if (r() < 0.7) pots.push([u, ['ger', 'ivy', 'bush'][Math.floor(r() * 3)], Math.floor(r() * 1000), ['terra', 'terra', 'tin', 'box'][Math.floor(r() * 4)]]);
     const towel = r() < 0.45 ? [a + 0.3 + r() * (b - a - 1.0), [[214, 206, 190], [120, 150, 170], [176, 96, 84], [210, 190, 120]][Math.floor(r() * 4)]] : null;
     E.push({
       u: a,
       sh: () => { shq(h, a, b, v - 0.16, v, dp); shq(h, a, b, v + ht - 0.04, v + ht, dp - 0.05); },
       dr: () => {
-        rail([[X0, v, b - 0.03], [Xf, v, b - 0.03]], ht, a, ic);                    // дальний бок перил
+        const kr = h.s < 0 ? K_SH : K_FR;
+        rail([[X0, v, b - 0.03], [Xf, v, b - 0.03]], ht, a, ic, h.rail, kr, Xf, h.n);   // дальний бок перил
         fbox(h, a, b, v - 0.16, v, 0, dp, sc);
         if (vis(0.1, a, 2)) for (let u = a + 0.12; u < b - 0.1; u += Math.max(0.5, (b - a - 0.36) / 2)) fbox(h, u, u + 0.12, v - 0.46, v - 0.16, 0, dp - 0.2, tone(sc, -0.06));
         const k = h.s < 0 ? K_SH : [0.86, 0.84, 0.78];
-        pots.forEach((p) => plant(fX(h, dp * 0.55), v, p[0], 0.5, p[1], p[2], k));
-        rail([[Xf, v, b - 0.03], [Xf, v, a + 0.03], [X0, v, a + 0.03]], ht, a, ic);  // лицевые перила и ближний бок
+        pots.forEach((p) => plant(fX(h, dp * 0.55), v, p[0], 0.5, p[1], p[2], k, p[3]));
+        rail([[Xf, v, b - 0.03], [Xf, v, a + 0.03], [X0, v, a + 0.03]], ht, a, ic, h.rail, kr, Xf, h.n);  // лицо и ближний бок
         if (towel) {
           const t0 = towel[0], t1 = t0 + 0.55;
           x.fillStyle = cs(towel[1], h.s < 0 ? K_SH : K_LIT, t0);
@@ -1221,15 +1703,15 @@
   // v — высота от уровня первого этажа дома (h.base)
   const PROPS = {
     0: [{ k: 'lamp', u: 10.15, v: 3.5 }],
-    1: [{ k: 'pipe', u: 10.6 }, { k: 'cable', v: 3.62, u0: 10.6, u1: 18 }, { k: 'plaque', u: 11.2, v: 2.98, t: 'VIA DEL|PORTO' }, { k: 'ac', u: 16.1, v: 4.6 }],
+    1: [{ k: 'pipe', u: 10.6 }, { k: 'cable', v: 3.62, u0: 10.6, u1: 18 }, { k: 'plaque', u: 13.86, v: 2.9, t: 'ПОРТОВАЯ|улица' }, { k: 'ac', u: 16.1, v: 4.6 }],
     3: [{ k: 'pipe', u: 21.75 }, { k: 'flag', u: 22.0, v: 3.35, t: '+' }, { k: 'ac', u: 26.5, v: 7.3 }, { k: 'cable', v: 3.9, u0: 21.6, u1: 29.4 }],
     4: [{ k: 'pipe', u: 29.75 }, { k: 'roof', u: 34.6, t: 'pergola' }, { k: 'roof', u: 33.0, t: 'antenna' }],
     5: [{ k: 'pipe', u: 36.75 }, { k: 'lamp', u: 39.7, v: 3.0 }],
-    6: [{ k: 'flag', u: 10.35, v: 3.15, t: 'CAFFÈ' }, { k: 'lamp', u: 12.2, v: 4.5 }],
-    7: [{ k: 'pipe', u: 12.75 }, { k: 'cable', v: 3.45, u0: 12.6, u1: 19.4 }, { k: 'ac', u: 18.2, v: 4.7 }],
+    6: [{ k: 'flag', u: 10.35, v: 3.15, t: 'КАФЕ' }, { k: 'lamp', u: 12.2, v: 4.5 }],
+    7: [{ k: 'pipe', u: 12.75 }, { k: 'cable', v: 3.45, u0: 12.6, u1: 19.4 }, { k: 'ac', u: 18.2, v: 4.7 }, { k: 'bougain', u: 16.65 }],
     8: [{ k: 'pipe', u: 19.75 }, { k: 'pipe', u: 27.25 }, { k: 'lamp', u: 24.8, v: 3.7 }, { k: 'ac', u: 22.0, v: 10.4 }, { k: 'dish', u: 24.9, v: 8.3 }],
     9: [{ k: 'cable', v: 5.3, u0: 27.6, u1: 35 }, { k: 'roof', u: 31.0, t: 'antenna' }, { k: 'roof', u: 33.4, t: 'pergola' }],
-    10: [{ k: 'pipe', u: 35.2 }, { k: 'flag', u: 35.45, v: 7.4, t: 'HOTEL' }],
+    10: [{ k: 'pipe', u: 35.2 }, { k: 'flag', u: 35.45, v: 7.4, t: 'ОТЕЛЬ' }],
   };
   const IRON = [38, 40, 40];
   // водосточная труба с хомутами и коленом у тротуара
@@ -1267,12 +1749,12 @@
         x.fillStyle = ic; x.fillRect(Math.min(0, n * 0.25), -tt, 0.25, 2 * tt);
         x.fillStyle = cs([226, 224, 216], k, u); x.fillRect(c - 0.33, -0.66, 0.66, 0.66);
         x.fillStyle = cs([58, 128, 84], k, u); x.fillRect(c - 0.08, -0.6, 0.16, 0.54); x.fillRect(c - 0.27, -0.41, 0.54, 0.16);
-      } else if (t === 'HOTEL') {
+      } else if (t === 'ОТЕЛЬ') {
         const c = n * 0.62;
         x.fillStyle = ic; x.fillRect(Math.min(0, n * 0.4), 0.02, 0.4, 2 * tt); x.fillRect(Math.min(0, n * 0.4), -2.0, 0.4, 2 * tt);
         x.fillStyle = cs([236, 232, 222], k, u); x.fillRect(c - 0.27, -2.2, 0.54, 2.3);
         x.fillStyle = cs([44, 66, 102], k, u); x.fillRect(c - 0.23, -2.16, 0.46, 2.22);
-        'HOTEL'.split('').forEach((ch, i) => txt(ch, c, -0.2 - i * 0.42, 0.34, [236, 230, 214]));
+        t.split('').forEach((ch, i) => txt(ch, c, -0.2 - i * 0.42, 0.34, [236, 230, 214]));
       } else {
         const c = n * 0.66;
         x.fillStyle = ic; x.fillRect(Math.min(0, n * 1.15), -tt, 1.15, 2 * tt);
@@ -1345,6 +1827,25 @@
       x.restore();
     }) });
   }
+  // бугенвиллея по стене от земли к балкону: кривой ствол, листья и грозди прицветников — острыми листьями
+  function bougain(h, u, E) {
+    E.push({ u: u - 0.6, dr: () => {
+      const b = swY(u), r = Tex.rng(Math.round(u * 77)), k = h.s < 0 ? K_SH : K_FR;
+      front(fX(h, 0.28), b, u, (kk) => {
+        x.strokeStyle = cs([92, 70, 52], k, u); x.lineWidth = Math.max(0.03, 2 / kk); x.beginPath();
+        x.moveTo(0, 0); x.bezierCurveTo(0.12, 1.0, -0.15, 1.8, 0.04, 2.6); x.moveTo(0.02, 1.7); x.quadraticCurveTo(0.3, 2.2, 0.36, 3.0); x.stroke();
+        const cols = [[58, 86, 50], [164, 66, 110], [188, 92, 134], [134, 46, 90]], L4 = [[], [], [], []];
+        for (let i = 0; i < 46; i++) {               // грозди: мелкие прицветники кучкой, рядом листья
+          const t = r(), cx = (r() - 0.42) * (0.3 + t * 0.55), cy = 1.5 + t * 3.0 + (r() - 0.5) * 0.4, fl = r() < 0.72;
+          for (let j = 0; j < 7; j++) {
+            const a = r() * 6.28, d = r() * 0.09;
+            L4[fl && j < 5 ? 1 + Math.floor(r() * 3) : 0].push([cx + Math.cos(a) * d, cy + Math.sin(a) * d, 0.045 + r() * 0.04, r() * 6.28]);
+          }
+        }
+        cols.forEach((c, i) => { x.fillStyle = cs(c, k, u); x.beginPath(); L4[i].forEach((q) => leafTo(q[0], q[1], q[2], q[2] * 0.45, q[3])); x.fill(); });
+      });
+    } });
+  }
   function props(h, E) {
     (PROPS[HOUSES.indexOf(h)] || []).forEach((p) => {
       const v = h.base + (p.v || 0);
@@ -1356,6 +1857,7 @@
       else if (p.k === 'plaque') plaque(h, p.u, v, p.t, E);
       else if (p.k === 'roof') roofItem(h, p.u, p.t, E);
       else if (p.k === 'dish') dish(h, p.u, v, E);
+      else if (p.k === 'bougain') bougain(h, p.u, E);
     });
   }
 
@@ -1400,50 +1902,132 @@
     [-5.5, 6.4, 17.4, 6.4, 6.8, 18.3, 0.45], [-5.5, 5.95, 17.7, 6.4, 6.15, 17.9, 0.55],
     [-5.8, 7.8, 22.9, 6.1, 8.2, 21.6, 0.5], [-5.8, 7.6, 33.2, 6.4, 7.1, 31.6, 0.42], [-5.8, 9.0, 41.0, 6.4, 8.6, 39.2, 0.5],
   ];
+  // ---------- Бельё ----------
+  // концы верёвки [X, Y, Z], провис; kinds — что висит; к белому и серому — одно приглушённое семейство acc (доля pa)
   const LINES = [
-    { a: [-5.8, 7.25, 24.9], b: [6.1, 7.55, 25.6], sag: 0.42, seed: 7 },
-    { a: [-5.8, 6.4, 38.2], b: [6.4, 6.7, 38.9], sag: 0.3, seed: 11, gap: 1.1 },
+    { a: [-5.8, 7.25, 24.9], b: [6.1, 7.55, 25.6], sag: 0.42, seed: 7, pa: 0.3,
+      kinds: ['sheet', 'shirt', 'towel', 'pants', 'shirt', 'dress', 'socks', 'pillow', 'towel', 'shirt'],
+      acc: [[92, 108, 136], [122, 140, 164], [80, 94, 120]] },
+    { a: [-5.8, 6.4, 38.2], b: [6.4, 6.7, 38.9], sag: 0.3, seed: 11, gap: 1.7, pa: 0.3,
+      kinds: ['sheet', 'towel', 'shirt', 'pants', 'towel', 'pillow'],
+      acc: [[172, 108, 88], [194, 160, 112]] },
   ];
-  const CLOTH = [[228, 224, 214], [194, 206, 214], [172, 86, 74], [208, 184, 122], [66, 86, 120], [214, 182, 176], [124, 142, 104], [236, 234, 228]];
-  // вещь на верёвке: простыня, полотенце, рубашка, брюки; висит вниз от точки крепления, лицом к зрителю
-  function cloth(X, Y, Z, kind, w, hh, col, r) {
-    const k = sunlit(X, Y - hh / 2, Z) ? K_FR : K_SH;
-    front(X, Y, Z, () => {
-      const sw = (r() - 0.5) * 0.12, a = w / 2;
-      x.save(); x.transform(1, 0, sw, 1, 0, 0);
-      x.beginPath();
-      if (kind === 'shirt') {
-        x.moveTo(-a, 0); x.lineTo(a, 0); x.lineTo(a + 0.16, -0.24); x.lineTo(a * 0.8, -0.3); x.lineTo(a * 0.8, -hh); x.lineTo(-a * 0.8, -hh); x.lineTo(-a * 0.8, -0.3); x.lineTo(-a - 0.16, -0.24);
-      } else if (kind === 'pants') {
-        x.moveTo(-a, 0); x.lineTo(a, 0); x.lineTo(a * 0.95, -hh); x.lineTo(0.03, -hh); x.lineTo(0, -hh * 0.32); x.lineTo(-0.03, -hh); x.lineTo(-a * 0.95, -hh);
-      } else {
-        x.moveTo(-a, 0); x.lineTo(a, 0); x.lineTo(a, -hh * 0.96);
-        x.quadraticCurveTo(a * 0.5, -hh * 1.04, 0, -hh); x.quadraticCurveTo(-a * 0.5, -hh * 0.96, -a, -hh * 1.02);
+  const WHITES = [[234, 232, 224], [224, 222, 214], [212, 212, 206], [228, 220, 200], [198, 200, 198], [218, 214, 204]];
+  // базовые размеры [ширина, длина], у каждой вещи ещё ±20 %
+  const CSZ = { sheet: [1.8, 1.0], towel: [0.62, 0.56], shirt: [0.56, 0.72], pants: [0.46, 0.95], dress: [0.62, 1.0], pillow: [0.5, 0.68], socks: [0.07, 0.25] };
+  // контур вещи (метры; x вправо, y вверх от верёвки — вещь висит вниз). pegs — прищепки,
+  // over — длина заднего слоя у перекинутых через верёвку простыней и полотенец
+  function clothShape(kind, w, hh, r) {
+    const a = w / 2, o = [];
+    let pegs = [-a + 0.04, a - 0.04], over = 0;
+    const hem = (x0, x1, y, n, j) => { for (let i = 0; i <= n; i++) o.push([x0 + (x1 - x0) * i / n, y + (r() - 0.5) * j]); };
+    if (kind === 'sheet' || kind === 'towel') {
+      o.push([-a, 0], [a, 0]); hem(a, -a, -hh, kind === 'sheet' ? 6 : 3, hh * 0.06);
+      over = hh * (1.06 + r() * 0.1);
+      if (kind === 'sheet') pegs = [-a + 0.05, (r() - 0.5) * 0.3, a - 0.05];
+    } else if (kind === 'shirt') {
+      if (r() < 0.5) {            // за плечи: рукава в стороны
+        o.push([-a * 0.72, 0], [a * 0.72, 0], [a + 0.12, -0.08], [a + 0.1, -0.26], [a * 0.84, -0.24], [a * 0.84, -hh], [-a * 0.84, -hh], [-a * 0.84, -0.24], [-a - 0.1, -0.26], [-a - 0.12, -0.08]);
+        pegs = [-a * 0.6, a * 0.6];
+      } else {                    // за подол, вверх ногами: рукава и ворот внизу
+        o.push([-a, 0], [a, 0], [a * 0.98, -hh * 0.72], [a + 0.1, -hh * 0.8], [a + 0.04, -hh * 0.98], [a * 0.5, -hh * 0.9], [a * 0.22, -hh], [-a * 0.22, -hh], [-a * 0.5, -hh * 0.9], [-a - 0.04, -hh * 0.98], [-a - 0.1, -hh * 0.8], [-a * 0.98, -hh * 0.72]);
       }
-      x.closePath(); x.fillStyle = cs(col, k, Z); x.fill();
-      // складки: тёмные вертикальные полосы
-      const g = x.createLinearGradient(-a, 0, a, 0);
-      for (let i = 0; i <= 6; i++) g.addColorStop(i / 6, 'rgba(40,44,60,' + (i % 2 ? 0.16 : 0.02) + ')');
-      x.fillStyle = g; x.fill();
+    } else if (kind === 'pants') {
+      if (r() < 0.5) {            // за пояс
+        o.push([-a, 0], [a, 0], [a * 1.02, -hh], [a * 0.12, -hh], [0, -hh * 0.3], [-a * 0.12, -hh], [-a * 1.02, -hh]);
+      } else {                    // за штанины: пояс внизу
+        o.push([-a, 0], [-a * 0.15, 0], [0, -hh * 0.55], [a * 0.15, 0], [a, 0], [a * 1.06, -hh], [-a * 1.06, -hh]);
+        pegs = [-a + 0.04, -a * 0.15 - 0.03, a * 0.15 + 0.03, a - 0.04];
+      }
+    } else if (kind === 'dress') {
+      const t = a * 0.45;
+      o.push([-t, 0], [t, 0], [t * 1.12, -hh * 0.34], [a, -hh * 0.97], [a * 0.4, -hh * 1.02], [-a * 0.3, -hh], [-a, -hh * 0.96], [-t * 1.12, -hh * 0.34]);
+      pegs = [-t + 0.03, t - 0.03];
+    } else if (kind === 'pillow') {
+      o.push([-a, 0], [a, 0], [a * 1.06, -hh * 0.5], [a, -hh], [-a, -hh], [-a * 1.06, -hh * 0.5]);
+    } else {                      // носок за резинку: трубка, внизу пятка и мысок чуть вбок
+      o.push([-a, 0], [a, 0], [a * 1.1, -hh * 0.62], [a * 1.7, -hh * 0.84], [a * 1.5, -hh], [-a * 0.5, -hh * 0.97], [-a * 1.05, -hh * 0.72]);
+      pegs = [0];
+    }
+    return { o: o, pegs: pegs, over: over };
+  }
+  // раскладка по верёвке: вещи висят кучками по 2–4, между кучками — пустые куски верёвки
+  function planLine(L) {
+    if (L.items) return L.items;
+    const r = Tex.rng(L.seed), len = Math.hypot(L.b[0] - L.a[0], L.b[2] - L.a[2]), items = [];
+    let t = 0.04 + r() * 0.06;
+    while (t < 0.92) {
+      const n = 2 + Math.floor(r() * 3);
+      for (let i = 0; i < n; i++) {
+        const kind = L.kinds[Math.floor(r() * L.kinds.length)], kid = (kind === 'shirt' || kind === 'pants') && r() < 0.3;
+        const sz = CSZ[kind], w = sz[0] * (0.8 + r() * 0.4) * (kid ? 0.6 : 1), hh = sz[1] * (0.8 + r() * 0.4) * (kid ? 0.55 : 1);
+        const pair = kind === 'socks', span = pair ? w * 2 + 0.1 : w;
+        if (t + span / len > 0.94) break;
+        const acc = kind === 'pants' ? r() < 0.75 : r() < L.pa;
+        const col = acc ? L.acc[Math.floor(r() * L.acc.length)] : WHITES[Math.floor(r() * WHITES.length)];
+        const it = { kind: kind, w: w, hh: hh, tc: t + w / 2 / len, col: col, yaw: r() < 0.35 ? 0.58 + r() * 0.3 : 1, tp: (r() - 0.4) * 0.3, sw: (r() - 0.5) * 0.14, seed: Math.floor(r() * 1e6) };
+        items.push(it);
+        if (pair) items.push(Object.assign({}, it, { tc: t + (w * 1.5 + 0.1) / len, hh: hh * (0.9 + r() * 0.2), yaw: 1, tp: 0, seed: it.seed + 1 }));
+        t += (span + 0.03 + r() * 0.1) / len;
+      }
+      t += (0.45 + r() * 1.1) * (L.gap || 1) / len;
+    }
+    return (L.items = items);
+  }
+  // точка верёвки при параметре t и её наклон dY/dX
+  const linePt = (L, t) => [L.a[0] + (L.b[0] - L.a[0]) * t, L.a[1] + (L.b[1] - L.a[1]) * t - L.sag * 4 * t * (1 - t), L.a[2] + (L.b[2] - L.a[2]) * t];
+  const lineSlope = (L, t) => ((L.b[1] - L.a[1]) - L.sag * 4 * (1 - 2 * t)) / (L.b[0] - L.a[0]);
+  // локальная точка вещи → сдвиг в метрах: поворот (сжатие и сужение к низу), ветер, наклон верёвки
+  function clothXY(it, s, p) {
+    const qx = p[0] * it.yaw * (1 + (p[1] / it.hh) * it.tp) + it.sw * p[1];
+    return [qx, p[1] + s * qx];
+  }
+  function drawCloth(L, it) {
+    const A = linePt(L, it.tc), s = lineSlope(L, it.tc), r = Tex.rng(it.seed), Z = A[2];
+    const sh = clothShape(it.kind, it.w, it.hh, r), hh = it.hh, a = it.w / 2;
+    const k = sunlit(A[0], A[1] - hh / 2, Z) ? K_FR : K_SH;
+    const path = (pts) => { x.beginPath(); pts.forEach((p, i) => { const q = clothXY(it, s, p); if (i) x.lineTo(q[0], q[1]); else x.moveTo(q[0], q[1]); }); x.closePath(); };
+    front(A[0], A[1] + 0.02, Z, (kk) => {
+      if (sh.over) {                                // задний слой — длиннее и темнее
+        path([[-a, 0], [a, 0], [a, -sh.over], [-a, -sh.over * (0.95 + r() * 0.06)]]);
+        x.fillStyle = cs(tone(it.col, -0.24), k, Z); x.fill();
+      }
+      path(sh.o); x.fillStyle = cs(it.col, k, Z); x.fill();
+      x.save(); x.clip();
+      x.transform(1, s, 0, 1, 0, 0); x.transform(it.yaw, 0, it.sw, 1, 0, 0);
+      // складки: неровные вертикальные тени и светлые гребни
+      const g = x.createLinearGradient(-a, 0, a, 0), nf = 3 + Math.floor(r() * 4);
+      let f = 0;
+      g.addColorStop(0, 'rgba(36,40,58,0.12)');
+      for (let i = 0; i < nf; i++) {
+        f = Math.min(0.97, f + (0.6 + r() * 0.8) / (nf + 1));
+        g.addColorStop(f, i % 2 ? 'rgba(255,250,236,' + (0.04 + r() * 0.08).toFixed(2) + ')' : 'rgba(36,40,58,' + (0.08 + r() * 0.16).toFixed(2) + ')');
+      }
+      g.addColorStop(1, 'rgba(36,40,58,0.18)');
+      x.fillStyle = g; x.fillRect(-a * 1.4, -hh * 1.3, a * 2.8, hh * 1.4);
+      // тень под верёвкой и тёмный подрубленный край
+      const gv = x.createLinearGradient(0, 0, 0, -hh);
+      gv.addColorStop(0, 'rgba(30,32,46,0.36)'); gv.addColorStop(Math.min(0.4, 0.09 / hh), 'rgba(30,32,46,0)');
+      gv.addColorStop(Math.max(0.6, 1 - 0.07 / hh), 'rgba(30,32,46,0)'); gv.addColorStop(1, 'rgba(30,32,46,0.24)');
+      x.fillStyle = gv; x.fillRect(-a * 1.4, -hh * 1.2, a * 2.8, hh * 1.25);
+      // провис между прищепками — дуги-складки
+      if (sh.pegs.length > 1) {
+        x.strokeStyle = 'rgba(34,38,54,0.22)'; x.lineWidth = Math.max(0.02, 1.3 / kk); x.beginPath();
+        for (let i = 0; i < sh.pegs.length - 1; i++) {
+          const p0 = sh.pegs[i], p1 = sh.pegs[i + 1], dip = Math.min(0.22, (p1 - p0) * (0.1 + r() * 0.1));
+          x.moveTo(p0, -0.03); x.quadraticCurveTo((p0 + p1) / 2, -0.03 - dip * 2, p1, -0.03);
+        }
+        x.stroke();
+      }
       x.restore();
-      x.fillStyle = cs([90, 80, 70], 1, Z); x.fillRect(-a + 0.04, -0.06, 0.03, 0.1); x.fillRect(a - 0.07, -0.06, 0.03, 0.1);
+      x.fillStyle = cs([150, 122, 86], k, Z);       // прищепки
+      sh.pegs.forEach((px) => { const q = clothXY(it, s, [px, 0]); x.fillRect(q[0] - 0.012, q[1] - 0.055, 0.024, 0.085); });
     });
   }
   function laundryLine(L) {
-    const pts = sagPts(L.a, L.b, L.sag, 30), zm = (L.a[2] + L.b[2]) / 2, len = Math.hypot(L.b[0] - L.a[0], L.b[2] - L.a[2]);
-    wline(pts, Math.max(1.2, F * 0.014 / zm), cs([70, 66, 62], 1, zm));
-    const r = Tex.rng(L.seed);
-    let t = 0.07;
-    while (t < 0.9) {
-      const kind = ['sheet', 'shirt', 'towel', 'pants', 'shirt', 'towel'][Math.floor(r() * 6)];
-      const w = kind === 'sheet' ? 1.3 + r() * 0.4 : kind === 'towel' ? 0.55 + r() * 0.2 : kind === 'pants' ? 0.46 : 0.56;
-      const hh = kind === 'sheet' ? 1.1 + r() * 0.3 : kind === 'towel' ? 0.8 + r() * 0.2 : kind === 'pants' ? 0.95 : 0.72;
-      const tc = t + w / 2 / len;
-      if (tc > 0.93) break;
-      const X = L.a[0] + (L.b[0] - L.a[0]) * tc, Z = L.a[2] + (L.b[2] - L.a[2]) * tc, Y = L.a[1] + (L.b[1] - L.a[1]) * tc - L.sag * 4 * tc * (1 - tc);
-      cloth(X, Y + 0.02, Z, kind, w, hh, CLOTH[Math.floor(r() * CLOTH.length)], r);
-      t += (w + 0.12 + r() * 0.35 + (L.gap ? L.gap * (0.4 + r()) : 0)) / len;
-    }
+    const zm = (L.a[2] + L.b[2]) / 2;
+    wline(sagPts(L.a, L.b, L.sag, 30), Math.max(1.2, F * 0.014 / zm), cs([70, 66, 62], 1, zm));
+    planLine(L).forEach((it) => drawCloth(L, it));
   }
   // подвесной уличный светильник на тросе поперёк улицы
   function hangLamp(X, Y, Z) {
@@ -1456,7 +2040,54 @@
       x.fillStyle = cs([220, 214, 196], K_SH, Z); x.beginPath(); x.ellipse(0, -0.58, 0.07, 0.06, 0, 0, Math.PI * 2); x.fill();
     });
   }
+  // точка по лучу солнца: на правую стену, если луч упирается в неё выше тротуара, иначе на мостовую/тротуар
+  function ovProj(X, Y, Z) {
+    let hx = 6.4;
+    for (let i = 0; i < 2; i++) {
+      const t = (hx - X) / 0.5, Zw = Z + 0.48 * t, h = HOUSES.filter((q) => q.s > 0 && Zw >= q.z0 && Zw < q.z1)[0];
+      if (h) hx = h.x;
+    }
+    const t = (hx - X) / 0.5, Yw = Y - 0.72 * t, Zw = Z + 0.48 * t;
+    if (t > 0 && Yw > swY(Zw)) return P(hx, Yw, Zw);
+    const g = gsh(X, Y, Z);
+    return P(g[0], gY(g[1]) + (g[0] > CR ? CURB : 0), g[1]);
+  }
+  // тени белья, проводов и фонаря на освещённую мостовую и правые фасады: свой холст вдвое меньше,
+  // фигуры сливаются одним цветом (без двойного затемнения), затем умножение
+  function overShadows() {
+    const q = S / 2, c = mk(1920 * q, 1080 * q), keep = x;
+    x = c.getContext('2d'); x.setTransform(q, 0, 0, q, 0, 0); x.fillStyle = '#fff'; x.fillRect(0, 0, 1920, 1080);
+    const line = (pts, w) => {
+      x.beginPath(); let on = false;
+      pts.forEach((p) => {
+        if (!sunlit(p[0], p[1], p[2])) { on = false; return; }
+        const s = ovProj(p[0], p[1], p[2]);
+        if (on) x.lineTo(s[0], s[1]); else x.moveTo(s[0], s[1]);
+        on = true;
+      });
+      x.lineWidth = w; x.stroke();
+    };
+    x.strokeStyle = 'rgb(204,208,220)';
+    WIRES.forEach((w) => line(sagPts([w[0], w[1], w[2]], [w[3], w[4], w[5]], w[6], 40), 2.2));
+    LINES.forEach((L) => line(sagPts(L.a, L.b, L.sag, 40), 1.8));
+    line(sagPts([-5.5, 6.95, 20.2], [6.4, 7.25, 20.6], 0.32, 40), 2.2);
+    x.fillStyle = 'rgb(140,148,176)';
+    LINES.forEach((L) => planLine(L).forEach((it) => {
+      const A = linePt(L, it.tc), s = lineSlope(L, it.tc);
+      if (!sunlit(A[0], A[1] - it.hh / 2, A[2])) return;
+      const sh = clothShape(it.kind, it.w, it.hh, Tex.rng(it.seed)), a = it.w / 2;
+      const o = sh.over ? [[-a, 0], [a, 0], [a, -sh.over], [-a, -sh.over]] : sh.o;
+      x.beginPath();
+      o.forEach((p, i) => { const qq = clothXY(it, s, p), w = ovProj(A[0] + qq[0], A[1] + 0.02 + qq[1], A[2]); if (i) x.lineTo(w[0], w[1]); else x.moveTo(w[0], w[1]); });
+      x.closePath(); x.fill();
+    }));
+    const lp = [-5.5 + 11.9 * 0.48, 6.95 + 0.3 * 0.48 - 0.32 * 4 * 0.48 * 0.52 - 0.4, 20.2 + 0.4 * 0.48];
+    if (sunlit(lp[0], lp[1], lp[2])) { const s = ovProj(lp[0], lp[1], lp[2]); x.beginPath(); x.ellipse(s[0], s[1], 7, 4, 0, 0, Math.PI * 2); x.fill(); }
+    x = keep;
+    x.save(); x.globalCompositeOperation = 'multiply'; x.drawImage(c, 0, 0, 1920, 1080); x.restore();
+  }
   function overhead() {
+    overShadows();
     // провода — от дальних к ближним
     WIRES.slice().sort((p, q) => q[2] - p[2]).forEach((w) => {
       const zm = (w[2] + w[5]) / 2;
@@ -1507,18 +2138,13 @@
       x.fillStyle = cs([132, 96, 64], K_FR, Z); [0.45, 0.62, 0.78].forEach((y) => x.fillRect(-0.95, y, 1.9, 0.1));
     });
   }
-  // большой терракотовый горшок с кустом у стены на тротуаре
-  function bigPot(s, u, kind, seed) {
+  // растение в большой ёмкости у стены на тротуаре
+  function bigPot(s, u, kind, seed, pot) {
     const h = HOUSES.filter((q) => q.s === s && u >= q.z0 && u < q.z1)[0];
     if (!h) return;
     const X = fX(h, 0.45), b = swY(u), k = h.s < 0 ? K_SH : K_FR;
-    front(X, b, u, () => {
-      x.fillStyle = cs([164, 92, 62], k, u);
-      x.beginPath(); x.moveTo(-0.22, 0); x.lineTo(0.22, 0); x.lineTo(0.3, 0.5); x.lineTo(-0.3, 0.5); x.closePath(); x.fill();
-      x.fillStyle = cs([134, 74, 50], k, u); x.fillRect(-0.32, 0.46, 0.64, 0.07);
-      x.fillStyle = 'rgba(0,0,0,0.18)'; x.fillRect(-0.22, 0, 0.44, 0.06);
-    });
-    plant(X, b + 0.5, u, 1.0, kind, seed, k);
+    front(X, b, u, () => { x.fillStyle = 'rgba(20,20,28,0.25)'; x.fillRect(-0.4, -0.02, 0.8, 0.05); });
+    plant(X, b, u, 1.0, kind, seed, k, pot);
   }
   // крышка колодца на мостовой: круг в перспективе
   function manhole(X, Z, R) {
@@ -1530,10 +2156,137 @@
     const lit = !inShadow(X, Z), k = lit ? K_TOP : K_SH;
     ring(R + 0.06, cs([64, 60, 56], k)); ring(R, cs([92, 88, 82], k)); ring(R * 0.62, cs([80, 76, 72], k));
   }
+  // ---------- Вещи на улице: мопед, столик кафе, ящик с рыбой, тележка ----------
+  // тень предмета на земле: мировые точки → по лучу на землю, выпуклая оболочка; только если предмет на солнце
+  function castShadow(pts, lift, a) {
+    const q = hull(pts.map((p) => gsh(p[0], p[1], p[2])));
+    if (q.length < 3) return;
+    x.beginPath(); gpath(q, (lift || 0) + 0.003); x.fillStyle = 'rgba(30,34,58,' + (a || 0.34) + ')'; x.fill();
+  }
+  // ящик по осям мира: видимые грани — верх (ниже глаз), торец к зрителю, бок к середине улицы
+  function wbox(X0, X1, Y0, Y1, Z0, Z1, c, lit) {
+    const K = (k) => (lit ? k : K_SH);
+    if (Y1 < EYE) { x.fillStyle = cs(c, K(K_TOP), Z0); wp([[X0, Y1, Z0], [X1, Y1, Z0], [X1, Y1, Z1], [X0, Y1, Z1]]); x.fill(); }
+    if (X0 > 0) { x.fillStyle = cs(c, K(K_LIT), Z0); wp([[X0, Y0, Z0], [X0, Y0, Z1], [X0, Y1, Z1], [X0, Y1, Z0]]); x.fill(); }
+    if (X1 < 0) { x.fillStyle = cs(c, K_SH, Z0); wp([[X1, Y0, Z0], [X1, Y0, Z1], [X1, Y1, Z1], [X1, Y1, Z0]]); x.fill(); }
+    x.fillStyle = cs(c, K(K_FR), Z0); wp([[X0, Y0, Z0], [X1, Y0, Z0], [X1, Y1, Z0], [X0, Y1, Z0]]); x.fill();
+  }
+  // колесо в плоскости X: круг (z, y) в перспективе
+  function wheelX(X, zc, yc, R, c) {
+    const pts = [];
+    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; pts.push([X, yc + R * Math.sin(a), zc + R * Math.cos(a)]); }
+    x.fillStyle = c; wp(pts); x.fill();
+  }
+  // мопед поперёк улицы, задом к правому бордюру: боковой профиль лицом к зрителю (метры, x — к бордюру)
+  function scooter(X0, Z) {
+    const b = gY(Z), lit = !inShadow(X0 + 0.9, Z + 0.3), k = lit ? K_FR : K_SH, body = [154, 178, 174];
+    const prof = [[0.12, 0.25], [0.3, 1.02], [0.5, 1.12], [1.1, 0.9], [1.62, 0.9], [1.86, 0.5], [1.62, 0.0], [0.3, 0.0]];
+    if (lit) castShadow(prof.map((p) => [X0 + p[0], b + p[1], Z]).concat(prof.map((p) => [X0 + p[0], b + p[1], Z + 0.55])), 0, 0.36);
+    const draw = (dz, dark) => front(X0, b, Z + dz, (kk) => {
+      const C = (c) => cs(dark ? tone(c, -0.32) : c, k, Z);
+      [[0.32, 0.18], [1.42, 0.18]].forEach((w) => {
+        x.fillStyle = C([36, 36, 38]); x.beginPath(); x.arc(w[0], w[1], 0.18, 0, Math.PI * 2); x.fill();
+        x.fillStyle = C([150, 150, 146]); x.beginPath(); x.arc(w[0], w[1], 0.075, 0, Math.PI * 2); x.fill();
+      });
+      x.fillStyle = C(body);
+      x.beginPath(); x.moveTo(0.1, 0.27); x.quadraticCurveTo(0.3, 0.47, 0.55, 0.29); x.lineTo(0.5, 0.24); x.quadraticCurveTo(0.31, 0.39, 0.15, 0.24); x.closePath(); x.fill();   // крыло
+      x.beginPath(); x.moveTo(0.44, 0.24); x.quadraticCurveTo(0.58, 0.6, 0.52, 1.0); x.lineTo(0.38, 1.04); x.quadraticCurveTo(0.43, 0.62, 0.3, 0.42); x.closePath(); x.fill();       // щиток
+      x.fillRect(0.46, 0.21, 0.58, 0.11);                                                                                                                                   // пол
+      x.beginPath(); x.moveTo(0.98, 0.3); x.quadraticCurveTo(0.98, 0.72, 1.22, 0.8); x.lineTo(1.6, 0.78); x.quadraticCurveTo(1.88, 0.68, 1.85, 0.42);
+      x.quadraticCurveTo(1.8, 0.27, 1.64, 0.3); x.quadraticCurveTo(1.42, 0.46, 1.22, 0.3); x.closePath(); x.fill();                                                       // кожух
+      if (dark) return;
+      x.fillStyle = C(tone(body, 0.3)); x.beginPath(); x.moveTo(1.06, 0.6); x.quadraticCurveTo(1.12, 0.76, 1.26, 0.79); x.lineTo(1.58, 0.77); x.quadraticCurveTo(1.7, 0.74, 1.76, 0.66); x.quadraticCurveTo(1.4, 0.72, 1.06, 0.6); x.fill();
+      x.fillStyle = C([48, 44, 42]); x.beginPath(); x.moveTo(1.1, 0.79); x.lineTo(1.6, 0.77); x.quadraticCurveTo(1.68, 0.87, 1.56, 0.92); x.lineTo(1.16, 0.92); x.quadraticCurveTo(1.04, 0.88, 1.1, 0.79); x.fill();
+      x.fillStyle = C(body); x.fillRect(0.3, 1.0, 0.26, 0.11);                                     // руль с фарой
+      x.fillStyle = C([44, 42, 40]); x.fillRect(0.44, 1.1, 0.16, 0.035);
+      x.fillStyle = C([224, 222, 210]); x.beginPath(); x.arc(0.31, 1.055, 0.05, 0, Math.PI * 2); x.fill();
+      x.fillStyle = C([120, 50, 44]); x.fillRect(1.82, 0.5, 0.04, 0.08);
+      x.strokeStyle = C([50, 50, 52]); x.lineWidth = Math.max(0.02, 1.2 / kk); x.beginPath(); x.moveTo(0.5, 1.1); x.lineTo(0.56, 1.3); x.moveTo(1.02, 0.28); x.lineTo(1.08, 0.0); x.stroke();
+      x.fillStyle = C([60, 64, 66]); x.beginPath(); x.ellipse(0.57, 1.33, 0.045, 0.03, 0.3, 0, Math.PI * 2); x.fill();
+    });
+    draw(0.55, true);
+    draw(0, false);
+  }
+  // столик кафе с двумя стульями на тротуаре
+  function cafeSet(X, Z) {
+    const b = gY(Z) + CURB, lit = !inShadow(X, Z), ic = [52, 50, 48];
+    const ring = (cx, cz, y, R, c) => { const p = []; for (let i = 0; i < 14; i++) { const a = i / 14 * Math.PI * 2; p.push([cx + R * Math.cos(a), y, cz + R * Math.sin(a)]); } x.fillStyle = c; wp(p); x.fill(); };
+    if (lit) {
+      const pts = [];
+      for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2; pts.push([X + 0.3 * Math.cos(a), b + 0.75, Z + 0.3 * Math.sin(a)]); }
+      castShadow(pts.concat([[X, b, Z]]), CURB, 0.3);
+      [[-0.45, 0.1], [0.42, -0.05]].forEach((c) => castShadow([[X + c[0] - 0.2, b + 0.88, Z + c[1]], [X + c[0] + 0.2, b + 0.88, Z + c[1]], [X + c[0] - 0.2, b, Z + c[1]], [X + c[0] + 0.2, b + 0.45, Z + c[1] + 0.2]], CURB, 0.26));
+    }
+    [[-0.45, 0.12, 1], [0.42, -0.05, -1]].forEach((c) => {            // стулья: ножки, сиденье, гнутая спинка
+      const cx = X + c[0], cz = Z + c[1], k = lit ? K_FR : K_SH;
+      wline([[cx - 0.17, b, cz], [cx - 0.15, b + 0.45, cz]], lw(0.02, cz, 1), cs(ic, k, cz)); wline([[cx + 0.17, b, cz], [cx + 0.15, b + 0.45, cz]], lw(0.02, cz, 1), cs(ic, k, cz));
+      ring(cx, cz, b + 0.45, 0.2, cs([96, 74, 56], lit ? K_TOP : K_SH, cz));
+      const bx = cx + c[2] * 0.19;
+      wline([[bx, b + 0.45, cz - 0.12], [bx, b + 0.86, cz - 0.1], [bx, b + 0.86, cz + 0.1], [bx, b + 0.45, cz + 0.12]], lw(0.025, cz, 1.2), cs(ic, k, cz));
+    });
+    wline([[X, b, Z], [X, b + 0.73, Z]], lw(0.04, Z, 1.4), cs(ic, lit ? K_FR : K_SH, Z));
+    ring(X, Z, b + 0.02, 0.2, cs(ic, lit ? K_TOP : K_SH, Z));
+    ring(X, Z, b + 0.73, 0.31, cs([150, 146, 140], lit ? K_FR : K_SH, Z));
+    ring(X, Z, b + 0.76, 0.3, cs([222, 218, 210], lit ? K_TOP : K_SH, Z));                // мраморная столешница
+    ring(X + 0.08, Z - 0.05, b + 0.77, 0.04, cs([236, 234, 228], lit ? K_TOP : K_SH, Z)); // чашка
+  }
+  // ящик со льдом и рыбой у порога рыбной лавки
+  function fishCrate(X, Z) {
+    const b = gY(Z) + CURB, lit = !inShadow(X, Z);
+    if (lit) castShadow([[X, b + 0.3, Z], [X + 0.6, b + 0.3, Z], [X, b + 0.3, Z + 0.42], [X + 0.6, b + 0.3, Z + 0.42], [X, b, Z]], CURB, 0.34);
+    wbox(X, X + 0.6, b, b + 0.28, Z, Z + 0.42, [160, 128, 88], lit);
+    x.fillStyle = cs([104, 78, 52], lit ? K_FR : K_SH, Z);                // щели между досками
+    [0.09, 0.18].forEach((y) => { wp([[X, b + y, Z], [X + 0.6, b + y, Z], [X + 0.6, b + y + 0.018, Z], [X, b + y + 0.018, Z]]); x.fill(); });
+    x.fillStyle = cs([206, 220, 226], lit ? K_TOP : K_SH, Z); wp([[X + 0.03, b + 0.285, Z + 0.03], [X + 0.57, b + 0.285, Z + 0.03], [X + 0.57, b + 0.285, Z + 0.39], [X + 0.03, b + 0.285, Z + 0.39]]); x.fill();
+    const r = Tex.rng(61);
+    for (let i = 0; i < 5; i++) {
+      const fx = X + 0.1 + r() * 0.36, fz = Z + 0.08 + r() * 0.26, a = (r() - 0.5) * 1.2, L = 0.13;
+      x.fillStyle = cs(i % 3 ? [176, 186, 192] : [182, 110, 96], lit ? K_TOP : K_SH, Z);
+      wp([[fx - Math.cos(a) * L, b + 0.29, fz - Math.sin(a) * L * 0.6], [fx, b + 0.3, fz + 0.03], [fx + Math.cos(a) * L, b + 0.29, fz + Math.sin(a) * L * 0.6], [fx, b + 0.3, fz - 0.03]]); x.fill();
+    }
+  }
+  // ручная тележка с ящиками хлеба у левого бордюра (в тени)
+  function handcart(X, Z) {
+    const b = gY(Z + 0.6), wd = [128, 98, 70];
+    wheelX(X + 0.82, Z + 0.75, b + 0.32, 0.32, cs([60, 52, 46], K_SH, Z));
+    wheelX(X + 0.82, Z + 0.75, b + 0.32, 0.25, cs([92, 84, 76], K_SH, Z));
+    wbox(X, X + 0.8, b + 0.5, b + 0.62, Z, Z + 1.4, wd, false);
+    wline([[X + 0.1, b + 0.56, Z], [X + 0.05, b + 0.22, Z - 0.75]], lw(0.04, Z, 1.4), cs(wd, K_SH, Z));
+    wline([[X + 0.7, b + 0.56, Z], [X + 0.75, b + 0.22, Z - 0.75]], lw(0.04, Z, 1.4), cs(wd, K_SH, Z));
+    wline([[X + 0.1, b + 0.5, Z + 0.15], [X + 0.12, b, Z + 0.15]], lw(0.035, Z, 1.2), cs(wd, K_SH, Z));
+    wbox(X + 0.05, X + 0.75, b + 0.62, b + 0.9, Z + 0.1, Z + 0.62, [168, 140, 100], false);
+    wbox(X + 0.08, X + 0.72, b + 0.62, b + 0.86, Z + 0.72, Z + 1.3, [150, 122, 86], false);
+    const r = Tex.rng(63);
+    for (let i = 0; i < 6; i++) {
+      const lx = X + 0.15 + r() * 0.5, lz = Z + 0.15 + r() * 0.4;
+      x.fillStyle = cs([190, 136, 74], K_SH, Z); x.beginPath();
+      for (let j = 0; j < 10; j++) { const a = j / 10 * Math.PI * 2, p = P(lx + 0.1 * Math.cos(a), b + 0.93 + 0.03 * Math.sin(a), lz + 0.05 * Math.sin(a)); if (j) x.lineTo(p[0], p[1]); else x.moveTo(p[0], p[1]); }
+      x.closePath(); x.fill();
+    }
+  }
+  // опавшие лепестки и листья у горшков
+  function petals(X, Z, R, seed, cols) {
+    const r = Tex.rng(seed), lift = Math.abs(X) > 4.6 ? CURB : 0;
+    if (!vis(0.05, Z, 1.5)) return;
+    for (let i = 0; i < 26; i++) {
+      const a = r() * Math.PI * 2, d = Math.sqrt(r()) * R, px = X + Math.cos(a) * d, pz = Z + Math.sin(a) * d * 1.6;
+      const p = P(px, gY(pz) + lift + 0.002, pz), s = Math.max(1.2, F * 0.03 / pz);
+      x.fillStyle = cs(cols[Math.floor(r() * cols.length)], inShadow(px, pz) ? K_SH : K_TOP, pz);
+      x.fillRect(p[0] - s / 2, p[1] - s * 0.25, s, s * 0.5);
+    }
+  }
   function streetProps() {
     manhole(1.3, 11.5, 0.36);
     manhole(-1.6, 27.0, 0.36);
-    bigPot(1, 17.0, 'bush', 3); bigPot(-1, 28.7, 'bush', 5); bigPot(1, 38.4, 'bush', 7); bigPot(1, 40.7, 'ger', 8); bigPot(-1, 37.2, 'ivy', 9);
+    bigPot(1, 17.0, 'agave', 3, 'amphora'); bigPot(-1, 28.7, 'lemon', 5, 'box'); bigPot(1, 38.4, 'ger', 7, 'tin');
+    bigPot(1, 40.7, 'herbs', 8, 'trough'); bigPot(-1, 37.2, 'ivy', 9, 'terra'); bigPot(1, 22.55, 'lemon', 10, 'box');
+    petals(5.6, 17.3, 0.6, 71, [[176, 72, 120], [150, 128, 72], [150, 50, 98]]);
+    petals(-4.95, 28.9, 0.45, 72, [[150, 128, 72], [112, 98, 58]]);
+    petals(5.45, 40.6, 0.5, 73, [[186, 70, 62], [196, 120, 130]]);
+    handcart(-4.35, 12.3);
+    scooter(2.95, 17.3);
+    fishCrate(5.55, 13.5);
+    cafeSet(5.75, 10.9);
     bench(-3.6, 57.5);
     bollard(-1.4, 59.4); bollard(4.2, 59.4);
     lampPost(1.9, 56.5, 3.9);
@@ -1553,7 +2306,7 @@
 
   const coastScene = function (ctx, rnd, th, o) {
     x = ctx; S = o.scale || 1;
-    sky(); headland(); seaView(); breakwater(); lighthouse(); harbour();
+    sky(); headland(); seaView(); cape(); breakwater(); lighthouse(); headRocks(); harbour();
     quay(); street(); sidewalks(); collectShadows(); groundShadows();
     facades();
     streetProps();

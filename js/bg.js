@@ -271,6 +271,48 @@ const Backgrounds = (function () {
     x.fillStyle = v; x.fillRect(0, 0, W, H);
   }
 
+  // ---------- Сцены высокого разрешения ----------
+  // Каждая локация живёт в своём файле js/bg_scene_<id>.js и регистрируется так:
+  //   Backgrounds.scene('desert', function (x, R, th, o) { ... });
+  // x — контекст, уже отмасштабированный в логические координаты o.W × o.H (1920 × 1080),
+  // R — детерминированный ГСЧ сцены, th — запись THEMES, o.scale — масштаб (1 — фон, 0.2 — миниатюра).
+  // Сцена рисует только через преобразование контекста (пути, fillRect, drawImage, узоры);
+  // попиксельная работа — на своих вспомогательных холстах, которые потом кладутся через drawImage.
+  // Пока сцена не зарегистрирована, рисуется прежний вариант (draw ниже, 960 × 540).
+  const SW = 1920, SH = 1080, SCENES = {};
+  function scene(id, fn) { SCENES[id] = fn; delete urls[id]; delete thumbs[id]; }
+  // Запасной рисунок (старая упрощённая улица 960×540) размываем заранее: при малом CSS-размытии
+  // он иначе выглядит плоскими прямоугольниками. Рисуем с запасом за края, чтобы не было каймы.
+  function soft(c) {
+    const o = document.createElement('canvas');
+    o.width = c.width; o.height = c.height;
+    const g = o.getContext('2d');
+    g.filter = 'blur(7px)';
+    g.drawImage(c, -24, -14, c.width + 48, c.height + 28);
+    g.filter = 'none';
+    return o;
+  }
+
+  function render(th, scale, strict) {
+    const fn = SCENES[th.id];
+    if (!fn) return soft(draw(th));
+    const c = document.createElement('canvas');
+    c.width = Math.round(SW * scale); c.height = Math.round(SH * scale);
+    const x = c.getContext('2d');
+    x.setTransform(c.width / SW, 0, 0, c.height / SH, 0, 0);
+    const R = Tex.rng(Math.floor(hash01('bg:' + th.id) * 1e9) + 1);
+    try {
+      fn(x, R, th, { W: SW, H: SH, scale: scale });
+    } catch (e) {
+      // strict — для тестовой страницы tools/harness/bg.html: там ошибка должна быть видна.
+      // В игре сломанная сцена не должна ронять загрузку: рисуем запасной вариант.
+      if (strict) throw e;
+      console.error('Background scene failed:', th.id, e);
+      return soft(draw(th));
+    }
+    return c;
+  }
+
   function draw(th) {
     const c = document.createElement('canvas');
     c.width = W; c.height = H;
@@ -293,7 +335,7 @@ const Backgrounds = (function () {
     if (!th || th.id === 'none') { cb(''); return; }
     if (th.src) { cb(th.src); return; }
     if (urls[id]) { cb(urls[id]); return; }
-    const c = draw(th);
+    const c = render(th, 1);
     const done = (u) => { urls[id] = u; cb(u); };
     if (c.toBlob) c.toBlob((b) => done(b ? URL.createObjectURL(b) : c.toDataURL('image/jpeg', 0.85)), 'image/jpeg', 0.85);
     else done(c.toDataURL('image/jpeg', 0.85));
@@ -304,7 +346,7 @@ const Backgrounds = (function () {
     if (!th || th.id === 'none') return '';
     if (th.src) return th.src;
     if (!thumbs[id]) {
-      const big = draw(th), c = document.createElement('canvas');
+      const big = render(th, 0.2), c = document.createElement('canvas');
       c.width = 192; c.height = 108;
       c.getContext('2d').drawImage(big, 0, 0, 192, 108);
       thumbs[id] = c.toDataURL('image/jpeg', 0.8);
@@ -318,12 +360,31 @@ const Backgrounds = (function () {
     current = id;
     const el = document.getElementById('bg');
     if (!el) return;
-    url(id, (u) => {
+    const go = () => url(id, (u) => {
       if (current !== id) return;
       el.style.backgroundImage = u ? 'url("' + u + '")' : '';
       document.body.classList.toggle('has-bg', !!u);
     });
+    // Сцена 1920×1080 рисуется до ~0,2 с — не задерживаем загрузку игры: рисуем после первого кадра
+    // (слой #bg плавно проявляется сам). Готовую картинку из кэша ставим сразу.
+    if (urls[id] || typeof requestAnimationFrame !== 'function') go();
+    else requestAnimationFrame(() => setTimeout(() => { if (current === id) go(); }, 0));
   }
 
-  return { list: list, apply: apply, thumb: thumb, exists: (id) => !!byId(id) };
+  // Размытие (0–24 px) и затемнение (0–80 %) фона — ползунки в окне выбора фона (scr_profile.js).
+  // Значения уходят в CSS-переменные на <html>: #bg и body.has-bg::after берут их в p7_bg.css.
+  // Затемнение — прозрачность слоя сверху; снизу слой плотнее в той же пропорции (до 95 %),
+  // (16 px / 34 % — прежний вид: blur(16px), слой .34 сверху и .62 снизу). По умолчанию теперь 3 px / 40 %.
+  function tune(blur, dim) {
+    const fit = (v, hi, def) => (typeof v === 'number' && isFinite(v) ? Math.max(0, Math.min(hi, v)) : def);
+    const a = fit(dim, 80, 40) / 100;
+    const s = document.documentElement.style;
+    s.setProperty('--bg-blur', fit(blur, 24, 3) + 'px');
+    s.setProperty('--bg-dim-a', a.toFixed(3));
+    s.setProperty('--bg-dim-b', Math.min(0.95, a * 62 / 34).toFixed(3));
+  }
+
+  return { list: list, apply: apply, tune: tune, thumb: thumb, exists: (id) => !!byId(id),
+    scene: scene, render: (id, scale, strict) => (byId(id) ? render(byId(id), scale || 1, !!strict) : null),
+    kit: { persp: persp, qp: qp, quad: quad, poly: poly, lin: lin } };
 })();

@@ -414,6 +414,8 @@
   A['open-free'] = function () { if (freeReady()) open('free'); };
   A['open-ad'] = function () {
     if (Date.now() - G.S.adCaseAt < G.C.AD_CASE_CD || !cur || cur.price > G.C.AD_CASE_MAX) return;
+    // место в инвентаре проверяем ДО рекламы — иначе игрок посмотрит её зря, а кейс сгорит
+    if (G.invFull(1)) { UI.toast(t('inv_full', { n: INVENTORY_MAX }), 'bad'); Sfx.error(); return; }
     G.rewarded(() => { G.S.adCaseAt = Date.now(); open('ad'); });
   };
   A['res-sell'] = function () { sellResult(1); UI.closeModal(); UI.refresh(); };

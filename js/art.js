@@ -38,10 +38,14 @@ const Art = (function () {
     return { x0: x0, y0: y0, x1: x1, y1: y1 };
   }
 
+  // Ножи: как в CS2, раскраска ложится на клинок, а рукоять (дерево, кость, полимер, обмотка) под любым
+  // скином остаётся своим материалом. Клинки размечены steel / gun / gray — они красятся.
+  const HANDLE_MAT = { black: 1, rubber: 1, bone: 1, wood: 1, walnut: 1, birch: 1, redwood: 1, sage: 1, khaki: 1, od: 1, olive: 1, coyote: 1, sand: 1, tan: 1 };
   const prepCache = {};
   function prep(weaponId) {
     if (prepCache[weaponId]) return prepCache[weaponId];
     const g = geo(weaponId);
+    const knife = !!(WEAPONS[weaponId] && WEAPONS[weaponId].type === 'knife');
     const list = (g.pair ? g.parts : g).map((p) => {
       if (p[0] === 'o') {
         const path = new Path2D();
@@ -51,7 +55,13 @@ const Art = (function () {
       if (p[0] === 't') {
         return { role: 't', x: p[1], y: p[2], text: p[3], size: p[4], bb: { x0: p[1], y0: p[2] - p[4], x1: p[1] + p[3].length * p[4] * 0.6, y1: p[2] } };
       }
-      return { role: p[0], path: new Path2D(p[1]), w: p[2] || 0, bb: bboxOf(p[1]) };
+      // у окрашиваемых деталей третий элемент — заводской материал (см. FACT), у линий — толщина
+      // материал с «!» на конце ('leather!') — деталь всегда своим материалом, скин на неё не ложится
+      // (накладки и защита перчаток и т. п.); у ножей так же ведут себя рукояти из HANDLE_MAT
+      const raw = (p[0] === 'p' || p[0] === 'q') && typeof p[2] === 'string' ? p[2] : null;
+      const bang = !!raw && raw.charAt(raw.length - 1) === '!';
+      const mat = bang ? raw.slice(0, -1) : raw;
+      return { role: p[0], path: new Path2D(p[1]), w: mat ? 0 : p[2] || 0, mat: mat, fixed: bang || (knife && !!HANDLE_MAT[mat]), bb: bboxOf(p[1]) };
     });
     prepCache[weaponId] = list;
     return list;
@@ -126,6 +136,57 @@ const Art = (function () {
     return g;
   }
 
+  // ---------- Заводские материалы («Заводская окраска», FINISHES.plain.factory) ----------
+  // У окрашиваемой детали можно указать настоящий материал: ['p', path, 'wood']. С заводской раскраской
+  // деталь рисуется им (дерево, песочный или оливковый полимер, сталь), с любой другой — раскраской.
+  // Детали без материала в заводской раскраске — серый воронёный металл, как раньше.
+  const FACT = {
+    wood:   { tex: { kind: 'wood', c: ['#7a3816', '#a7592a', '#43190a'] }, col: '#8a4520', gloss: 0.42 },   // красноватый орех / берёза под лаком
+    walnut: { tex: { kind: 'wood', c: ['#4a2914', '#71452a', '#26130a'] }, col: '#5a331a', gloss: 0.45 },   // тёмный орех (накладки рукоятей)
+    birch:  { tex: { kind: 'wood', c: ['#a06a36', '#c8975a', '#6a411d'] }, col: '#b07a42', gloss: 0.38 },   // светлое дерево
+    redwood: { tex: { kind: 'wood', c: ['#6e2414', '#9a3a20', '#3e1208'] }, col: '#7e2c18', gloss: 0.5 },   // красное дерево
+    tan:    { col: '#a3895f', gloss: 0.14 },    // песочный полимер (рамка «Гарды», «Беркут»)
+    sand:   { col: '#c0a77c', gloss: 0.12 },    // светлый песочный (шнур, обмотка)
+    khaki:  { col: '#a39c62', gloss: 0.14 },    // жёлто-оливковый (рукоять армейского ножа)
+    coyote: { col: '#866f4c', gloss: 0.12 },    // коричневато-песочный
+    olive:  { col: '#646b4b', gloss: 0.14 },    // оливковый полимер («Авангард», «Гром-338»)
+    od:     { col: '#4c5541', gloss: 0.12 },    // тёмно-оливковый (короба, подсумки)
+    sage:   { col: '#7f8a6a', gloss: 0.14 },    // светло-оливковый
+    black:  { col: '#2c2f34', gloss: 0.16 },    // чёрный полимер
+    rubber: { col: '#25272b', gloss: 0.06 },    // резина, матовый
+    gray:   { col: '#5f656d', gloss: 0.3 },     // серый металл / покрытие
+    green:  { col: '#3c8a5a', gloss: 0.5 },     // зелёный пластик (кассета шокера)
+    bone:   { col: '#d6cbb0', gloss: 0.32 },    // кость
+    // перчатки
+    leather:  { col: '#5e4330', gloss: 0.34 },  // коричневая кожа
+    darkleather: { col: '#2e2a27', gloss: 0.3 }, // чёрная кожа
+    tanleather: { col: '#9c7650', gloss: 0.3 }, // светлая кожа
+    cloth:    { col: '#565b62', gloss: 0.06 },  // ткань, трикотаж
+    neoprene: { col: '#3b4046', gloss: 0.14 },  // неопрен, эластичные вставки
+    wrap:     { col: '#cbbd9f', gloss: 0.05 },  // бинт, обмотка
+    tape:     { col: '#a9b2b8', gloss: 0.35 },  // армированный скотч
+    steel:  { metal: 'l', gloss: 0.85 },        // светлая сталь (клинки, нержавеющие затворы)
+    gun:    { metal: 'm', gloss: 0.55 },        // тёмная сталь
+  };
+  function factoryOf(P, fin) { return P.mat && (P.fixed || (fin && fin.factory)) ? FACT[P.mat] || null : null; }
+  // Плёнка фактуры на всё поле. Если картинка отражена (MIRROR, эмблема ящика), плёнка отражается ещё раз —
+  // надписи и узоры в текстурах (граффити, чертёж, комикс, «Прототип») читаются правильно
+  function drawFilm(ctx, img) {
+    if (ctx.getTransform().a < 0) {
+      ctx.save(); ctx.translate(W, 0); ctx.scale(-1, 1); ctx.drawImage(img, 0, 0, W, H); ctx.restore();
+    } else ctx.drawImage(img, 0, 0, W, H);
+  }
+  function factoryFill(ctx, P, fm) {
+    if (fm.tex) { drawFilm(ctx, Tex.make('fact:' + P.mat, fm.tex)); return; }
+    if (fm.metal) {
+      ctx.fillStyle = matGrad(ctx, { role: fm.metal, bb: P.bb }); ctx.fill(P.path, 'evenodd');
+      ctx.fillStyle = Tex.brushed(ctx); ctx.fill(P.path, 'evenodd');
+      return;
+    }
+    ctx.fillStyle = fm.col; ctx.fill(P.path, 'evenodd');
+    ctx.fillStyle = Tex.polymer(ctx); ctx.fill(P.path, 'evenodd');
+  }
+
   // Фаска: светлая кромка сверху и внутренняя тень снизу — даёт объём
   function bevel(ctx, P, px, k) {
     const bb = P.bb, pad = 14;
@@ -187,6 +248,14 @@ const Art = (function () {
     ctx.stroke(P.path);
   }
 
+  // Гравировка всегда читается слева направо, даже когда картинка предмета отражена (MIRROR)
+  function textUpright(ctx, P, dy) {
+    if (ctx.getTransform().a < 0) {
+      const w = ctx.measureText(P.text).width;
+      ctx.save(); ctx.translate(P.x + w, P.y + dy); ctx.scale(-1, 1); ctx.fillText(P.text, 0, 0); ctx.restore();
+    } else ctx.fillText(P.text, P.x, P.y + dy);
+  }
+
   function dimRect(ctx, P, a) {
     ctx.fillStyle = 'rgba(0,0,0,' + a + ')';
     ctx.fillRect(P.bb.x0 - 2, P.bb.y0 - 2, P.bb.x1 - P.bb.x0 + 4, P.bb.y1 - P.bb.y0 + 4);
@@ -221,19 +290,21 @@ const Art = (function () {
         return;
       }
       switch (r) {
-        case 'p': case 'q':
-          contactFill(ctx, P, fin.c[0], px);
+        case 'p': case 'q': {
+          const fm = factoryOf(P, fin);
+          contactFill(ctx, P, fm ? fm.col || '#6a7078' : fin.c[0], px);
           ctx.save();
           ctx.clip(P.path, 'evenodd');
-          ctx.drawImage(tex, 0, 0, W, H);
+          if (fm) factoryFill(ctx, P, fm); else drawFilm(ctx, tex);
           if (r === 'q') dimRect(ctx, P, 0.3);
           if (opt.dim) dimRect(ctx, P, opt.dim);
           ctx.restore();
           shadeFill(ctx, P, 0.85);
-          if (gloss) sheen(ctx, P, gloss);
+          if (fm ? fm.gloss : gloss) sheen(ctx, P, fm ? fm.gloss : gloss);
           bevel(ctx, P, px, 0.4);
           outline(ctx, P);
           break;
+        }
         case 'm': case 'l': case 'k': case 'g':
           contactFill(ctx, P, matGrad(ctx, P), px);
           if (r === 'm') { ctx.fillStyle = Tex.brushed(ctx); ctx.fill(P.path, 'evenodd'); }
@@ -245,8 +316,8 @@ const Art = (function () {
           break;
         case 't':
           ctx.font = '600 ' + P.size + 'px Arial, sans-serif';
-          ctx.fillStyle = 'rgba(255,255,255,.22)'; ctx.fillText(P.text, P.x, P.y + 0.7);
-          ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillText(P.text, P.x, P.y);
+          ctx.fillStyle = 'rgba(255,255,255,.22)'; textUpright(ctx, P, 0.7);
+          ctx.fillStyle = 'rgba(0,0,0,.55)'; textUpright(ctx, P, 0);
           break;
         case 's':
           ctx.lineWidth = P.w; ctx.strokeStyle = '#1f2227'; ctx.stroke(P.path);
@@ -300,7 +371,10 @@ const Art = (function () {
         if (mode === 'h') {
           ctx.fillStyle = gray(HT[r] + i * 0.0015 + off); ctx.fill(P.path, 'evenodd');
           ctx.lineWidth = 1.1; ctx.strokeStyle = gray(0.34 + off); ctx.stroke(P.path);
-        } else { ctx.fillStyle = gray(r === 'p' || r === 'q' ? pg : GLS[r]); ctx.fill(P.path, 'evenodd'); }
+        } else {
+          const fm = r === 'p' || r === 'q' ? factoryOf(P, fin) : null;
+          ctx.fillStyle = gray(fm ? 0.2 + 0.72 * fm.gloss : r === 'p' || r === 'q' ? pg : GLS[r]); ctx.fill(P.path, 'evenodd');
+        }
       } else if (r === 's') {
         ctx.lineWidth = P.w; ctx.strokeStyle = gray(mode === 'h' ? 0.88 + off : 0.6); ctx.stroke(P.path);
       } else if (r === 'd' && mode === 'h') {
@@ -314,7 +388,7 @@ const Art = (function () {
         ctx.fill(P.path);
       } else if (r === 't' && mode === 'h') {
         ctx.font = '600 ' + P.size + 'px Arial, sans-serif';
-        ctx.fillStyle = gray(0.5 + off); ctx.fillText(P.text, P.x, P.y);
+        ctx.fillStyle = gray(0.5 + off); textUpright(ctx, P, 0);
       }
     });
   }
@@ -402,10 +476,15 @@ const Art = (function () {
     return [hc, gc];
   }
 
+  // Как в инвентаре CS2, оружие в картинке предмета смотрит стволом (клинком) влево. Модели в js/geo_*.js
+  // нарисованы стволом вправо, поэтому картинка отражается по горизонтали; свет остаётся сверху слева.
+  const MIRROR = true;
+  const itemTf = (b) => (MIRROR ? [-S, 0, 0, S, b.x1 * S, -b.y0 * S] : [S, 0, 0, S, -b.x0 * S, -b.y0 * S]);
+
   function buildItem(skinId) {
     const s = SKINS[skinId], b = weaponBox(s.w);
     const w = Math.round((b.x1 - b.x0) * S), h = Math.round((b.y1 - b.y0) * S);
-    const tf = [S, 0, 0, S, -b.x0 * S, -b.y0 * S];
+    const tf = itemTf(b);
     const c = mk(w, h), ctx = c.getContext('2d');
     ctx.setTransform(tf[0], tf[1], tf[2], tf[3], tf[4], tf[5]);
     drawWeapon(ctx, s.w, s.f, { px: S });
@@ -418,9 +497,22 @@ const Art = (function () {
   function buildWear(weaponId, level) {
     const b = weaponBox(weaponId);
     const c = mk(Math.round((b.x1 - b.x0) * S), Math.round((b.y1 - b.y0) * S)), ctx = c.getContext('2d');
-    ctx.setTransform(S, 0, 0, S, -b.x0 * S, -b.y0 * S);
-    const parts = prep(weaponId).filter((P) => P.role === 'p' || P.role === 'q');
-    const paintMask = () => parts.forEach((P) => { ctx.fillStyle = '#fff'; ctx.fill(P.path, 'evenodd'); });
+    const tf = itemTf(b);
+    ctx.setTransform(tf[0], tf[1], tf[2], tf[3], tf[4], tf[5]);
+    // Сколы — только на видимой краске. Маска строится в порядке отрисовки деталей: окрашенная деталь
+    // добавляет белое, а всё, что лежит поверх неё (металл, полимер, стекло, винты, тяж «s», детали
+    // «своим материалом» — накладки перчаток, рукояти ножей), стирает маску под собой. Иначе сколы
+    // проступали на стволах, прицелах и накладках, которые перекрывают окрашенный корпус.
+    const parts = prep(weaponId);
+    const paintMask = () => {
+      parts.forEach((P) => {
+        const r = P.role;
+        if ((r === 'p' || r === 'q') && !P.fixed) { ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = '#fff'; ctx.fill(P.path, 'evenodd'); }
+        else if ('pqmlkgo'.indexOf(r) >= 0) { ctx.globalCompositeOperation = 'destination-out'; ctx.fillStyle = '#fff'; ctx.fill(P.path, 'evenodd'); }
+        else if (r === 's') { ctx.globalCompositeOperation = 'destination-out'; ctx.lineWidth = P.w; ctx.strokeStyle = '#fff'; ctx.stroke(P.path); }
+      });
+      ctx.globalCompositeOperation = 'source-over';
+    };
     if (geo(weaponId).pair) pairDo(ctx, weaponId, paintMask); else paintMask();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.globalCompositeOperation = 'source-in';
@@ -436,7 +528,7 @@ const Art = (function () {
   // ---------- Кэш между запусками (IndexedDB) ----------
   // Готовые картинки сохраняются в браузере: при следующем запуске они не рисуются заново.
   // ART_VER меняется при любом изменении отрисовки — тогда старый кэш очищается.
-  const ART_VER = 'd1';
+  const ART_VER = 'e1';   // e1: новые кейсы, перчатки, доработанные модели, сколы только на видимой краске
   // Локальный просмотр (127.0.0.1 / localhost) — без кэша: всегда свежие картинки во время работы над графикой
   const NO_IDB = typeof location !== 'undefined' && /^(127.0.0.1|localhost)$/.test(location.hostname);
   let dbp = null;
@@ -561,7 +653,8 @@ const Art = (function () {
   // ---------- Публичный интерфейс ----------
   function item(skinId, fl) {
     if (SKIN_IMAGES[skinId]) return '<span class="wimg"><img class="wb" src="' + SKIN_IMAGES[skinId] + '" alt="" draggable="false"></span>';
-    const lvl = fl == null ? 0 : wearLevel(fl);
+    // «Заводская окраска» — настоящие материалы (дерево, полимер, сталь): сколов краски на них нет
+    const lvl = fl == null || (FINISHES[SKINS[skinId].f] || {}).factory ? 0 : wearLevel(fl);
     return '<span class="wimg">' + img('i:' + skinId, 'wb') + (lvl ? img('w:' + SKINS[skinId].w + ':' + lvl, 'ww') : '') + '</span>';
   }
 

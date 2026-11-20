@@ -68,7 +68,10 @@
     const feed = inv.filter((x) => SKINS[x.s].r >= 6).map((x) => ({ s: x.s, f: x.f }));
     return { coins: 25340.5, total: 90000, inv: inv, uid: inv.length + 1, found: {}, feed: feed, top: feed.slice(),
       opened: 137, upgrades: 24, upWins: 9, best: feed[0] || null, daily: { last: 0, streak: 3 },
-      settings: { sound: false, lang: Q0.get('lang') === 'en' ? 'en' : 'ru', bg: Q0.get('bg') || 'coast' }, profile: { name: 'Demo', ava: '🐺' } };
+      settings: { sound: false, lang: Q0.get('lang') === 'en' ? 'en' : 'ru', bg: Q0.get('bg') || 'coast',
+        // ?bgblur=3&bgdim=40 — проверка фона при нужных размытии и затемнении (без ключей — значения по умолчанию)
+        bgBlur: Q0.has('bgblur') ? Number(Q0.get('bgblur')) : undefined, bgDim: Q0.has('bgdim') ? Number(Q0.get('bgdim')) : undefined },
+      profile: { name: 'Demo', ava: '🐺' } };
   }
   const Q0 = new URLSearchParams(location.search);
 
@@ -90,6 +93,7 @@
     Fonts.boot(G.S.settings.font);   // пара шрифтов: класс на <html> до первой отрисовки экранов
     Sfx.setEnabled(G.S.settings.sound);
     Backgrounds.apply(G.S.settings.bg);
+    Backgrounds.tune(G.S.settings.bgBlur, G.S.settings.bgDim);
     UI.applyI18n();
     UI.setSoundIcon();
     UI.setProfileBadge();
@@ -116,8 +120,11 @@
 
     Platform.ready();
     Platform.gameplay(true);
-    // Первый вход: сначала регистрация, потом окно офлайн-дохода (если он есть)
-    if (G.demo) { /* без регистрации и окон */ } else if (!G.S.profile.name) Profile.askRegister(showOffline);
+    // Первый вход: сначала регистрация, потом окно офлайн-дохода (если он есть).
+    // В Яндекс Играх регистрация необязательна: кто выбрал «Играть как гость» (settings.guest),
+    // того больше не спрашиваем. На сайте (CASELAB_NO_SDK) она обязательна — флаг там не действует.
+    const askReg = !G.S.profile.name && (window.CASELAB_NO_SDK || !G.S.settings.guest);
+    if (G.demo) { /* без регистрации и окон */ } else if (askReg) Profile.askRegister(showOffline);
     else if (showOffline) showOffline();
     if (location.hash === '#admin') Admin.open();
   }

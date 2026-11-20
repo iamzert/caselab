@@ -147,7 +147,15 @@ const Profile = (function () {
     if (after) after();
   };
 
-  A['reg-skip'] = function () { UI.closeModal(true); const after = regAfter; regAfter = null; if (after) after(); };
+  // «Играть как гость» (только Яндекс Игры): запоминаем выбор — при следующих запусках
+  // окно регистрации не появится; зарегистрироваться можно позже в профиле (edit-profile)
+  A['reg-skip'] = function () {
+    G.S.settings.guest = true;
+    G.save(true);
+    UI.closeModal(true);
+    const after = regAfter; regAfter = null;
+    if (after) after();
+  };
   A['edit-profile'] = function () { if (!UI.isSpinning()) showRegister(false); };
 
   function tick() { UI.setText($('#prof-bal'), G.fmt(G.S.coins)); }
@@ -172,9 +180,26 @@ const Profile = (function () {
   A['settings'] = function () { if (!UI.isSpinning()) showSettings(); };
 
   // ---------- Выбор фона ----------
+  // Под плитками — ползунки «Размытие» (0–24 px) и «Затемнение» (0–80 %): применяются сразу
+  // (Backgrounds.tune), сохраняются, когда ползунок отпустили. Пока ползунок двигают, окно
+  // становится прозрачным (класс bg-tuning на #modal-root) — виден настоящий фон за ним.
   let bgBack = null;
+  const BG_SLIDERS = [
+    { k: 'bgBlur', max: 24, unit: ' px', name: 'bg_blur' },
+    { k: 'bgDim', max: 80, unit: ' %', name: 'bg_dim' },
+  ];
+  const fill = (v, max) => (v / max * 100).toFixed(1) + '%';   // доля шкалы — золотая часть дорожки
+
+  function sliderHtml(o, off) {
+    const v = G.S.settings[o.k];
+    return '<label class="bg-sl"><span class="bg-sl-h"><b>' + t(o.name) + '</b><output>' + v + o.unit + '</output></span>' +
+      '<input type="range" class="bg-range" min="0" max="' + o.max + '" step="1" value="' + v + '" data-k="' + o.k + '"' +
+      ' style="--p:' + fill(v, o.max) + '"' + (off ? ' disabled' : '') + '></label>';
+  }
+
   function showBgPicker() {
     const cur = G.S.settings.bg;
+    const off = cur === 'none';   // «Классика» — без картинки: размывать и затемнять нечего
     UI.modal('<h3 class="m-title">' + t('bg_pick') + '</h3>' +
       '<div class="bg-grid">' + Backgrounds.list().map((b) => {
         const th = Backgrounds.thumb(b.id);
@@ -182,9 +207,49 @@ const Profile = (function () {
           '<span class="bg-th"' + (th ? ' style="background-image:url(\'' + th + '\')"' : '') + '></span>' +
           '<span class="bg-nm">' + G.nm(b.name) + '</span></button>';
       }).join('') + '</div>' +
+      '<div class="bg-tune' + (off ? ' off' : '') + '">' + BG_SLIDERS.map((o) => sliderHtml(o, off)).join('') + '</div>' +
       '<p class="hint">' + t('bg_hint') + '</p>' +
       '<div class="m-btns"><button class="btn primary" data-act="bg-done">' + t('close') + '</button></div>', { wide: true });
+    UI.$$('#modal-root .bg-range').forEach(bindSlider);
   }
+
+  // Живой просмотр: окно прячется, пока ползунок держат (мышь, палец), и ненадолго — при клавишах
+  let peekTimer = 0, dragging = false;
+  function peek(on, delay) {
+    const root = $('#modal-root');
+    clearTimeout(peekTimer);
+    if (on) root.classList.add('bg-tuning');
+    else peekTimer = setTimeout(() => root.classList.remove('bg-tuning'), delay || 0);
+  }
+
+  function bindSlider(inp) {
+    const o = BG_SLIDERS.filter((x) => x.k === inp.getAttribute('data-k'))[0];
+    const out = inp.parentNode.querySelector('output');
+    inp.addEventListener('pointerdown', () => { if (!inp.disabled) { dragging = true; peek(true); } });
+    inp.addEventListener('input', () => {
+      const v = Math.max(0, Math.min(o.max, Math.round(Number(inp.value)) || 0));
+      G.S.settings[o.k] = v;
+      out.textContent = v + o.unit;
+      inp.style.setProperty('--p', fill(v, o.max));
+      Backgrounds.tune(G.S.settings.bgBlur, G.S.settings.bgDim);
+      if (!dragging) { peek(true); peek(false, 900); }
+    });
+    inp.addEventListener('change', () => G.save(false));
+  }
+
+  // Отпустили — где бы ни оказался палец или курсор. dragging снимаем на следующем такте,
+  // чтобы клик, который браузер шлёт сразу после отпускания, ещё видел перетаскивание.
+  function endDrag() {
+    if (!dragging) return;
+    peek(false, 150);
+    setTimeout(() => { dragging = false; }, 0);
+  }
+  window.addEventListener('pointerup', endDrag);
+  window.addEventListener('pointercancel', endDrag);
+  // ползунок отпустили над затемнением вокруг окна — такой клик не закрывает окно выбора фона
+  document.addEventListener('click', (e) => {
+    if (dragging && e.target.classList && e.target.classList.contains('modal-back')) e.stopPropagation();
+  }, true);
   A['bg-pick'] = function (from) {
     if (UI.isSpinning()) return;
     bgBack = from === 'settings' ? showSettings : null;

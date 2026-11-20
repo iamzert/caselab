@@ -129,7 +129,9 @@ const I18N = {
     col_bonus: 'Каждый новый предмет навсегда даёт +1% к доходу и клику. Сейчас: +{v}%',
 
     settings: 'Настройки', sound: 'Звук', language: 'Язык', on: 'Вкл', off: 'Выкл',
-    background: 'Фон', bg_pick: 'Фон игры', bg_hint: 'Фон размывается и затемняется, чтобы не мешать интерфейсу.',
+    background: 'Фон', bg_pick: 'Фон игры',
+    bg_hint: 'Фон размывается и затемняется, чтобы не мешать интерфейсу. Пока вы двигаете ползунок, окно прячется — виден сам фон.',
+    bg_blur: 'Размытие', bg_dim: 'Затемнение',
     font: 'Шрифт', font_pick: 'Шрифт интерфейса', font_hint: 'Шрифт меняется сразу во всей игре.',
     font_tactic: 'Тактика', font_tactic_d: 'Квадратные армейские прописные, как в меню снаряжения, и чёткий текст.',
     font_tech: 'Инженер', font_tech_d: 'Строгий инженерный гротеск: узкие заголовки, ровный спокойный текст.',
@@ -304,7 +306,9 @@ const I18N = {
     col_bonus: 'Each new item permanently adds +1% to income and taps. Now: +{v}%',
 
     settings: 'Settings', sound: 'Sound', language: 'Language', on: 'On', off: 'Off',
-    background: 'Background', bg_pick: 'Game background', bg_hint: 'The background is blurred and dimmed so it does not distract from the interface.',
+    background: 'Background', bg_pick: 'Game background',
+    bg_hint: 'The background is blurred and dimmed so it does not distract from the interface. While you drag a slider, the window hides so you can see the background itself.',
+    bg_blur: 'Blur', bg_dim: 'Dim',
     font: 'Font', font_pick: 'Interface font', font_hint: 'The font changes instantly across the whole game.',
     font_tactic: 'Tactical', font_tactic_d: 'Squared military capitals, like a loadout menu, with crisp body text.',
     font_tech: 'Engineer', font_tech_d: 'A strict engineered grotesque: narrow headings, calm even text.',

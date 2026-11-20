@@ -11,7 +11,9 @@
 // В сборке для Яндекс Игр канал выключен — там остаётся личная лента из сохранения.
 const Live = (function () {
   const DEV = /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
-  const enabled = !!window.CASELAB_NO_SDK || DEV;
+  // ?nolive (только локально) — без общей ленты: безголовые скриншоты ждут конца всех запросов,
+  // а SSE-соединение не заканчивается никогда, и снимок зависает
+  const enabled = (!!window.CASELAB_NO_SDK || DEV) && !(DEV && new URLSearchParams(location.search).has('nolive'));
   // Локально — отдельный тестовый канал (?livetopic=имя), чтобы проверки не попадали к друзьям
   const devTopic = DEV ? (new URLSearchParams(location.search).get('livetopic') || '').replace(/[^\w-]/g, '').slice(0, 60) : '';
   const TOPIC = DEV ? (devTopic || 'caselab-dev-k7f3q9x2vd') : 'caselab-live-k7f3q9x2vd';

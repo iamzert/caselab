@@ -48,6 +48,7 @@ const WEAPONS = {
   duo:   { type: 'pistol',  mult: 0.85, name: { ru: 'Близнецы', en: 'Gemini' } },
   p50:   { type: 'pistol',  mult: 1.0,  name: { ru: 'Кобра-50', en: 'Cobra-50' } },
   r8:    { type: 'pistol',  mult: 0.85, name: { ru: 'Барабан-8', en: 'Drum-8' } },
+  zeus:  { type: 'pistol',  mult: 0.7,  name: { ru: 'Шокер-27', en: 'Shocker-27' } },
   // Пистолеты-пулемёты
   smg10: { type: 'smg',     mult: 0.85, name: { ru: 'Оса-10', en: 'Wasp-10' } },
   smg9:  { type: 'smg',     mult: 0.8,  name: { ru: 'Гадюка-9', en: 'Viper-9' } },
@@ -97,6 +98,7 @@ const WEAPONS = {
   nav:   { type: 'knife',   mult: 0.95, star: true, name: { ru: 'Наваха', en: 'Navaja' } },
   gut:   { type: 'knife',   mult: 0.9,  star: true, name: { ru: 'Нож с крюком', en: 'Gut Knife' } },
   push:  { type: 'knife',   mult: 0.85, star: true, name: { ru: 'Тычковые ножи', en: 'Push Daggers' } },
+  knife: { type: 'knife',   mult: 0.8,  star: true, name: { ru: 'Армейский нож', en: 'Service Knife' } },
   // Перчатки
   glsp:  { type: 'gloves',  mult: 1.8,  star: true, name: { ru: 'Спортивные перчатки', en: 'Athletic Gloves' } },
   gltc:  { type: 'gloves',  mult: 1.4,  star: true, name: { ru: 'Тактические перчатки', en: 'Tactical Gloves' } },
@@ -108,7 +110,8 @@ const WEAPONS = {
 
 // kind — способ генерации текстуры (см. art_tex.js), c — цвета, gloss — сила блика (0..1)
 const FINISHES = {
-  plain:    { kind: 'gloss',    c: ['#4a4f57', '#2a2d33'], gloss: 0.2, mult: 0.8, name: { ru: 'Заводская окраска', en: 'Factory Coat' } },
+  // factory: детали с указанным материалом (дерево, полимер, сталь — см. FACT в art.js) рисуются им самим
+  plain:    { kind: 'gloss',    c: ['#4a4f57', '#2a2d33'], gloss: 0.2, mult: 0.8, factory: true, name: { ru: 'Заводская окраска', en: 'Factory Coat' } },
   urban:    { kind: 'camo',     c: ['#6b7079', '#3e434b', '#9aa0a8', '#24272c'], mult: 0.9, name: { ru: 'Городской камуфляж', en: 'Urban Camo' } },
   forest:   { kind: 'camo',     c: ['#58653a', '#33401f', '#8a8550', '#1f2614'], mult: 0.9, name: { ru: 'Лесной камуфляж', en: 'Woodland' } },
   sand:     { kind: 'camo',     c: ['#c2a878', '#8f7449', '#e3d2a8', '#5e4a2c'], mult: 0.9, name: { ru: 'Песчаная буря', en: 'Sandstorm' } },
@@ -300,6 +303,11 @@ const CASES_RAW = [
     items: 'gut_plain:6' },
   { id: 'k_push', sec: 'knives', mode: 'inv', name: { ru: 'Тычок', en: 'Push' }, art: ['#3a2626', '#d7dee2', 'diamond', 'push'],
     items: 'push_plain:6' },
+  // R4_WEAPONS: у новых видов оружия только предметы своих кейсов (каталог остальных не сдвигается)
+  { id: 'k_knife', sec: 'knives', mode: 'inv', name: { ru: 'Устав', en: 'Regulation' }, art: ['#2e3328', '#d7dee2', 'diamond', 'knife'],
+    items: 'knife_plain:6 knife_forest:6 knife_urban:6 knife_rust:6 knife_carbon:6 knife_tiger:6 knife_scales:6 knife_chrome:6 knife_damascus:6 knife_marble:6 knife_fade:6 knife_gilded:6' },
+  { id: 'w_zeus', sec: 'weapons', name: { ru: 'Разряд', en: 'Discharge' }, art: ['#14302a', '#5dff9c', 'hex', 'zeus'],
+    items: 'zeus_plain:0 zeus_urban:0 zeus_hazard:1 zeus_carbon:2 zeus_circuit:2 zeus_kevlar:2 zeus_cyber:3 zeus_livewire:3 zeus_toxic:3 zeus_neon:4 zeus_thermal:4 zeus_storm:4 zeus_fade:5' },
   { id: 'gloves2', sec: 'gloves', mode: 'inv', name: { ru: 'Байкер', en: 'Biker' }, art: ['#2b2f38', '#ff7a3d', 'shield', 'glmo'],
     items: 'glmo_plain:6 gldr_plain:6' },
   { id: 'gloves3', sec: 'gloves', mode: 'inv', name: { ru: 'Ринг', en: 'Ring' }, art: ['#3a1f24', '#ff4f5e', 'shield', 'glwr'],
@@ -315,6 +323,9 @@ const CASES_RAW = [
 // предмета зависит от уровня раскраски (FIN_TIER); ножи и перчатки — всегда ★,
 // раскраски реликвий — ✦. Новые предметы раскладываются по кейсам автоматически.
 const SKIN_TOTAL = 1500;
+// Виды оружия, добавленные после 1500 предметов: в общее заполнение не входят (иначе сдвинулся бы
+// весь каталог и у игроков пропали бы предметы) — у них только предметы своих кейсов (k_knife, w_zeus).
+const R4_WEAPONS = ['zeus', 'knife'];
 // Первые 512 предметов собираются по старому правилу из старых видов оружия и раскрасок —
 // так у игроков не пропадают предметы, выбитые до расширения каталога.
 const OLD_TOTAL = 512;
@@ -512,7 +523,9 @@ CASES_RAW.forEach(function (c) {
   // в) новые виды оружия — всеми раскрасками
   const isOld = {};
   OLD_WEAPONS.forEach(function (w) { isOld[w] = 1; });
-  fill(Object.keys(WEAPONS).filter(function (w) { return !isOld[w]; }).map(function (w) { return queue(w, Object.keys(FINISHES), true); }), SKIN_TOTAL);
+  const isR4 = (w) => R4_WEAPONS.indexOf(w) >= 0;
+  const r4 = Object.keys(SKINS).filter(function (k) { return isR4(SKINS[k].w); }).length;
+  fill(Object.keys(WEAPONS).filter(function (w) { return !isOld[w] && !isR4(w); }).map(function (w) { return queue(w, Object.keys(FINISHES), true); }), SKIN_TOTAL + r4);
 })();
 
 // 3) У каждого предмета своя цена: совпадения сдвигаем на копейку (от 100 000 — на монету)

@@ -511,15 +511,16 @@ const Tex = (function () {
   };
 
   // Текстура раскраски (кэшируется)
-  function get(finishId) {
-    if (cache[finishId]) return cache[finishId];
-    const f = FINISHES[finishId];
-    const seed = seedOf(finishId);
+  function get(finishId) { return make(finishId, FINISHES[finishId]); }
+  // Текстура по описанию раскраски без записи в FINISHES (заводские материалы деталей в art.js)
+  function make(key, f) {
+    if (cache[key]) return cache[key];
+    const seed = seedOf(key);
     const R = rng(seed);
     const gen = GEN[f.kind] || GEN.gloss;
     const c = gen(f, R, perlin(seed), perlin(seed + 101), perlin(seed + 202));
     grain(c, f.kind === 'metal' ? 0.08 : 0.14);
-    cache[finishId] = c;
+    cache[key] = c;
     return c;
   }
 
@@ -628,6 +629,6 @@ const Tex = (function () {
   const lib = { W: W, H: H, S: S, rng: rng, perlin: perlin, fbm: fbm, rgb: rgb, mix: mix, clamp01: clamp01, smooth: smooth,
     pal: pal, shade: shade, mk: mk, full: full, pixels: pixels, vec: vec, grain: grain, blob: blob, seedOf: seedOf };
 
-  return { W: W, H: H, S: S, get: get, chips: chips, polymer: polymer, brushed: brushed, grime: grime, rgb: rgb, shade: shade, rng: rng, perlin: perlin, fbm: fbm,
+  return { W: W, H: H, S: S, get: get, make: make, chips: chips, polymer: polymer, brushed: brushed, grime: grime, rgb: rgb, shade: shade, rng: rng, perlin: perlin, fbm: fbm,
     addGen: addGen, lib: lib, hasGen: (kind) => !!GEN[kind] };
 })();

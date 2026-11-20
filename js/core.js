@@ -118,7 +118,10 @@ const G = (function () {
       week: { id: -1, o: 0 },
       freeAt: 0, adCoinsAt: 0, adCaseAt: 0, adSellAt: 0,
       lastSeen: Date.now(),
-      settings: { sound: true, fast: false, lang: null, sort: 'new', bg: 'coast' },
+      // bgBlur / bgDim — размытие (px) и затемнение (%) фона (js/bg.js, Backgrounds.tune): по умолчанию 3 px / 40 % —
+      // локация читается как настоящее место, а текст и панели остаются читаемыми (до этого было 16 / 34);
+      // guest — игрок нажал «Играть как гость» (Яндекс Игры): окно регистрации больше не показываем
+      settings: { sound: true, fast: false, lang: null, sort: 'new', bg: 'coast', bgBlur: 3, bgDim: 40, guest: false },
       profile: { name: '', ava: '' },   // ник и аватар из регистрации (хранятся в сохранении)
       savedAt: 0,
     };
@@ -166,6 +169,11 @@ const G = (function () {
       if (typeof raw.settings.bg === 'string' && raw.settings.bg.length < 40) d.settings.bg = raw.settings.bg;
       // пара шрифтов (id из js/fonts.js); неизвестный id Fonts.apply заменит парой по умолчанию
       if (typeof raw.settings.font === 'string' && /^[a-z]{2,12}$/.test(raw.settings.font)) d.settings.font = raw.settings.font;
+      // ползунки фона: только конечные числа, целые, в пределах шкалы (иначе — значение по умолчанию)
+      const range = (v, hi, def) => (typeof v === 'number' && isFinite(v) ? Math.max(0, Math.min(hi, Math.round(v))) : def);
+      d.settings.bgBlur = range(raw.settings.bgBlur, 24, d.settings.bgBlur);
+      d.settings.bgDim = range(raw.settings.bgDim, 80, d.settings.bgDim);
+      d.settings.guest = raw.settings.guest === true;
     }
     if (raw.profile && typeof raw.profile === 'object') {
       d.profile.name = G.cleanName(raw.profile.name);

@@ -35,6 +35,8 @@ const Rewards = (function () {
   };
   const KINDS = ['h', 'd', 'w'];
   const UNITS = { h: [0, 1, 2, 3], d: [0, 1, 2, 3], w: [0, 1, 2, 3] }; // какие части таймера показывать
+  // призы различаются иконкой и тонкой полоской сверху (цвет — p5_screens.css .rw-card.k-*), а не цветом панели
+  const K_ICON = { h: 'clock', d: 'rewards', w: 'trophy' };
   const pools = {};
 
   function pool(k) {
@@ -66,15 +68,18 @@ const Rewards = (function () {
     return [d, h, m, s - m * 60];
   }
   const CD_LABELS = ['t_d', 't_h', 't_m', 't_s'];
+  // каждая цифра — своя ячейка одной ширины: таймер не «прыгает» при смене 1 → 0
+  const cdDigits = (v) => String(v).split('').map((c) => '<i>' + c + '</i>').join('');
+  const cdVal = (p, i) => (i ? pad(p[i]) : String(p[i]));
   function cdHTML(k) {
     const p = cdParts(G.periodEnd(k) - Date.now());
-    return UNITS[k].map((i) => '<span><b>' + (i ? pad(p[i]) : p[i]) + '</b><small>' + t(CD_LABELS[i]) + '</small></span>').join('');
+    return UNITS[k].map((i) => '<span><b>' + cdDigits(cdVal(p, i)) + '</b><small>' + t(CD_LABELS[i]) + '</small></span>').join('');
   }
   function updateCd(el) {
     const k = el.getAttribute('data-k');
     const p = cdParts(G.periodEnd(k) - Date.now());
     const bs = el.querySelectorAll('b');
-    UNITS[k].forEach((i, j) => { if (bs[j]) UI.setText(bs[j], i ? pad(p[i]) : String(p[i])); });
+    UNITS[k].forEach((i, j) => { if (bs[j]) UI.setHTML(bs[j], cdDigits(cdVal(p, i))); });
   }
 
   // Карточка приза: название периода, предмет, таймер; внизу кнопка и условие
@@ -92,7 +97,7 @@ const Rewards = (function () {
       : condMet(k) ? '<button class="btn primary" data-act="rw-claim" data-id="' + k + '">' + t('rw_claim') + '</button>'
         : '<button class="btn" disabled>' + UI.ic('lock') + t('rw_locked_short') + '</button>';
     return '<div class="rw-card k-' + k + ' r' + sk.r + (got ? ' got' : '') + '" id="rw-' + k + '">' +
-      '<div class="rw-body"><div class="rw-info"><h3>' + t('rw_' + k) + '</h3>' +
+      '<div class="rw-body"><div class="rw-info"><h3>' + UI.ic(K_ICON[k]) + t('rw_' + k) + '</h3>' +
       '<div class="rw-item"><b>' + (G.isStar(pz.s) ? '★ ' : '') + G.skinName(pz.s) + '</b>' +
       '<span>' + G.finishName(pz.s) + ' · ' + UI.wearShort(pz.f) + '</span>' +
       '<em>' + COIN + G.fmt(G.sellPrice(pz)) + '</em></div>' +

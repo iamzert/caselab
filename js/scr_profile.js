@@ -21,8 +21,8 @@ const Profile = (function () {
     const img = $('#prof-img');
     const ava = S.profile.ava;
     if (p.photo && !ava) { img.src = p.photo; img.style.display = 'block'; UI.setText($('#prof-letter'), ''); }
-    else { img.style.display = 'none'; UI.setText($('#prof-letter'), ava || G.playerName().charAt(0).toUpperCase()); }
-    $('.prof-ava').classList.toggle('emoji', !!ava);
+    else { img.style.display = 'none'; UI.setHTML($('#prof-letter'), UI.avaHTML(ava)); }
+    $('.prof-ava').classList.toggle('ico', !!ava);
     UI.setText($('#prof-name'), G.playerName());
     UI.setText($('#prof-uid'), 'ID: ' + (1000000 + Math.floor(hash01('id:' + G.playerName()) * 8999999)));
     const rk = rankOf(S.opened);
@@ -98,7 +98,7 @@ const Profile = (function () {
       '<label class="reg-l" for="reg-name">' + t('reg_name') + '</label>' +
       '<input id="reg-name" class="reg-in" maxlength="16" autocomplete="nickname" placeholder="' + t('reg_ph') + '" value="' + prefill + '">' +
       '<span class="reg-l">' + t('reg_ava') + '</span>' +
-      '<div class="ava-grid">' + G.AVATARS.map((a) => '<button class="ava-opt' + (a === regAva ? ' on' : '') + '" data-act="reg-ava" data-id="' + a + '">' + a + '</button>').join('') + '</div>' +
+      '<div class="ava-grid">' + G.AVATARS.map((a) => '<button class="ava-opt' + (a === regAva ? ' on' : '') + '" data-act="reg-ava" data-id="' + a + '">' + UI.avaIcon(a) + '</button>').join('') + '</div>' +
       '<div id="reg-admin" hidden><label class="reg-l" for="reg-pass">' + t('reg_admin_pass') + '</label>' +
       '<input id="reg-pass" class="reg-in" type="password" autocomplete="current-password"></div>' +
       '<p class="reg-err" id="reg-err"></p>' +
@@ -107,7 +107,7 @@ const Profile = (function () {
       (first ? '' : '<button class="btn" data-act="close">' + t('close') + '</button>') + '</div>' +
       '<p class="hint">' + t('reg_note') + '</p></div>', { locked: first });
     const inp = document.getElementById('reg-name');
-    const syncAdmin = () => { document.getElementById('reg-admin').hidden = inp.value.trim().toLowerCase() !== Admin.LOGIN || Admin.unlocked(); };
+    const syncAdmin = () => { document.getElementById('reg-admin').hidden = inp.value.trim().toLowerCase() !== Desk.LOGIN || Desk.unlocked(); };
     inp.addEventListener('input', syncAdmin);
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') A['reg-go'](); });
     document.getElementById('reg-pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') A['reg-go'](); });
@@ -123,19 +123,33 @@ const Profile = (function () {
     document.querySelectorAll('.ava-opt').forEach((b) => b.classList.toggle('on', b === el));
   };
 
+  // Ник админа: пароль проверяется асинхронно (вывод ключа PBKDF2, js/desk.js)
+  let regBusy = false;
   A['reg-go'] = function () {
     const inp = document.getElementById('reg-name');
-    if (!inp) return;
+    if (!inp || regBusy) return;
     const name = G.cleanName(inp.value);
     if (!name) { regError(t('reg_err_name')); return; }
-    const isAdmin = name.toLowerCase() === Admin.LOGIN;
-    if (isAdmin && !Admin.unlocked()) {
-      if (Admin.waitLeft()) { regError(t('reg_err_wait', { s: Admin.waitLeft() })); return; }
-      if (!Admin.check(name, document.getElementById('reg-pass').value)) { regError(t('reg_err_admin')); return; }
-      Admin.unlock();
+    const isAdmin = name.toLowerCase() === Desk.LOGIN;
+    if (isAdmin && !Desk.unlocked()) {
+      if (Desk.waitLeft()) { regError(t('reg_err_wait', { s: Desk.waitLeft() })); return; }
+      const pe = document.getElementById('reg-pass'), pass = pe.value;
+      pe.value = '';
+      regBusy = true;
+      Desk.check(name, pass).then((res) => {
+        regBusy = false;
+        if (!document.getElementById('reg-name')) return;
+        if (res !== 'ok') { regError(res === 'wait' && Desk.waitLeft() ? t('reg_err_wait', { s: Desk.waitLeft() }) : t('reg_err_admin')); return; }
+        Desk.unlock();
+        regDone(name, true);
+      });
+      return;
     }
+    regDone(name, isAdmin);
+  };
+  function regDone(name, isAdmin) {
     const first = !G.S.profile.name;
-    G.S.profile = { name: isAdmin ? Admin.LOGIN : name, ava: regAva };
+    G.S.profile = { name: isAdmin ? Desk.LOGIN : name, ava: regAva };
     G.save(true);
     UI.closeModal(true);
     UI.setProfileBadge();
@@ -145,7 +159,7 @@ const Profile = (function () {
     UI.toast(isAdmin ? t('reg_admin_ok') : t(first ? 'reg_welcome' : 'reg_saved', { n: name }), 'good');
     const after = regAfter; regAfter = null;
     if (after) after();
-  };
+  }
 
   // «Играть как гость» (только Яндекс Игры): запоминаем выбор — при следующих запусках
   // окно регистрации не появится; зарегистрироваться можно позже в профиле (edit-profile)

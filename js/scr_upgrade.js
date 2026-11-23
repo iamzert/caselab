@@ -5,7 +5,7 @@
 // поэтому апгрейд всегда немного убыточен в среднем и не даёт бесконечных денег.
 const Upgrade = (function () {
   const t = G.t, $ = UI.$, A = UI.actions, COIN = UI.COIN;
-  const PAGE = 16;       // 4 ряда по 4 плитки, как в образце
+  const PAGE = 24;       // 4 ряда по 6 плиток на компьютере (на телефоне — 3 в ряд)
   let stake = [];        // uid выбранных предметов
   let bal = 0;           // монеты в ставке
   let target = null;     // skinId цели
@@ -62,17 +62,17 @@ const Upgrade = (function () {
 
   // Показываемый шанс. Множители ×0.25…×3 из админ-панели видны на кольце; режим «100% (скрыто)» — нет:
   // кольцо показывает обычный шанс, а настоящий шанс победы равен 1 (realChance).
-  // Подкрутка хранится только на устройстве администратора — у остальных игроков шансы честные.
+  // G.pref.up — множитель этого устройства (по умолчанию 1).
   function chance() {
     const s = stakeValue();
     if (!target || s <= 0) return 0;
     const tp = targetPrice(target);
     if (tp <= s) return 0;
     const base = Math.min(UPGRADE_MAX, s / tp * UPGRADE_EDGE);
-    if (G.odds.up >= G.ODDS_WIN) return base;
-    return Math.min(1, base * G.odds.up);
+    if (G.pref.up >= G.PREF_MAX) return base;
+    return Math.min(1, base * G.pref.up);
   }
-  const realChance = () => { const ch = chance(); return ch > 0 && G.odds.up >= G.ODDS_WIN ? 1 : ch; };
+  const realChance = () => { const ch = chance(); return ch > 0 && G.pref.up >= G.PREF_MAX ? 1 : ch; };
 
   // ---------- Круг ----------
   function arcPath(deg) {
@@ -168,7 +168,10 @@ const Upgrade = (function () {
     if (r.style.getPropertyValue('--p') !== fill) r.style.setProperty('--p', fill);
     UI.setText($('#up-bal-val'), G.fmt(bal));
     UI.setText($('#up-bal-max'), G.fmt(max));
-    $('#up-go').disabled = UI.isSpinning() || chance() <= 0;
+    const goBtn = $('#up-go'), off = UI.isSpinning() || chance() <= 0;
+    goBtn.disabled = off;
+    // неактивная кнопка подсказывает, чего не хватает (а не серое «АПГРЕЙД»)
+    UI.setText(goBtn, t(!off || UI.isSpinning() ? 'up_btn' : stakeValue() <= 0 ? 'up_need_stake' : !target ? 'up_need_target' : 'up_need_more'));
     $('#up-fast').classList.toggle('on', G.S.settings.fast);
   }
 

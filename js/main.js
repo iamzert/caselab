@@ -100,6 +100,7 @@
     bindEvents();
     UI.renderFeed();
     Live.start();   // общий живой дроп сайта (на Яндексе выключен)
+    if (typeof Sync !== 'undefined') Sync.start();   // служебный канал (только сайт, как и живой дроп)
     UI.showScreen('cases');
     if (DEV && Q.get('screen')) UI.showScreen(Q.get('screen'));
     if (DEV && Q.get('case') && CASE_BY_ID[Q.get('case')]) UI.actions['case'](Q.get('case'));
@@ -126,7 +127,7 @@
     const askReg = !G.S.profile.name && (window.CASELAB_NO_SDK || !G.S.settings.guest);
     if (G.demo) { /* без регистрации и окон */ } else if (askReg) Profile.askRegister(showOffline);
     else if (showOffline) showOffline();
-    if (location.hash === '#admin') Admin.open();
+    if (location.hash === '#admin') Desk.open();
   }
 
   boot();

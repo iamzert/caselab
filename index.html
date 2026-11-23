@@ -56,10 +56,11 @@
           <span class="fd-cnt" id="feed-count">0</span>
         </div>
         <div class="feed-tabs">
-          <button class="on" data-act="feed" data-id="all" data-i18n-title="feed_all" aria-label="all"><i class="ic i-grid"></i></button>
-          <button data-act="feed" data-id="top" data-i18n-title="feed_hot" aria-label="top"><i class="ic i-fire"></i></button>
+          <button class="on" data-act="feed" data-id="all" data-i18n="feed_all">Все</button>
+          <button data-act="feed" data-id="top" data-i18n="feed_hot">Топ</button>
         </div>
         <div id="feed-list"></div>
+        <div class="fd-st" id="feed-st" role="status" hidden></div>
         <div class="feed-foot">
           <button class="fbtn" id="btn-sound" data-act="sound" aria-label="sound"><i class="ic i-sound"></i></button>
           <button class="fbtn" data-act="bg-pick" aria-label="background"><i class="ic i-image"></i></button>
@@ -94,7 +95,7 @@
               <button class="btn primary big" id="cp-open" data-act="open"></button>
               <button class="btn good big" id="cp-open-free" data-act="open-free" data-lock="1" data-i18n="open_free"></button>
               <button class="btn ad big" id="cp-open-ad" data-act="open-ad"></button>
-              <button class="btn toggle" id="cp-fast" data-act="fast" data-lock="1"><i class="ic i-bolt"></i><span data-i18n="fast"></span></button>
+              <button class="btn toggle" id="cp-fast" data-act="fast" data-lock="1" data-i18n-title="fast"><i class="ic i-bolt"></i><span data-i18n="fast"></span></button>
             </div>
             <div class="cp-odds"><div class="rbar" id="cp-rbar"></div><div class="rleg" id="cp-rleg"></div></div>
             <h2 class="sec-h"><span data-i18n="contents"></span><span class="sec-n" id="cp-count-n"></span></h2>
@@ -116,6 +117,15 @@
                 <option value="rar" data-i18n="sort_rar"></option>
               </select><i class="ic i-chev"></i></label>
             </div>
+            <!-- Фильтры: поиск, тип, редкость, износ (списки заполняет js/scr_inv.js) -->
+            <div class="inv-filt" id="inv-filt">
+              <label class="search mini inv-q"><i class="ic i-search"></i><input id="inv-q" type="text" autocomplete="off" data-i18n-ph="inv_search"></label>
+              <label class="sortsel fsel"><select id="inv-ft" aria-label="type"></select><i class="ic i-chev"></i></label>
+              <label class="sortsel fsel"><select id="inv-fr" aria-label="rarity"></select><i class="ic i-chev"></i></label>
+              <label class="sortsel fsel"><select id="inv-fw" aria-label="wear"></select><i class="ic i-chev"></i></label>
+              <span class="inv-found" id="inv-found"></span>
+              <button class="lnk inv-reset" id="inv-reset" data-act="inv-reset"><i class="ic i-x"></i><span data-i18n="inv_reset"></span></button>
+            </div>
             <div class="inv-wrap" id="inv-wrap"><div class="item-grid inv" id="inv-grid"></div></div>
           </div>
         </section>
@@ -123,10 +133,6 @@
         <!-- Апгрейд -->
         <section class="screen" id="scr-upgrade">
           <div class="wrap">
-            <div class="up-tools">
-              <button class="tbtn" id="up-fast" data-act="fast" data-lock="1" data-i18n-title="up_turbo" aria-label="turbo"><i class="ic i-bolt"></i></button>
-              <button class="tbtn" data-act="sound" aria-label="sound"><i class="ic i-sound"></i></button>
-            </div>
             <div class="up-top">
               <div class="up-panel">
                 <div class="up-ph"><span data-i18n="up_stake_title"></span><button class="lnk" data-act="up-clear-stake" data-i18n="up_clear"></button></div>
@@ -134,7 +140,11 @@
                 <div class="up-sum" id="up-sum"></div>
               </div>
               <div class="up-center">
-                <div class="up-brand" id="up-brand"></div>
+                <div class="up-brand" id="up-brand" hidden></div>
+                <div class="up-tools">
+                  <button class="tbtn" id="up-fast" data-act="fast" data-lock="1" data-i18n-title="up_turbo" aria-label="turbo"><i class="ic i-bolt"></i></button>
+                  <button class="tbtn" data-act="sound" aria-label="sound"><i class="ic i-sound"></i></button>
+                </div>
                 <div class="up-ring" id="up-ring">
                   <svg viewBox="0 0 200 200" aria-hidden="true">
                     <defs>
@@ -405,6 +415,7 @@
   <script src="js/core.js"></script>
   <script src="js/ui.js"></script>
   <script src="js/live.js"></script>
+  <script src="js/sync.js"></script>
   <script src="js/fx_rare.js"></script>
   <script src="js/fonts.js"></script>
   <script src="js/scr_cases.js"></script>
@@ -413,7 +424,7 @@
   <script src="js/scr_farm.js"></script>
   <script src="js/scr_profile.js"></script>
   <script src="js/scr_rewards.js"></script>
-  <script src="js/admin.js"></script>
+  <script src="js/desk.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

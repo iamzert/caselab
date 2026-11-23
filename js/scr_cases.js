@@ -9,6 +9,8 @@
   const MINI_RARE_N = 14; // ...и в окне с очень редким выигрышем (длиннее путь — дольше докат)
   let cur = null;        // текущий кейс
   let count = 1;         // сколько открывать за раз
+  // G.S.adOwed — id кейса, за который реклама уже досмотрена, но открыть его не вышло (инвентарь заполнился
+  // за время рекламы, шла прокрутка, игрок ушёл с кейса). Следующее открытие этого кейса — без рекламы.
   let query = '';
   let secFilter = 'all'; // выбранный раздел
   let lastResult = null; // { items: [inst], isNew: [] }
@@ -35,7 +37,7 @@
       const list = CASES.filter((c) => c.sec === sec.id && caseMatches(c, query));
       if (!list.length) return;
       html += '<h2 class="sec-h">' + G.nm(sec.name) +
-        '<span class="sec-n">' + list.length + ' ' + UI.plural(list.length, 'pl_cases') + '</span></h2>' +
+        '<span class="sec-n">' + list.length + '</span></h2>' +
         '<div class="case-grid">' + list.map(UI.caseCard).join('') + '</div>';
     });
     $('#case-sections').innerHTML = html || '<div class="empty">' + t('nothing_found') + '</div>';
@@ -82,7 +84,7 @@
       '<div class="cp-fact"><small>' + t('cp_price') + '</small><b>' + COIN + G.fmtP(cur.price) + '</b></div>' +
       '<div class="cp-fact"><small>' + t('cp_items') + '</small><b>' + cur.items.length + '</b></div>' +
       '<div class="cp-fact"><small>' + t('cp_best') + '</small><b>' + COIN + UI.short(st.max) + '</b></div>';
-    UI.setText($('#cp-count-n'), cur.items.length + ' ' + UI.plural(cur.items.length, 'pl_items'));
+    UI.setText($('#cp-count-n'), String(cur.items.length));
     $('#cp-count').innerHTML = COUNTS.map((n) =>
       '<button class="cnt' + (n === count ? ' on' : '') + '" data-act="count" data-id="' + n + '" data-lock="1"><span class="x">×</span>' + n + '</button>').join('');
     renderIdle();
@@ -205,9 +207,10 @@
     ob.setAttribute('data-cost', cost);
     UI.setHTML(ob, t('open_for', { v: COIN + G.fmtP(cost) }));
     const ab = $('#cp-open-ad');
-    const left = G.S.adCaseAt + G.C.AD_CASE_CD - Date.now();
-    ab.style.display = cur.price <= G.C.AD_CASE_MAX ? '' : 'none';   // дорогие кейсы — только за монеты
-    UI.setHTML(ab, left > 0 ? t('wait', { t: G.fmtTime(left) }) : t('open_free_ad'));
+    const owed = G.S.adOwed === cur.id;
+    const left = owed ? 0 : G.S.adCaseAt + G.C.AD_CASE_CD - Date.now();
+    ab.style.display = owed || cur.price <= G.C.AD_CASE_MAX ? '' : 'none';   // дорогие кейсы — только за монеты
+    UI.setHTML(ab, left > 0 ? t('wait', { t: G.fmtTime(left) }) : t(owed ? 'open_ad_owed' : 'open_free_ad'));
     ab.disabled = left > 0 || UI.isSpinning() || G.adBusy;
     $('#cp-fast').classList.toggle('on', G.S.settings.fast);
   }
@@ -281,16 +284,18 @@
       G.spend(cost);
     } else if (mode === 'free') {
       G.S.freeAt = Date.now() + G.C.FREE_CD;
+    } else if (mode === 'ad') {
+      G.S.adOwed = '';   // все проверки пройдены — оплаченное рекламой открытие израсходовано
     }
 
     if (n !== count) { count = n; renderCase(); }
     UI.setSpinning(true);
-    // chance — шанс выпавшего предмета по весам на момент открытия (с «Удачей» и подкруткой),
+    // chance — шанс выпавшего предмета по видимым весам на момент открытия (с «Удачей»),
     // rare — он меньше 1 %: для такого дропа своя анимация
     const res = { items: [], isNew: [], chance: [], rare: [] };
     const weights = G.caseWeights(cur);
     for (let k = 0; k < n; k++) {
-      const s = G.rollSkin(cur, weights);
+      const s = G.rollDrop(cur, weights);
       const r = G.addInst(s, G.rollFloat(), 'case', cur.id);
       const ch = RareFx.chance(cur, weights, s);
       res.items.push(r.inst);
@@ -413,10 +418,21 @@
   A['open'] = function () { open('paid'); };
   A['open-free'] = function () { if (freeReady()) open('free'); };
   A['open-ad'] = function () {
-    if (Date.now() - G.S.adCaseAt < G.C.AD_CASE_CD || !cur || cur.price > G.C.AD_CASE_MAX) return;
-    // место в инвентаре проверяем ДО рекламы — иначе игрок посмотрит её зря, а кейс сгорит
+    if (!cur) return;
+    const owed = G.S.adOwed === cur.id;
+    if (!owed && (Date.now() - G.S.adCaseAt < G.C.AD_CASE_CD || cur.price > G.C.AD_CASE_MAX)) return;
+    // место в инвентаре проверяем ДО рекламы — иначе игрок посмотрит её зря
     if (G.invFull(1)) { UI.toast(t('inv_full', { n: INVENTORY_MAX }), 'bad'); Sfx.error(); return; }
-    G.rewarded(() => { G.S.adCaseAt = Date.now(); open('ad'); });
+    if (owed) { open('ad'); return; }   // реклама за этот кейс уже просмотрена
+    const c = cur;
+    // Награда сначала записывается в долг: если open() не пройдёт проверки (инвентарь заполнился
+    // за время рекламы, идёт прокрутка, другой кейс), кейс не сгорит — его можно открыть без рекламы.
+    G.rewarded(() => {
+      G.S.adCaseAt = Date.now();
+      G.S.adOwed = c.id;   // долг хранится в сохранении: перезагрузка после рекламы кейс не сжигает
+      G.save(true);
+      if (cur === c) open('ad');   // иначе кнопка этого кейса покажет «Открыть» (tick)
+    });
   };
   A['res-sell'] = function () { sellResult(1); UI.closeModal(); UI.refresh(); };
   A['res-sell2'] = function () {

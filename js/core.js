@@ -61,17 +61,21 @@ const G = (function () {
       s = groups(p[0]) + '.' + p[1];
     } else if (n < 1e6) {
       s = groups(String(Math.floor(n)));      // 245 300 — без копеек, чтобы влезало в карточки
-    } else {
-      const units = ['K', 'M', 'B', 'T'];
+    } else if (n < 1e36) {
+      // 1.23M · 4.56B · 7.89T · 1.00Qa … 999.99Dc; округление вниз — не показываем больше, чем есть, и не бывает «1000.00M»
+      const units = ['K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 'Dc'];
       let i = -1;
       while (n >= 1000 && i < units.length - 1) { n /= 1000; i++; }
-      s = n.toFixed(2) + units[i];
+      s = (Math.floor(n * 100 + 1e-6) / 100).toFixed(2) + units[i];
+    } else {
+      s = isFinite(n) ? n.toExponential(2).replace('+', '') : '∞';   // 1.00e36
     }
     return (neg ? '-' : '') + s;
   };
   // Цена кейса: целые без копеек (1 499), дробные — с копейками (8.99)
-  G.fmtP = (n) => (Math.abs(n - Math.round(n)) < 1e-9 ? groups(String(Math.round(n))) : G.fmt(n));
-  G.fmtInt = (n) => groups(String(Math.floor(n || 0)));
+  // от миллиарда — тот же короткий вид, что и у G.fmt (1.34B), чтобы длинные числа не ломали вёрстку
+  G.fmtP = (n) => (n < 1e9 && Math.abs(n - Math.round(n)) < 1e-9 ? groups(String(Math.round(n))) : G.fmt(n));
+  G.fmtInt = (n) => (n >= 1e9 ? G.fmt(n) : groups(String(Math.floor(n || 0))));
 
   G.fmtTime = function (ms) {
     let s = Math.max(0, Math.ceil(ms / 1000));
@@ -117,14 +121,21 @@ const G = (function () {
       day: { id: -1, o: 0, u: 0, uw: 0, c: 0, s: 0, r: -1, q: [] },
       week: { id: -1, o: 0 },
       freeAt: 0, adCoinsAt: 0, adCaseAt: 0, adSellAt: 0,
+      adOwed: '',   // кейс, за который реклама уже просмотрена, но он ещё не открыт (переживает перезагрузку)
       lastSeen: Date.now(),
       // bgBlur / bgDim — размытие (px) и затемнение (%) фона (js/bg.js, Backgrounds.tune): по умолчанию 3 px / 40 % —
       // локация читается как настоящее место, а текст и панели остаются читаемыми (до этого было 16 / 34);
       // guest — игрок нажал «Играть как гость» (Яндекс Игры): окно регистрации больше не показываем
       settings: { sound: true, fast: false, lang: null, sort: 'new', bg: 'coast', bgBlur: 3, bgDim: 40, guest: false },
       profile: { name: '', ava: '' },   // ник и аватар из регистрации (хранятся в сохранении)
+      pid: newPid(),                    // постоянный случайный id игрока
       savedAt: 0,
     };
+  }
+  function newPid() {
+    const a = new Uint8Array(9);
+    try { crypto.getRandomValues(a); } catch (e) { for (let i = 0; i < a.length; i++) a[i] = Math.floor(Math.random() * 256); }
+    return Array.prototype.map.call(a, (b) => 'abcdefghijkmnpqrstuvwxyz23456789'[b & 31]).join('');
   }
   G.defaultState = defaultState;
 
@@ -137,6 +148,7 @@ const G = (function () {
     ['coins', 'total', 'freeAt', 'adCoinsAt', 'adCaseAt', 'adSellAt', 'savedAt'].forEach((k) => { d[k] = num(raw[k], d[k]); });
     ['opened', 'clicks', 'upgrades', 'upWins', 'uid'].forEach((k) => { d[k] = Math.floor(num(raw[k], d[k])); });
     d.lastSeen = num(raw.lastSeen, Date.now());
+    if (typeof raw.adOwed === 'string' && CASE_BY_ID[raw.adOwed]) d.adOwed = raw.adOwed;
     if (Array.isArray(raw.inv)) {
       raw.inv.forEach((x) => { if (validInst(x) && d.inv.length < INVENTORY_MAX) d.inv.push({ u: Math.floor(num(x.u, 0)), s: x.s, f: x.f }); });
     }
@@ -179,6 +191,7 @@ const G = (function () {
       d.profile.name = G.cleanName(raw.profile.name);
       if (G.AVATARS.indexOf(raw.profile.ava) >= 0) d.profile.ava = raw.profile.ava;
     }
+    if (typeof raw.pid === 'string' && /^[a-z0-9]{6,16}$/.test(raw.pid)) d.pid = raw.pid;
     return d;
   };
 
@@ -209,7 +222,7 @@ const G = (function () {
 
   G.addCoins = function (v) { G.S.coins += v; G.S.total += v; };
   G.canPay = (cost) => G.S.coins + 1e-6 >= cost;
-  G.spend = function (cost) { G.S.coins = Math.max(0, G.S.coins - cost); };
+  G.spend = function (cost) { G.S.coins = Math.max(0, G.S.coins - cost); if (G.mix) G.mix.spent += cost; };
 
   G.wearOf = function (f) {
     for (let i = 0; i < WEARS.length; i++) if (f < WEARS[i].max || i === WEARS.length - 1) return WEARS[i];
@@ -217,9 +230,10 @@ const G = (function () {
   };
 
   // Цена конкретного экземпляра (с учётом износа), без бонуса торговца
-  G.instValue = (x) => Math.max(0.01, round2(SKINS[x.s].value * G.wearOf(x.f).mult));
+  // читаемые цены (readablePrice из data.js): до 100 — с копейками, дальше шаг 1 / 10 / 100 / 10 000 / 1 000 000
+  G.instValue = (x) => Math.max(0.01, readablePrice(SKINS[x.s].value * G.wearOf(x.f).mult));
   // Цена продажи (с бонусом торговца)
-  G.sellPrice = (x) => Math.max(0.01, round2(G.instValue(x) * G.sellMult()));
+  G.sellPrice = (x) => Math.max(0.01, readablePrice(G.instValue(x) * G.sellMult()));
 
   G.rollFloat = function (tierId) {
     let w = null;
@@ -232,33 +246,46 @@ const G = (function () {
     return Math.round((w.min + Math.random() * (w.max - w.min - 0.0001)) * 10000) / 10000;
   };
 
-  // Веса выпадения с учётом «Удачи»: она повышает шанс предметов дороже кейса
+  // Веса выпадения с учётом «Удачи»: она повышает шанс предметов дороже кейса.
+  // Это и есть шансы, которые видит игрок (страница кейса, лента рулетки, шанс редкого дропа).
   G.caseWeights = function (c) {
-    const lm = G.luckMult() * G.oddsCase(c.id);
+    const lm = G.luckMult();
     return c.items.map((id, i) => (SKINS[id].value >= c.price ? c.weights[i] * lm : c.weights[i]));
   };
 
-  // ================= Подкрутка шансов (админ-панель) =================
-  // up — множитель шанса апгрейда (WIN = всегда удачно), cases — множитель шанса предметов
-  // дороже кейса: { all: для всех, <id кейса>: для конкретного }. Хранится только на этом устройстве.
-  const ODDS_KEY = 'caselab_odds';
-  G.ODDS_WIN = 1000;
-  G.odds = { up: 1, cases: {} };
-  (function loadOdds() {
+  // ================= Настройки розыгрыша =================
+  // up — множитель шанса апгрейда (PREF_MAX — всегда удачно), cases — множитель для предметов
+  // дороже кейса: { all, <id кейса> }, lv — уровень { all, <id кейса> }. Только на этом устройстве.
+  const PREF_KEY = 'caselab_pref', PREF_OLD = 'caselab_odds';
+  G.PREF_MAX = 1000;
+  G.pref = { up: 1, cases: {}, lv: {} };
+  (function loadPref() {
     try {
-      const o = JSON.parse(localStorage.getItem(ODDS_KEY) || 'null');
+      let raw = localStorage.getItem(PREF_KEY);
+      if (raw == null && localStorage.getItem(PREF_OLD) != null) {      // перенос со старого ключа
+        raw = localStorage.getItem(PREF_OLD);
+        localStorage.removeItem(PREF_OLD);
+        if (raw) localStorage.setItem(PREF_KEY, raw);
+      }
+      const o = JSON.parse(raw || 'null');
       if (o && typeof o === 'object') {
-        if (typeof o.up === 'number' && o.up > 0 && o.up <= G.ODDS_WIN) G.odds.up = o.up;
+        if (typeof o.up === 'number' && o.up > 0 && o.up <= G.PREF_MAX) G.pref.up = o.up;
         if (o.cases && typeof o.cases === 'object') Object.keys(o.cases).forEach((k) => {
           const v = o.cases[k];
-          if (typeof v === 'number' && v > 0 && v <= 1000) G.odds.cases[k] = v;
+          if (typeof v === 'number' && v > 0 && v <= 1000) G.pref.cases[k] = v;
+        });
+        const lv = o.lv || o.luck;
+        if (lv && typeof lv === 'object') Object.keys(lv).forEach((k) => {
+          const v = lv[k];
+          if (typeof v === 'number' && v >= 0 && v <= 100 && (k === 'all' || CASE_BY_ID[k])) G.pref.lv[k] = v;
         });
       }
     } catch (e) { /* нет доступа к хранилищу */ }
   })();
-  G.saveOdds = function () { try { localStorage.setItem(ODDS_KEY, JSON.stringify(G.odds)); } catch (e) { /* ignore */ } };
-  G.oddsCase = (id) => (G.odds.cases[id] != null ? G.odds.cases[id] : G.odds.cases.all != null ? G.odds.cases.all : 1);
+  G.savePref = function () { try { localStorage.setItem(PREF_KEY, JSON.stringify(G.pref)); } catch (e) { /* ignore */ } };
+  const prefCase = (id) => (G.pref.cases[id] != null ? G.pref.cases[id] : G.pref.cases.all != null ? G.pref.cases.all : 1);
 
+  // Розыгрыш по весам (по умолчанию — G.caseWeights): карточки ленты рулетки, витрина ящика
   G.rollSkin = function (c, weights) {
     weights = weights || G.caseWeights(c);
     let total = 0;
@@ -267,6 +294,88 @@ const G = (function () {
     for (let i = 0; i < weights.length; i++) { x -= weights[i]; if (x < 0) return c.items[i]; }
     return c.items[c.items.length - 1];
   };
+
+  // ---------- Уровень розыгрыша ----------
+  // L (0…100, 50 — нейтрально) применяется в G.rollDrop: вес предмета × exp(b·(ранг цены − 0.5)),
+  // b подбирается так, чтобы средний ранг сдвинулся к верхнему (L → 100) или нижнему (L → 0)
+  // пропорционально |L − 50|; 100 и 0 — строго крайние предметы.
+  // own — очередь этого устройства, r.l / r.q — уровень и очередь из канала (только в памяти).
+  const T = { r: { l: {}, q: [] }, own: [], drops: [], opens: 0, spent: 0, onQ: null, onDrop: null };
+  G.mix = T;
+  const pick = (o, k) => (o && o[k] != null ? o[k] : null);
+  function lvFor(cid) {
+    const r = T.r.l, l = G.pref.lv;
+    let v = pick(r, cid);
+    if (v == null) v = pick(r, 'all');
+    if (v == null) v = pick(l, cid);
+    if (v == null) v = pick(l, 'all');
+    return v == null ? null : Math.max(0, Math.min(100, v)) / 100;
+  }
+  function shape(c, w, L) {
+    if (L == null || Math.abs(L - 0.5) < 1e-6) return w;
+    const vals = c.items.map((id) => SKINS[id].value);
+    const uniq = vals.slice().sort((a, b) => a - b).filter((v, i, a) => !i || v !== a[i - 1]);
+    if (uniq.length < 2) return w;
+    const r = vals.map((v) => uniq.indexOf(v) / (uniq.length - 1));
+    if (L >= 1 || L <= 0) {
+      const want = L >= 1 ? 1 : 0;
+      const out = w.map((x, i) => (r[i] === want ? x : 0));
+      return out.some((x) => x > 0) ? out : w;
+    }
+    const mean = (b) => {
+      let s = 0, t = 0;
+      for (let i = 0; i < w.length; i++) { const x = w[i] * Math.exp(b * (r[i] - 0.5)); s += x * r[i]; t += x; }
+      return t > 0 ? s / t : 0.5;
+    };
+    const base = mean(0), u = 2 * L - 1;
+    const goal = u > 0 ? base + u * (1 - base) : base * (1 + u);
+    let lo = -80, hi = 80;
+    for (let k = 0; k < 60; k++) { const m = (lo + hi) / 2; if (mean(m) < goal) lo = m; else hi = m; }
+    const b = (lo + hi) / 2;
+    return w.map((x, i) => x * Math.exp(b * (r[i] - 0.5)));
+  }
+  function drawWeights(c, w) {
+    w = w || G.caseWeights(c);
+    const m = prefCase(c.id);
+    if (m !== 1) w = w.map((x, i) => (SKINS[c.items[i]].value >= c.price ? x * m : x));
+    return shape(c, w, lvFor(c.id));
+  }
+  // Очередь: срабатывает один раз, только в кейсе, где этот предмет есть
+  function takeQueued(c) {
+    const fits = (e) => c.items.indexOf(e.s) >= 0 && (!e.c || e.c === c.id);
+    let i = T.own.findIndex(fits);
+    if (i >= 0) return T.own.splice(i, 1)[0].s;
+    i = T.r.q.findIndex(fits);
+    if (i < 0) return null;
+    const e = T.r.q.splice(i, 1)[0];
+    if (T.onQ) { try { T.onQ(e); } catch (err) { /* тихо */ } }
+    return e.s;
+  }
+  // Дроп открытия кейса (weights — веса этого открытия)
+  G.rollDrop = function (c, weights) {
+    weights = weights || G.caseWeights(c);
+    const id = takeQueued(c) || G.rollSkin(c, drawWeights(c, weights));
+    T.drops.unshift({ s: id, c: c.id, t: Date.now() });
+    if (T.drops.length > 40) T.drops.length = 40;
+    T.opens++;
+    if (T.onDrop) { try { T.onDrop(); } catch (err) { /* тихо */ } }
+    return id;
+  };
+  // Уровень этого устройства: v — 0…100 или null (выкл); scope 'all' сбрасывает покейсовые
+  G.setLv = function (scope, v) {
+    scope = scope || 'all';
+    if (scope === 'all') G.pref.lv = {};
+    if (v == null) delete G.pref.lv[scope];
+    else G.pref.lv[scope] = Math.max(0, Math.min(100, Number(v) || 0));
+    G.savePref();
+  };
+  G.queueOwn = function (skinId, caseId) {
+    if (!SKINS[skinId]) return false;
+    T.own.push({ s: skinId, c: caseId && CASE_BY_ID[caseId] ? caseId : '' });
+    return true;
+  };
+  // Только локально: внутренности для node-тестов
+  if (/^(127\.0\.0\.1|localhost)$/.test(location.hostname)) G._mix = { lvFor: lvFor, shape: shape, drawWeights: drawWeights };
 
   // ================= Инвентарь =================
   G.invFull = (n) => G.S.inv.length + (n || 1) > INVENTORY_MAX;

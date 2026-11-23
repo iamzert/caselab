@@ -38,9 +38,9 @@ const UI = (function () {
     return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 10 || b >= 20) ? f[1] : f[2];
   }
 
-  // Короткая запись больших чисел: 950, 1.2K, 25K, 5.22M
+  // Короткая запись больших чисел: 950, 1.2K, 25K, 5.22M, 1.34B — от миллиона тот же вид, что у G.fmt
   function short(n) {
-    if (n >= 1e6) return (n / 1e6).toFixed(n >= 1e7 ? 1 : 2).replace(/\.?0+$/, '') + 'M';
+    if (n >= 1e6) return G.fmt(n);
     if (n >= 1e3) return (n / 1e3).toFixed(n >= 1e4 ? 0 : 1).replace(/\.0$/, '') + 'K';
     return String(Math.round(n));
   }
@@ -132,6 +132,13 @@ const UI = (function () {
   // ---------- Карточки ----------
   function wearShort(f) { return t('wear_' + G.wearOf(f).id); }
 
+  // Аватар игрока: в сохранении и в живой ленте остаются прежние ключи G.AVATARS (эмодзи — только идентификатор),
+  // на экране — монохромный значок Phosphor на графитовой плитке
+  const AVA_IC = { '🐺': 'dog', '🦊': 'cat', '🐯': 'paw', '🦅': 'bird', '🐉': 'ghost', '💀': 'skull', '🤖': 'robot', '👑': 'crown', '🐍': 'sword', '🦂': 'bug', '🔥': 'fire', '⚡': 'bolt' };
+  function avaIcon(a) { return ic(AVA_IC[a] || 'user'); }
+  // выбранный аватар — значок, иначе первая буква ника (экранированная)
+  function avaHTML(a) { return a ? avaIcon(a) : G.playerName().charAt(0).toUpperCase().replace(/[&<>"']/g, (m) => '&#' + m.charCodeAt(0) + ';'); }
+
   // Карточка экземпляра предмета ({u, s, f}) или предмета каталога (skinId)
   function itemCard(src, o) {
     o = o || {};
@@ -142,13 +149,16 @@ const UI = (function () {
     const tag = o.act ? 'button' : 'div';
     const attrs = o.act ? ' data-act="' + o.act + '" data-id="' + (inst && !o.useSkinId ? inst.u : skinId) + '"' : '';
     let top = '<div class="it-top">';
-    top += o.chance != null ? '<span class="it-chance">' + G.fmtPct(o.chance) + '</span>' : (inst ? '<span class="it-wear">' + wearShort(inst.f) + '</span>' : '<span></span>');
+    // износ — полной подписью и короткой (узкая плитка показывает короткую, CSS @container)
+    const wid = inst ? G.wearOf(inst.f).id : '';
+    top += o.chance != null ? '<span class="it-chance">' + G.fmtPct(o.chance) + '</span>'
+      : (inst ? '<span class="it-wear" title="' + t('wear_' + wid) + '"><span class="wl">' + t('wear_' + wid) + '</span><span class="ws">' + t('wear_' + wid + '_s') + '</span></span>' : '<span></span>');
     top += '<span class="it-price">' + COIN + G.fmt(price) + '</span></div>';
     return '<' + tag + ' class="it r' + sk.r + (o.cls ? ' ' + o.cls : '') + (o.selected ? ' sel' : '') + '"' + attrs + '>' +
       top + '<div class="it-art">' + Art.item(skinId, inst ? inst.f : null) + '</div>' +
+      // «новый» — не плашка поверх картинки, а короткая зелёная метка в строке скина (верхний ряд остаётся одному значку)
       '<div class="it-name">' + (G.isStar(skinId) ? '★ ' : '') + G.skinName(skinId) + '</div>' +
-      '<div class="it-fin">' + G.finishName(skinId) + '</div>' +
-      (o.badge ? '<div class="it-badge">' + o.badge + '</div>' : '') +
+      '<div class="it-fin">' + (o.badge ? '<b class="it-new">' + o.badge + '</b>' : '') + G.finishName(skinId) + '</div>' +
       '</' + tag + '>';
   }
 
@@ -185,17 +195,66 @@ const UI = (function () {
     return topCaseId;
   }
 
-  // Плитка кейса: картинка на сером фоне, снизу название и цена
+  // Ящик в плитке вписывается по своим настоящим границам (прозрачные поля картинки не в счёт):
+  // ширина не больше FIT_W студии, высота не больше FIT_H, центр границ — в центре студии.
+  // Так все ящики в ряду одного масштаба. Границы меряются один раз на кейс (уменьшенная копия, ~7 тыс. точек).
+  const FIT_W = 0.86, FIT_H = 0.74, ART_R = 1.5;   // ART_R — пропорция .cc-art (3 / 2)
+  const crateFit = {};
+  let fitCv = null;
+  function crateBox(img) {
+    const nw = img.naturalWidth, nh = img.naturalHeight;
+    if (nw < 64 || nh < 32) return null;
+    const w = 108, h = Math.round(w * nh / nw);
+    if (!fitCv) fitCv = document.createElement('canvas');
+    fitCv.width = w; fitCv.height = h;
+    const x = fitCv.getContext('2d', { willReadFrequently: true });
+    let d;
+    try { x.clearRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h); d = x.getImageData(0, 0, w, h).data; } catch (e) { return null; }
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) {
+      for (let i = 0; i < w; i++) {
+        if (d[(y * w + i) * 4 + 3] > 24) { if (i < x0) x0 = i; if (i > x1) x1 = i; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+      }
+    }
+    if (x1 < 0) return null;
+    return { x: x0 / w, y: y0 / h, w: (x1 - x0 + 1) / w, h: (y1 - y0 + 1) / h, a: nw / nh };
+  }
+  function fitStyle(b) {
+    const W = Math.min(FIT_W / b.w, FIT_H * b.a / (ART_R * b.h));   // ширина картинки в долях ширины студии
+    const pc = (v) => (v * 100).toFixed(2) + '%';
+    return '--cw:' + pc(W) + ';--cl:' + pc(0.5 - W * (b.x + b.w / 2)) + ';--ct:' + pc(0.5 - W * ART_R / b.a * (b.y + b.h / 2));
+  }
+  // картинка ящика загрузилась (и после отрисовки в очереди тоже) — вписываем и показываем
+  document.addEventListener('load', (e) => {
+    const im = e.target;
+    if (!im.classList || !im.classList.contains('crate') || im.classList.contains('pend')) return;
+    const art = im.parentNode;
+    if (!art || !art.classList.contains('cc-art')) return;
+    const card = art.closest('.case-card');
+    const id = card ? card.getAttribute('data-id') : '';
+    let st = crateFit[id];
+    if (!st) {
+      const b = crateBox(im);
+      st = b ? fitStyle(b) : '';
+      if (b && id) crateFit[id] = st;
+    }
+    if (st) art.setAttribute('style', st);
+    art.classList.add('fit');
+  }, true);
+
+  // Плитка кейса: ящик в тёмной студии, метки в левом верхнем углу, снизу название и цена
   function caseCard(c) {
     const free = c.id === FREE_CASE_ID && Date.now() >= G.S.freeAt;
     const st = caseStats(c);
-    const tag = free ? '<span class="cc-tag">' + t('free_badge') + '</span>'
-      : c.id === topCase() ? '<span class="cc-tag top">' + t('tag_top') + '</span>' : '';
-    const tier = st.ultra ? '<span class="cc-tier r8">✧ 100M+</span>' : st.relic ? '<span class="cc-tier r7">✦ 1M+</span>'
-      : st.star ? '<span class="cc-tier r6">★</span>' : '';
+    const tags = (free ? '<span class="cc-tag free">' + t('free_badge') + '</span>'
+      : c.id === topCase() ? '<span class="cc-tag top">' + t('tag_top') + '</span>' : '') +
+      (st.ultra ? '<span class="cc-tag tier r8">100M+</span>' : st.relic ? '<span class="cc-tag tier r7">1M+</span>'
+        : st.star ? '<span class="cc-tag tier r6">★</span>' : '');
     const cls = c.id === 'royal' ? ' royal' : c.sec === 'ultra' ? ' ultra' : '';
-    return '<button class="case-card' + cls + '" data-act="case" data-id="' + c.id + '">' + tag + tier +
-      '<div class="cc-art">' + Art.crate(c) + '</div>' +
+    const fit = crateFit[c.id];
+    return '<button class="case-card' + cls + '" data-act="case" data-id="' + c.id + '">' +
+      (tags ? '<span class="cc-tags">' + tags + '</span>' : '') +
+      '<div class="cc-art' + (fit ? ' fit" style="' + fit : '') + '">' + Art.crate(c) + '</div>' +
       '<div class="cc-info"><div class="cc-name">' + G.nm(c.name) + '</div>' +
       '<div class="cc-price" data-cost="' + c.price + '">' + COIN + G.fmtP(c.price) + '</div></div>' +
       '</button>';
@@ -234,21 +293,30 @@ const UI = (function () {
       const c = x.c ? CASE_BY_ID[x.c] : null;
       const cls = 'fd r' + sk.r + (feedShown.has(key) ? '' : ' new') + (live && (x.me || x.n === me) ? ' me' : '') + (c ? ' link' : '');
       // подсказка: из какого кейса и когда; строка с кейсом открывает этот кейс
-      const tip = [c ? t('feed_case', { c: G.nm(c.name) }) : '', live && x.t ? feedAgo(now - x.t) : ''].filter(Boolean).join(' · ');
-      const attrs = (c ? ' data-act="feed-case" data-id="' + c.id + '"' : '') + (tip ? ' title="' + tip.replace(/"/g, '&quot;') + '"' : '');
-      const who = live ? '<div class="fd-who">' + (x.a ? '<i class="fd-ava">' + x.a + '</i>' : '') + '<span class="fd-nm">' + x.n + '</span></div>' : '';
+      const nm = (G.isStar(x.s) ? '★ ' : '') + G.skinName(x.s);
+      const fin = G.finishName(x.s) + ' (' + wearShort(x.f) + ')';
+      // подсказка: полное имя (в строке оно обрезается), кейс и давность; строка с кейсом открывает этот кейс
+      const tip = [nm + ' | ' + fin, c ? t('feed_case', { c: G.nm(c.name) }) : '', live && x.t ? feedAgo(now - x.t) : ''].filter(Boolean).join(' · ');
+      const attrs = (c ? ' data-act="feed-case" data-id="' + c.id + '"' : '') + ' title="' + tip.replace(/"/g, '&quot;') + '"';
+      // одна компактная строка: картинка | предмет / ник … цена (без аватара-эмодзи); вне живого канала вместо ника — скин
+      // (без износа: он есть в подсказке, а строке нужно место под название скина)
       return '<div class="' + cls + '"' + attrs + '>' +
         '<div class="fd-art">' + Art.item(x.s, x.f) + '</div>' +
-        '<div class="fd-txt">' + who + '<b>' + (G.isStar(x.s) ? '★ ' : '') + G.skinName(x.s) +
-        (x.up ? ic('upgrade', 'fd-mk') : '') + (x.g ? ic('rewards', 'fd-mk') : '') + '</b>' +
-        '<span>' + G.finishName(x.s) + ' (' + wearShort(x.f) + ')</span>' +
-        '<em>' + COIN + G.fmt(G.instValue(x)) + '</em></div></div>';
+        '<div class="fd-txt"><b>' + nm + (x.up ? ic('upgrade', 'fd-mk') : '') + (x.g ? ic('rewards', 'fd-mk') : '') + '</b>' +
+        '<em>' + COIN + G.fmt(G.instValue(x)) + '</em>' +
+        (live ? '<span class="fd-nm">' + x.n + '</span>' : '<span class="fd-sk">' + G.finishName(x.s) + '</span>') + '</div></div>';
     });
     feedShown = shown;
-    let empty = t(live ? 'feed_empty_all' : 'feed_empty', { v: G.fmtInt(G.C.FEED_MIN) });
-    if (st === 'conn') empty = t('feed_conn');
-    else if (st === 'err') empty = t('feed_off');
-    setHTML($('#feed-list'), rows.length ? rows.join('') : '<div class="fd-empty">' + ic('fire') + empty + '</div>');
+    // пусто — короткая серая строка вверху списка; нет связи — такая же строка внизу колонки, список (если был) остаётся
+    const stTxt = st === 'conn' ? t('feed_conn') : st === 'err' ? t('feed_off') : '';
+    const empty = stTxt ? '' : t(live ? 'feed_empty_all' : 'feed_empty', { v: G.fmtInt(G.C.FEED_MIN) });
+    setHTML($('#feed-list'), rows.length ? rows.join('') : empty ? '<div class="fd-empty">' + empty + '</div>' : '');
+    $('#feed').classList.toggle('fd-bare', !rows.length && !!stTxt);   // на телефоне строка «нет связи» занимает всю полосу
+    const stEl = $('#feed-st');
+    if (stEl) {
+      setText(stEl, stTxt);
+      stEl.hidden = !stTxt;
+    }
   }
 
   // ---------- Шапка и доступность кнопок ----------
@@ -262,7 +330,7 @@ const UI = (function () {
     });
     $$('[data-lock]').forEach((el) => { if (!el.hasAttribute('data-cost')) el.disabled = spinning || G.adBusy; });
     $$('[data-act="nav"]').forEach((b) => { b.disabled = spinning; });
-    const adm = typeof Admin !== 'undefined' && Admin.unlocked();
+    const adm = typeof Desk !== 'undefined' && Desk.unlocked();
     $$('[data-act="nav"][data-id="admin"]').forEach((b) => { b.hidden = !adm; });
     const dots = {};
     $$('.topnav [data-act="nav"], #tabbar [data-act="nav"], .hbtn[data-act="nav"]').forEach((b) => {
@@ -284,8 +352,8 @@ const UI = (function () {
     const img = $('#ava-img');
     const ava = G.S && G.S.profile.ava;
     if (p.photo && !ava) { img.src = p.photo; img.style.display = 'block'; setText($('#ava-letter'), ''); }
-    else { img.style.display = 'none'; setText($('#ava-letter'), ava || G.playerName().charAt(0).toUpperCase()); }
-    $('#ava-btn').classList.toggle('emoji', !!ava);
+    else { img.style.display = 'none'; setHTML($('#ava-letter'), avaHTML(ava)); }
+    $('#ava-btn').classList.toggle('ico', !!ava);
     setText($('#hdr-name'), G.playerName());
   }
 
@@ -346,7 +414,7 @@ const UI = (function () {
     logo: () => LOGO_SVG + '<span class="logo-text">' + logoText() + '</span>',
     toast: toast, floatText: floatText, burst: burst,
     modal: modal, closeModal: closeModal, confirm: confirmBox, modalLocked: () => modalIsLocked,
-    itemCard: itemCard, caseCard: caseCard, wearShort: wearShort,
+    itemCard: itemCard, caseCard: caseCard, wearShort: wearShort, avaIcon: avaIcon, avaHTML: avaHTML,
     renderFeed: renderFeed, refresh: refresh, setSpinning: setSpinning, isSpinning: () => spinning,
     setSoundIcon: setSoundIcon, setProfileBadge: setProfileBadge,
     showScreen: showScreen, screen: () => screen, applyI18n: applyI18n,

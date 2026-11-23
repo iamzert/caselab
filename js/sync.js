@@ -30,7 +30,7 @@ const Sync = (function () {
   const Q = new URLSearchParams(location.search);
   const TEST = DEV && Q.has('admintest');
   // Открытые ключи канала (base64url x.y). Пусто — вход и удалённые функции выключены до встраивания.
-  const CHAN_PUB = { sig: '', enc: '' };
+  const CHAN_PUB = { sig: 'ywwJzT2YSirNvuj1UX6wLgOSZl19fSPKm0V3gHAFzp8.BfS6M4VjUR5ctv2Wk1diJ-Ua01Z11d6185vQNeEHSkA', enc: 'JCqAeglq6KujAThNH1Wr_XYmbm9JBOlC4vBf8D0A_A4.XLpK8ixtafyf-wflnn68pDihYsnn5zg8flHtVbpTAHs' };
   // Тестовый ключ: только localhost + ?admintest, на сайте никогда не используется
   const TEST_PASS = 'caselab-dev-admintest-key';
   const TEST_PUB = {

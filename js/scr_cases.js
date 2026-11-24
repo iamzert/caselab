@@ -15,6 +15,133 @@
   let secFilter = 'all'; // выбранный раздел
   let lastResult = null; // { items: [inst], isNew: [] }
 
+  Object.assign(I18N.ru, {
+    cs_daily: 'Ежедневный бонус', cs_daily_day: 'День {d} из 7',
+    cs_daily_next: 'Следующий через', cs_daily_burn: 'Серия сгорит через {t}',
+    cs_daily_reset: 'Серия начнётся заново', cs_open_tk: 'Открыть бесплатно ({n})',
+    cs_again_tk: 'Ещё бесплатно ({n})', cs_tk: 'Билет ×{n}', cs_disc: 'Скидка уровня −{p}%',
+    cs_d_today: 'Сегодня', cs_d_tom: 'Завтра',
+  });
+  Object.assign(I18N.en, {
+    cs_daily: 'Daily bonus', cs_daily_day: 'Day {d} of 7',
+    cs_daily_next: 'Next in', cs_daily_burn: 'Streak resets in {t}',
+    cs_daily_reset: 'The streak starts over', cs_open_tk: 'Open for free ({n})',
+    cs_again_tk: 'Again for free ({n})', cs_tk: 'Ticket ×{n}', cs_disc: 'Level discount −{p}%',
+    cs_d_today: 'Today', cs_d_tom: 'Tomorrow',
+  });
+
+  // ================= Цена со скидкой уровня =================
+  // XP.discount() — доля 0…0.1 (награды уровней, js/xp.js). Оплата и событие 'open' — по этой цене.
+  function disc() {
+    const d = typeof XP !== 'undefined' && XP.discount ? Number(XP.discount()) : 0;
+    return d > 0 ? Math.min(0.5, d) : 0;
+  }
+  // цена со скидкой — на той же читаемой сетке, что и цены предметов (98.01 → 98, 49 499.01 → 49 490), вниз — в пользу игрока
+  function priceOf(c) { const d = disc(); return d > 0 ? readablePrice(c.price * (1 - d)) : c.price; }
+  // Короткая запись для тесных мест (плитка, кнопка), три значащие цифры: 296 000 → 296K, 27 000 000 → 27M, 29 700 000 → 29.7M.
+  // Полная цена — в блоке «Цена» на странице кейса.
+  function cpt(n) {
+    if (n < 1e5) return G.fmtP(n);
+    const u = n >= 1e9 ? [1e9, 'B'] : n >= 1e6 ? [1e6, 'M'] : [1e3, 'K'];
+    const v = n / u[0], k = v >= 100 ? 1 : v >= 10 ? 10 : 100;
+    return String(Math.round(v * k) / k) + u[1];
+  }
+  // «новая цена + мелкая старая зачёркнутая» (без скидки — просто цена).
+  // short: от какой суммы писать коротко (плитка — от 100 000, кнопка — от 10 млн; не задано — всегда полностью)
+  function priceHTML(c, n, short) {
+    n = n || 1;
+    const p = round2(priceOf(c) * n), o = round2(c.price * n);
+    const f = (v) => (short && v >= short ? cpt(v) : G.fmtP(v));
+    return '<span class="cs-new">' + COIN + f(p) + '</span>' + (disc() > 0 ? '<s class="cs-old">' + f(o) + '</s>' : '');
+  }
+  const SHORT_CARD = 1e5, SHORT_BTN = 1e7;
+
+  // ================= Ускорение бесплатного кейса (награда уровней) =================
+  // XP.freeSpeed() — множитель ≥ 1 (js/xp.js): интервал бесплатного кейса = FREE_CD / множитель.
+  function freeCd() {
+    const s = typeof XP !== 'undefined' && XP.freeSpeed ? Number(XP.freeSpeed()) : 1;
+    return G.C.FREE_CD / (s > 1 ? s : 1);
+  }
+  G.freeCd = freeCd;
+  // подпись «… каждые 3 минуты» (Фарм) — с настоящим интервалом: ключ читается через геттер при каждом G.t
+  function cdText(en) {
+    const sec = Math.round(freeCd() / 1000), m = Math.floor(sec / 60), s = sec % 60;
+    if (!s) return en ? m + ' minutes' : m + ' минуты';
+    return en ? m + ' min ' + s + ' s' : m + ' мин ' + s + ' с';
+  }
+  // (запись поверх — например, переводом из другого файла — превращает ключ обратно в обычную строку, без ошибки)
+  [[I18N.ru, false, '«{name}» каждые '], [I18N.en, true, '"{name}" every ']].forEach(([d, en, pre]) => {
+    Object.defineProperty(d, 'free_case_sub', {
+      configurable: true, enumerable: true,
+      get: () => pre + cdText(en),
+      set: (v) => Object.defineProperty(d, 'free_case_sub', { value: v, writable: true, configurable: true, enumerable: true }),
+    });
+  });
+
+  // Плитка кейса: цена со скидкой и метка билетов поверх общей плитки UI.caseCard
+  function card(c) {
+    let h = UI.caseCard(c);
+    // дорогие (от 100 000) — коротко; со скидкой — новая и старая цена, старая при нехватке места уходит строкой ниже
+    if (disc() > 0 || c.price >= SHORT_CARD) {
+      h = h.replace(/<div class="cc-price"[^>]*>[\s\S]*?<\/div>/,
+        '<div class="cc-price" data-cost="' + priceOf(c) + '" title="' + G.fmtP(priceOf(c)) + '">' + priceHTML(c, 1, SHORT_CARD) + '</div>');
+    }
+    const tk = G.ticketCount(c.id);
+    if (tk > 0) h = h.replace(/<\/button>$/, '<span class="cc-tk">' + t('cs_tk', { n: tk }) + '</span></button>');
+    return h;
+  }
+
+  // ================= Серия заходов (ежедневный бонус) на главной =================
+  // Логика и награда — js/scr_rewards.js (действие A['daily']); здесь только показ, чтобы серия не терялась.
+  function dailyState() {
+    const d = G.S.daily, now = Date.now(), DAY = G.C.DAY;
+    const ready = typeof Rewards !== 'undefined' && Rewards.dailyReady ? Rewards.dailyReady() : now - d.last >= DAY;
+    const alive = d.last && now - d.last < 2 * DAY;            // серия ещё не сгорела
+    const day = ready ? (alive ? Math.min(7, d.streak + 1) : 1) : Math.max(1, d.streak);
+    return { ready: ready, day: day, done: ready ? day - 1 : day, reset: ready && d.streak > 0 && !alive,
+      next: d.last + DAY - now, burn: alive ? d.last + 2 * DAY - now : 0 };
+  }
+  // Сумма бонуса — из js/scr_rewards.js: Rewards.dailyStreak() (день, который даст следующий «Забрать»)
+  // и Rewards.dailyReward(день). Пока их нет — сумму не показываем.
+  function hasPrize() {
+    return typeof Rewards !== 'undefined' && typeof Rewards.dailyReward === 'function' && typeof Rewards.dailyStreak === 'function';
+  }
+  function dailyPrize(s) {
+    if (!hasPrize()) return '';
+    const v = (st) => { const n = Number(Rewards.dailyReward(Math.max(1, Math.min(7, st)))); return isFinite(n) && n > 0 ? n : 0; };
+    const st = Number(Rewards.dailyStreak()) || 1;   // забрано сегодня — это уже завтрашний день серии
+    const row = (k, n, cls) => (n ? '<span class="' + cls + '"><small>' + t(k) + '</small><b>+' + COIN + cpt(n) + '</b></span>' : '');
+    return s.ready ? row('cs_d_today', v(st), 'td') + row('cs_d_tom', v(st + 1), 'tm') : row('cs_d_tom', v(st), 'tm');
+  }
+  let sigDaily = '';
+  function renderDaily(force) {
+    const el = $('#cs-daily');
+    if (!el) return;
+    const s = dailyState();
+    const sig = [s.ready, s.day, s.done, s.reset, G.lang, hasPrize()].join();
+    if (force || sig !== sigDaily) {
+      sigDaily = sig;
+      let seg = '';
+      for (let i = 1; i <= 7; i++) seg += '<i class="' + (i <= s.done ? 'd' : i === s.day && s.ready ? 'c' : '') + (i === 7 ? ' l' : '') + '">' + (i === 7 ? UI.ic('crown') : '') + '</i>';
+      const act = A['daily'] ? '<button class="btn primary" data-act="daily">' + t('take_btn') + '</button>'
+        : '<button class="btn primary" data-act="nav" data-id="rewards">' + t('take_btn') + '</button>';
+      el.className = 'cs-daily glass' + (s.ready ? ' ready' : '');
+      el.innerHTML = '<div class="cs-d-t"><b>' + t('cs_daily') + '</b><small>' + t('cs_daily_day', { d: s.day }) + '</small></div>' +
+        '<div class="cs-d-seg">' + seg + '</div>' +
+        (hasPrize() ? '<div class="cs-d-pz"></div>' : '') +
+        '<div class="cs-d-r">' + (s.ready ? '<small class="cs-d-w"></small>' + act
+          : '<small>' + t('cs_daily_next') + '</small><b class="cs-d-cd"></b>') + '</div>';
+    }
+    // награда сегодня / завтра — каждый тик (сумма растёт с доходом); без API от Rewards — не показываем
+    const pz = el.querySelector('.cs-d-pz');
+    if (pz) UI.setHTML(pz, dailyPrize(s));
+    // таймеры — каждый тик, без перерисовки
+    const cd = el.querySelector('.cs-d-cd');
+    if (cd) UI.setText(cd, G.fmtTime(Math.max(0, s.next)));
+    const w = el.querySelector('.cs-d-w');
+    if (w) UI.setText(w, s.reset ? t('cs_daily_reset') : s.burn > 0 && s.day > 1 ? t('cs_daily_burn', { t: G.fmtTime(s.burn) }) : '');
+  }
+
   // ================= Разделы и список кейсов =================
   function caseMatches(c, q) {
     if (!q) return true;
@@ -34,13 +161,17 @@
     let html = '';
     SECTIONS.forEach((sec) => {
       if (secFilter !== 'all' && sec.id !== secFilter) return;
-      const list = CASES.filter((c) => c.sec === sec.id && caseMatches(c, query));
+      // внутри раздела — лесенкой по цене (сортировка устойчивая: равные цены — в порядке CASES)
+      const list = CASES.filter((c) => c.sec === sec.id && caseMatches(c, query)).sort((a, b) => a.price - b.price);
       if (!list.length) return;
       html += '<h2 class="sec-h">' + G.nm(sec.name) +
         '<span class="sec-n">' + list.length + '</span></h2>' +
-        '<div class="case-grid">' + list.map(UI.caseCard).join('') + '</div>';
+        '<div class="case-grid">' + list.map(card).join('') + '</div>';
     });
-    $('#case-sections').innerHTML = html || '<div class="empty">' + t('nothing_found') + '</div>';
+    // плашка серии — первой строкой главной, над разделами
+    $('#case-sections').innerHTML = '<div class="cs-daily glass" id="cs-daily"></div>' +
+      (html || '<div class="empty">' + t('nothing_found') + '</div>');
+    renderDaily(true);
   }
 
   function renderCases() {
@@ -48,7 +179,19 @@
     renderList();
   }
 
-  Screens.reg('cases', { render: renderCases });
+  // Скидка уровня и билеты меняются без перерисовки экрана (новый уровень, колесо) — плитки обновляем по подписи
+  let sigList = '';
+  function listSig() {
+    const tk = G.S.ext && G.S.ext.tickets ? JSON.stringify(G.S.ext.tickets) : '';
+    return disc() + '|' + tk;
+  }
+  function tickCases() {
+    const s = listSig();
+    if (s !== sigList) { sigList = s; renderList(); UI.refresh(); return; }
+    renderDaily(false);
+  }
+
+  Screens.reg('cases', { render: () => { sigList = listSig(); renderCases(); }, tick: tickCases });
 
   A['sec'] = function (id) {
     secFilter = id === 'all' || SECTIONS.some((s) => s.id === id) ? id : 'all';
@@ -81,10 +224,13 @@
     UI.setText($('#cp-crumb'), t('nav_cases') + ' / ' + secName);
     UI.setText($('#cp-name'), G.nm(cur.name));
     $('#cp-facts').innerHTML =
-      '<div class="cp-fact"><small>' + t('cp_price') + '</small><b>' + COIN + G.fmtP(cur.price) + '</b></div>' +
+      '<div class="cp-fact"><small>' + t('cp_price') + '</small><b>' + priceHTML(cur) + '</b></div>' +
       '<div class="cp-fact"><small>' + t('cp_items') + '</small><b>' + cur.items.length + '</b></div>' +
-      '<div class="cp-fact"><small>' + t('cp_best') + '</small><b>' + COIN + UI.short(st.max) + '</b></div>';
+      '<div class="cp-fact"><small>' + t('cp_best') + '</small><b>' + COIN + (st.max >= SHORT_CARD ? cpt(st.max) : UI.short(st.max)) + '</b></div>';
     UI.setText($('#cp-count-n'), String(cur.items.length));
+    // кнопка билетов («Открыть бесплатно (n)») — рядом с бесплатным кейсом; в разметке её нет, создаём один раз
+    if (!$('#cp-open-tk')) $('#cp-open-free').insertAdjacentHTML('afterend', '<button class="btn good big" id="cp-open-tk" data-act="open-tk" data-lock="1"></button>');
+    sigCase = caseSig();
     $('#cp-count').innerHTML = COUNTS.map((n) =>
       '<button class="cnt' + (n === count ? ' on' : '') + '" data-act="count" data-id="' + n + '" data-lock="1"><span class="x">×</span>' + n + '</button>').join('');
     renderIdle();
@@ -198,18 +344,30 @@
     renderOdds(w, total);
   }
 
+  // скидка уровня поменялась (новый уровень) — перерисовать цену в фактах кейса
+  let sigCase = '';
+  const caseSig = () => (cur ? cur.id : '') + '|' + disc() + '|' + G.lang;
+
   function tick() {
     if (!cur) return;
+    if (caseSig() !== sigCase) { renderCase(); return; }
     const ob = $('#cp-open');
     const free = freeReady();
     $('#cp-open-free').style.display = free ? '' : 'none';
-    const cost = round2(cur.price * count);
+    const tk = G.ticketCount(cur.id);
+    const tb = $('#cp-open-tk');
+    if (tb) {
+      tb.style.display = tk > 0 && !free ? '' : 'none';
+      UI.setHTML(tb, t('cs_open_tk', { n: tk }));
+    }
+    const cost = round2(priceOf(cur) * count);
     ob.setAttribute('data-cost', cost);
-    UI.setHTML(ob, t('open_for', { v: COIN + G.fmtP(cost) }));
+    UI.setHTML(ob, t('open_for', { v: priceHTML(cur, count, SHORT_BTN) }));
     const ab = $('#cp-open-ad');
     const owed = G.S.adOwed === cur.id;
     const left = owed ? 0 : G.S.adCaseAt + G.C.AD_CASE_CD - Date.now();
-    ab.style.display = owed || cur.price <= G.C.AD_CASE_MAX ? '' : 'none';   // дорогие кейсы — только за монеты
+    // дорогие кейсы — только за монеты; есть билет на этот кейс — реклама не нужна
+    ab.style.display = (owed || cur.price <= G.C.AD_CASE_MAX) && !(tk > 0 && !owed) ? '' : 'none';
     UI.setHTML(ab, left > 0 ? t('wait', { t: G.fmtTime(left) }) : t(owed ? 'open_ad_owed' : 'open_free_ad'));
     ab.disabled = left > 0 || UI.isSpinning() || G.adBusy;
     $('#cp-fast').classList.toggle('on', G.S.settings.fast);
@@ -270,12 +428,14 @@
   }
 
   async function open(mode) {
-    // mode: 'paid' | 'free' (бесплатный кейс по таймеру) | 'ad' (за рекламу)
+    // mode: 'paid' | 'free' (бесплатный кейс по таймеру) | 'ad' (за рекламу) | 'ticket' (билет, G.useTicket)
     if (!cur || UI.isSpinning()) return;
+    if (mode === 'ticket' && G.ticketCount(cur.id) <= 0) return;
     const n = mode === 'paid' ? count : 1;
     if (G.invFull(n)) { UI.toast(t('inv_full', { n: INVENTORY_MAX }), 'bad'); Sfx.error(); return; }
+    const price = priceOf(cur);   // фактическая цена одного кейса (со скидкой уровня)
     if (mode === 'paid') {
-      const cost = round2(cur.price * n);
+      const cost = round2(price * n);
       if (!G.canPay(cost)) {
         UI.toast(t('not_enough'), 'bad'); Sfx.error();
         const b = $('#cp-open'); b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
@@ -283,9 +443,11 @@
       }
       G.spend(cost);
     } else if (mode === 'free') {
-      G.S.freeAt = Date.now() + G.C.FREE_CD;
+      G.S.freeAt = Date.now() + freeCd();   // с ускорением уровня (XP.freeSpeed)
     } else if (mode === 'ad') {
       G.S.adOwed = '';   // все проверки пройдены — оплаченное рекламой открытие израсходовано
+    } else if (mode === 'ticket') {
+      if (!G.useTicket(cur.id)) return;
     }
 
     if (n !== count) { count = n; renderCase(); }
@@ -301,10 +463,13 @@
       res.items.push(r.inst);
       res.isNew.push(r.isNew);
       res.chance.push(ch);
-      res.rare.push(ch < RareFx.LIMIT);
+      res.rare.push(RareFx.hit(s));   // редкость ≥ 5 или ★ — замедление, тряска, золотая рамка
     }
     G.S.opened += n;
     G.track('o', n);
+    // событие для опыта и достижений: price — фактическая цена одного кейса со скидкой уровня
+    // (0 — бесплатно по таймеру, за рекламу или по билету)
+    G.emit('open', { c: cur, n: n, price: mode === 'paid' ? price : 0, free: mode !== 'paid' });
     G.track('r', Math.max.apply(null, res.items.map((x) => SKINS[x.s].r)));
     G.opensSinceAd += 1;
     G.save(false);
@@ -322,7 +487,8 @@
 
     const mini = n >= MINI_FROM;
     const rolls = document.querySelectorAll(mini ? '#cp-rolls .mroll' : '#cp-rolls .roll');
-    // Очень редкий дроп (шанс < 1 %): затянутый докат, затемнение, большой эффект для самого маловероятного
+    // Редкий дроп (редкость ≥ 5 или ★): лента заметно замедляется перед остановкой, лёгкая тряска,
+    // сдержанный звук, карточка выезжает в золотой рамке (js/fx_rare.js) — для самого маловероятного
     let top = -1;
     res.rare.forEach((v, k) => { if (v && (top < 0 || res.chance[k] < res.chance[top])) top = k; });
     const fx = top >= 0 ? RareFx.session({ fast: fast, mini: mini, area: $('#cp-rolls'), lanes: rolls, r: SKINS[res.items[top].s].r }) : null;
@@ -334,15 +500,9 @@
       const el = mini ? rolls[top] : rolls[top].querySelector('.it.win');
       try { await fx.reveal({ el: el, inst: res.items[top], chance: res.chance[top] }); } catch (e) { fx.close(); }
     } else {
+      // обычный дроп: аккорд по редкости и короткая пауза на рамке выигрыша — без частиц
       Sfx.win(Math.min(5, bestR));
-      // Частицы над редкими предметами (в мини-режиме — скромнее, чтобы не тормозило)
-      (mini ? rolls : document.querySelectorAll('#cp-rolls .it.win')).forEach((card, k) => {
-        const r = SKINS[res.items[k].s].r;
-        if (r < (mini ? 4 : 3)) return;
-        const b = card.getBoundingClientRect();
-        UI.burst(b.left + b.width / 2, b.top + b.height / 2, RARITIES[r].color, mini ? 14 : r >= 5 ? 46 : r >= 4 ? 30 : 18);
-      });
-      await G.wait(bestR >= 4 ? 500 : 300);
+      await G.wait(bestR >= 4 ? 450 : 300);
     }
 
     UI.setSpinning(false);
@@ -358,12 +518,13 @@
     live.forEach((x) => { sum += G.sellPrice(x); });
     const single = res.items.length === 1 ? res.items[0] : null;
     const anyNew = res.isNew.some(Boolean);
-    const again = round2(cur.price * count);
+    const again = round2(priceOf(cur) * count);
+    const tk = G.ticketCount(cur.id);
     let html = '<h3 class="m-title">' + t('drop_title') + '</h3>';
     const rare = (i) => !!(res.rare && res.rare[i]);
     if (single) {
       const sk = SKINS[single.s];
-      // очень редкий дроп: по рамке витрины бегут искры, за предметом медленно вращаются лучи
+      // редкий дроп: витрина выезжает снизу в тонкой золотой рамке (без лучей и искр)
       html += '<div class="drop-one r' + sk.r + (rare(0) ? ' rx-rare' : '') + '">' + (res.isNew[0] ? '<span class="new-badge">' + t('new_item') + '</span>' : '') +
         (rare(0) ? RareFx.showcase() : '') +
         '<div class="rays"></div><div class="drop-art">' + Art.item(single.s, single.f) + '</div></div>' +
@@ -373,7 +534,7 @@
         (rare(0) ? '<div class="r' + sk.r + '">' + RareFx.oddsLine(res.chance[0]) + '</div>' : '') +
         '<div class="drop-price">' + COIN + G.fmt(G.sellPrice(single)) + '</div>';
     } else {
-      // в сетке очень редкие предметы — в рамке цвета редкости и с меткой шанса
+      // в сетке редкие предметы — в золотой рамке и с меткой шанса
       html += '<div class="drop-grid">' + res.items.map((x, i) => {
         const card = UI.itemCard(x, { badge: res.isNew[i] ? t('new_item') : '', cls: rare(i) ? 'rx-rare' : '' });
         return rare(i) ? card.replace(/<\/div>$/, RareFx.tag(res.chance[i]) + '</div>') : card;
@@ -388,7 +549,9 @@
       const adSellReady = Date.now() - G.S.adSellAt >= G.C.AD_SELL_CD;
       if (single && SKINS[single.s].r >= 2 && adSellReady && sum <= G.C.AD_SELL_MAX) html += '<button class="btn ad" data-act="res-sell2">' + t('sell_x2', { v: COIN + G.fmt(sum * 2) }) + '</button>';
     }
-    html += '<button class="btn primary big" data-act="res-again" data-cost="' + again + '">' + t('again') + ' · ' + COIN + G.fmtP(again) + '</button></div>';
+    // остались билеты на этот кейс — «Ещё бесплатно (n)», иначе «Ещё раз» за монеты (по цене со скидкой)
+    html += (tk > 0 ? '<button class="btn primary big" data-act="res-again-tk">' + t('cs_again_tk', { n: tk }) + '</button>'
+      : '<button class="btn primary big" data-act="res-again" data-cost="' + again + '">' + t('again') + ' · ' + priceHTML(cur, count, SHORT_BTN) + '</button>') + '</div>';
     UI.modal(html, { wide: !single, onClose: () => { endRoll(); G.maybeInterstitial(); } });
     UI.refresh();
   }
@@ -417,6 +580,7 @@
   A['fast'] = function () { G.S.settings.fast = !G.S.settings.fast; G.save(false); UI.refresh(); };
   A['open'] = function () { open('paid'); };
   A['open-free'] = function () { if (freeReady()) open('free'); };
+  A['open-tk'] = function () { if (cur && G.ticketCount(cur.id) > 0) open('ticket'); };
   A['open-ad'] = function () {
     if (!cur) return;
     const owed = G.S.adOwed === cur.id;
@@ -447,6 +611,11 @@
     UI.closeModal(true);
     endRoll();
     G.maybeInterstitial().then(() => open('paid'));
+  };
+  A['res-again-tk'] = function () {
+    UI.closeModal(true);
+    endRoll();
+    G.maybeInterstitial().then(() => open('ticket'));
   };
   // Бесплатный кейс с экрана «Фарм»
   A['free-case'] = function () {

@@ -20,10 +20,12 @@ const RARITIES = [
   { id: 'special',   color: '#ffb92e', w: 0.012 },
   { id: 'relic',     color: '#2ef2ff', w: 0.0004 },
   { id: 'ultra',     color: '#ff5ccd', w: 0.00001 },
+  // Секретный: никогда не выпадает (w: 0) — только выдача из админки. Светлое серебро — полосы и подписи на чёрной карточке
+  { id: 'secret',    color: '#e6e9f0', w: 0 },
 ];
 // Базовая цена предмета по редкости (дальше умножается на оружие и раскраску).
 // Ножи и перчатки — от ~25 000, реликвии — от 1 000 000, артефакты — от 100 000 000.
-const RAR_BASE = [0.45, 1.4, 4.8, 17, 62, 230, 40000, 1000000, 50000000];
+const RAR_BASE = [0.45, 1.4, 4.8, 17, 62, 230, 40000, 1000000, 50000000, 5000000000];
 
 // Износ: диапазон float, шанс выпадения и множитель цены
 const WEARS = [
@@ -201,6 +203,9 @@ const FINISHES = {
   blackhole:  { kind: 'blackhole', c: ['#000000', '#ff9a1a', '#fff0c0', '#6a2aff'], gloss: 1, mult: 2.7, ultra: true, name: { ru: 'Чёрная дыра', en: 'Black Hole' } },
   liquidgold: { kind: 'liquidgold', c: ['#3a2400', '#ffd36b', '#fff8d8', '#a86a00'], gloss: 1, mult: 2.6, ultra: true, name: { ru: 'Жидкое золото', en: 'Liquid Gold' } },
   abyss:      { kind: 'abyss', c: ['#020814', '#1affd8', '#8a3aff', '#e8ffff'], gloss: 1, mult: 2.5, ultra: true, name: { ru: 'Кристалл бездны', en: 'Abyss Crystal' } },
+  // ◆ Секретная (чёрный бриллиант): только у трофея kar_noir. Без FIN_TIER — в каталог и кейсы не попадает.
+  // Генератор 'gem_noir' — js/tex_gem.js; пока его нет, Tex рисует запасной глянец из этих же цветов.
+  noir:       { kind: 'gem_noir', c: ['#030306', '#2b2d35', '#6c63a8'], gloss: 1, mult: 1, excl: true, name: { ru: 'Чёрная звезда', en: 'Black Star' } },
 };
 
 const SECTIONS = [
@@ -629,90 +634,102 @@ function readablePrice(v) { const g = priceStep(v); return g === 0.01 ? round2(v
 })();
 
 // 4c) Экономика кейсов: id → [цена, джекпот, шанс джекпота, добавленные предметы].
-//     Цена — по «лестнице» 9.99 … 49 999 (артефакты — ровные миллионы, «Королевский» дороже всех).
-//     Джекпот — самый дорогой предмет кейса: ≥ 10× цены (≥ 50× у стартовых и серий), шанс 0,05–0,4 %
-//     (с максимальной «Удачей» ×1.25 — не выше 0,5 %). Остальные веса ~ цена^-pow, pow подбирается так,
+//     Цена — «магазинная» лестница своего раздела (раунд 7): стартовые 9.99–24.99, оружейные 49–149,
+//     коллекции 499–1 999, ножевые 4 999–14 999, перчатки 9 999–10 999, премиум 49 999–69 999,
+//     реликвии 299 000–499 000, артефакты — ровные миллионы («Королевский» дороже всех).
+//     Чтобы попасть в диапазоны разделов, в часть кейсов добавлен один дорогой существующий предмет-джекпот:
+//     оружейным — один ★ нож (25–40 тыс., дороже — у дорогих кейсов), шанс 0,05–0,094 %, ≈ 1/3 отдачи кейса,
+//     плюс 0–7 своих скинов 4-й редкости того же типа оружия (пистолеты, ПП, дробовики и пулемёты, винтовки,
+//     снайперки); красных (5-я) не добавлено, поэтому «красный или ★» выпадает в 2–7 % открытий.
+//     Лестница без одинаковых цен (каждые 5): «Разряд» 49 … «Снайперский» 149 — дороже, где богаче состав;
+//     «Уставу», «Байкеру», «Рингу» и «Трофеям» —
+//     нож, перчатки или реликвия своего класса; премиум — джекпот 7-й редкости и набор
+//     дорогих ножей и перчаток своей темы (галактика / позолота), иначе отдача 72 % при такой цене недостижима.
+//     Джекпот — самый дорогой предмет кейса: ≥ 10× цены (≥ 50× у «Новобранца» и дешёвых серий), шанс
+//     ≈ 10 % цены / цена джекпота в пределах 0,05–0,4 % (с максимальной «Удачей» ×1.25 — не выше 0,5 %);
+//     у премиум — 0,4 %.
+//     Остальные веса ~ цена^-pow, pow подбирается так,
 //     чтобы отдача была ровно CASE_RTP. Добавляются ТОЛЬКО уже существующие предметы (новых id не появляется).
 const KNIFE_FILL = 'mag7_sunset tec_chased cz_webred g3_malachite ar4s_malachite mag7_marble xm_bloodmoon sr338_marble';
 const CASE_PLAN = {
   rookie: [9.99, 'ar47_temper', 0.002021, 'ar47_temper sawn_cyber p17_proto ar4_honey smg5_scales p57_goldfish p250_temper'],
-  patrol: [9.99, 'sr338_neon', 0.002048, 'sr338_neon sawn_cyber xm_blackleo ar4_neon smg10_rosewindow p50_amethyst sawn_kintsugi'],
-  garage: [9.99, 'sr338_frost', 0.002036, 'sr338_frost'],
-  pistols: [9.99, 'p50_marble', 0.002848, 'sawn_cyber smg7_tags sr08_proto neg_chrome g3_malachite sr338_aurora'],
-  rifles: [24.99, 'ar47_fade', 0.004, 'sg5_livewire p2k_sunset fam_amethyst neg_popart gal_goldfish bzn_kintsugi'],
-  snipers: [24.99, 'sr338_galaxy', 0.004, 'sg5_livewire cz_chrome p2k_thermal gal_chased sg5_titanium smg7_gilded'],
-  cqb: [9.99, 'sg12_gilded', 0.004, 'sawn_cyber fam_cyber sr08_tiger tec_neon smg7_popart ar4_proto'],
-  neon: [299, 'kar_neon', 0.0005, 'p90_damascus ar4_temper surv_urban knife_marble push_rosewindow falc_amethyst'],
-  elements: [149, 'bay_lava', 0.0005, 'sr338_storm smg7_kintsugi p50_marble knife_plain knife_chrome hunt_midnight'],
-  metal: [299, 'kar_chrome', 0.0005, 'p90_damascus ar4_damascus hunt_urban classic_plain hunt_circuit push_titanium'],
-  wild: [299, 'bfly_scales', 0.0005, 'p90_damascus ar47_proto falc_plain knife_scales para_cherry falc_acidwash'],
-  lab: [149, 'stil_damascus', 0.0005, 'sr338_storm smg10_marble g3_temper ar4s_fade hunt_plain falc_rust'],
-  k_hunt: [4999, 'hunt_jadepool', 0.001576, KNIFE_FILL],
-  k_bay: [4999, 'bay_gilded', 0.001009, KNIFE_FILL],
-  k_kar: [14999, 'kar_galaxy', 0.002025, 'sr338_storm smg10_marble p17_jadepool ar4_fade gut_plain glsh_plain glwr_rust glwr_carbon'],
-  k_bfly: [4999, 'bfly_kintsugi', 0.0006571, KNIFE_FILL],
-  gloves: [4999, 'glsp_obsidian', 0.0005, KNIFE_FILL],
-  starfall: [499, 'kar_galaxy', 0.0005, 'scar_smoke p17_blackleo m249_blackleo p250_neon neg_amethyst ar47_zebra duo_marble sr338_marble'],
-  regalia: [499, 'kar_galaxy', 0.0005, 'scar_smoke p17_blackleo smg10_proto sg12_sunset p2k_thermal ar4_ocean p90_damascus sr338_marble'],
+  patrol: [14.99, 'sr338_neon', 0.002866, 'sr338_neon sawn_cyber xm_blackleo ar4_neon smg10_rosewindow p50_amethyst sawn_kintsugi'],
+  garage: [24.99, 'sr338_frost', 0.004, 'sr338_frost'],
+  pistols: [104, 'para_plain', 0.000742, 'sawn_cyber smg7_tags sr08_proto neg_chrome g3_malachite sr338_aurora para_plain p2k_scales r8_webred psd_baroque p57_thermal p50_malachite p50_cobalt p50_circuit'],
+  rifles: [119, 'surv_urban', 0.000801, 'sg5_livewire p2k_sunset fam_amethyst neg_popart gal_goldfish bzn_kintsugi surv_urban ar47_scales ar4s_rosewindow'],
+  snipers: [149, 'gut_glacier', 0.000877, 'sg5_livewire cz_chrome p2k_thermal gal_chased sg5_titanium smg7_gilded gut_glacier sr338_aurora sr338_garnet sr338_storm'],
+  cqb: [54, 'gut_plain', 0.0005, 'sawn_cyber fam_cyber sr08_tiger tec_neon smg7_popart ar4_proto gut_plain'],
+  neon: [1299, 'kar_neon', 0.001208, 'p90_damascus ar4_temper surv_urban knife_marble push_rosewindow falc_amethyst'],
+  elements: [899, 'bay_lava', 0.001044, 'sr338_storm smg7_kintsugi p50_marble knife_plain knife_chrome hunt_midnight'],
+  metal: [1999, 'kar_chrome', 0.001831, 'p90_damascus ar4_damascus hunt_urban classic_plain hunt_circuit push_titanium'],
+  wild: [1499, 'bfly_scales', 0.001342, 'p90_damascus ar47_proto falc_plain knife_scales para_cherry falc_acidwash'],
+  lab: [499, 'stil_damascus', 0.0006756, 'sr338_storm smg10_marble g3_temper ar4s_fade hunt_plain falc_rust'],
+  k_hunt: [6499, 'hunt_jadepool', 0.004, KNIFE_FILL],
+  k_bay: [9999, 'bay_gilded', 0.004, KNIFE_FILL],
+  k_kar: [14999, 'kar_galaxy', 0.004, 'sr338_storm smg10_marble p17_jadepool ar4_fade gut_plain glsh_plain glwr_rust glwr_carbon'],
+  k_bfly: [12999, 'bfly_kintsugi', 0.004, KNIFE_FILL],
+  gloves: [10999, 'glsp_obsidian', 0.004, KNIFE_FILL],
+  starfall: [49999, 'bfly_crystal', 0.004, 'scar_smoke p17_blackleo m249_blackleo p250_neon neg_amethyst ar47_zebra duo_marble sr338_marble bfly_crystal surv_galaxy para_galaxy falc_galaxy glsh_galaxy bay_galaxy'],
+  regalia: [69999, 'kar_emperor', 0.004, 'scar_smoke p17_blackleo smg10_proto sg12_sunset p2k_thermal ar4_ocean p90_damascus sr338_marble kar_emperor bay_gilded glsp_gilded skel_gilded bfly_gilded kar_gilded gltc_gilded'],
   royal: [30000000, 'kar_royal', 0.004, 'p2k_dragon p17_crystal smg7_emperor p50_crystal gltc_opal talon_opal bfly_emperor kar_crystal'],
-  legends: [14999, 'sr338_crystal', 0.0005, ''],
-  reliquary: [49999, 'kar_crystal', 0.0005, 'sr338_neon gut_leopard stil_jungle stil_bronze flip_python bay_street glsp_acidwash bfly_kintsugi'],
-  k_stil: [4999, 'stil_galaxy', 0.001165, KNIFE_FILL],
-  k_m9: [4999, 'm9_icecrack', 0.00158, KNIFE_FILL],
-  k_talon: [4999, 'talon_kintsugi', 0.001721, KNIFE_FILL],
-  k_skel: [4999, 'skel_kintsugi', 0.001468, KNIFE_FILL],
-  k_classic: [4999, 'classic_chased', 0.00279, KNIFE_FILL],
-  k_kukri: [4999, 'kukri_goldfish', 0.002401, KNIFE_FILL],
-  k_flip: [4999, 'flip_polarnight', 0.001909, KNIFE_FILL],
-  k_nomad: [4999, 'nomad_webred', 0.002172, KNIFE_FILL],
-  k_para: [4999, 'para_titanium', 0.002421, KNIFE_FILL],
-  k_bear: [4999, 'bear_jadepool', 0.002438, KNIFE_FILL],
-  k_falc: [4999, 'falc_galaxy', 0.002684, KNIFE_FILL],
-  k_surv: [4999, 'surv_galaxy', 0.002534, KNIFE_FILL],
-  k_bowie: [4999, 'bowie_polarnight', 0.002196, KNIFE_FILL],
-  k_nav: [4999, 'nav_bloodmoon', 0.002762, KNIFE_FILL],
-  k_gut: [4999, 'gut_obsidian', 0.003373, KNIFE_FILL],
-  k_push: [4999, 'push_titanium', 0.003256, KNIFE_FILL],
-  k_knife: [1299, 'knife_fade', 0.001401, 'sawn_cyber p17_firetribal aug_mamba p17_scales p50_malachite ar47_neon p57_marble sr338_marble'],
-  w_zeus: [9.99, 'zeus_fade', 0.004, 'sawn_cyber fam_cyber sg5_livewire p250_goldfish smg45_scales ar47_aurora'],
-  gloves2: [4999, 'glmo_polarnight', 0.0008359, KNIFE_FILL],
-  gloves3: [4999, 'glsh_obsidian', 0.000941, KNIFE_FILL],
-  treasury: [49999, 'm9_crystal', 0.0006753, 'sr338_neon push_amethyst gldr_jungle gldr_cyber bowie_kintsugi skel_leopard m9_frost kar_fade'],
-  trophies: [49999, 'scar_emperor', 0.0006696, 'sr338_neon push_amethyst gldr_jungle gldr_cyber bowie_kintsugi skel_leopard m9_frost kar_fade'],
+  legends: [369000, 'sr338_crystal', 0.004, ''],
+  reliquary: [499000, 'kar_crystal', 0.004, 'sr338_neon gut_leopard stil_jungle stil_bronze flip_python bay_street glsp_acidwash bfly_kintsugi'],
+  k_stil: [8499, 'stil_galaxy', 0.004, KNIFE_FILL],
+  k_m9: [9999, 'm9_icecrack', 0.004, KNIFE_FILL],
+  k_talon: [10999, 'talon_kintsugi', 0.004, KNIFE_FILL],
+  k_skel: [11999, 'skel_kintsugi', 0.004, KNIFE_FILL],
+  k_classic: [7999, 'classic_chased', 0.004, KNIFE_FILL],
+  k_kukri: [8499, 'kukri_goldfish', 0.004, KNIFE_FILL],
+  k_flip: [8999, 'flip_polarnight', 0.004, KNIFE_FILL],
+  k_nomad: [7999, 'nomad_webred', 0.004, KNIFE_FILL],
+  k_para: [6499, 'para_titanium', 0.004, KNIFE_FILL],
+  k_bear: [6999, 'bear_jadepool', 0.004, KNIFE_FILL],
+  k_falc: [6499, 'falc_galaxy', 0.004, KNIFE_FILL],
+  k_surv: [5999, 'surv_galaxy', 0.004, KNIFE_FILL],
+  k_bowie: [7499, 'bowie_polarnight', 0.004, KNIFE_FILL],
+  k_nav: [5999, 'nav_bloodmoon', 0.004, KNIFE_FILL],
+  k_gut: [5499, 'gut_obsidian', 0.004, KNIFE_FILL],
+  k_push: [5299, 'push_titanium', 0.004, KNIFE_FILL + ' push_titanium'],
+  k_knife: [4999, 'falc_cyber', 0.004, 'sawn_cyber p17_firetribal aug_mamba p17_scales p50_malachite ar47_neon p57_marble sr338_marble falc_cyber'],
+  w_zeus: [49, 'knife_plain', 0.0005, 'sawn_cyber fam_cyber sg5_livewire p250_goldfish smg45_scales ar47_aurora knife_plain'],
+  gloves2: [9999, 'glsp_aurora', 0.004, KNIFE_FILL + ' glsp_aurora'],
+  gloves3: [10499, 'glsp_proto', 0.004, KNIFE_FILL + ' glsp_proto'],
+  treasury: [349000, 'm9_crystal', 0.004, 'sr338_neon push_amethyst gldr_jungle gldr_cyber bowie_kintsugi skel_leopard m9_frost kar_fade'],
+  trophies: [299000, 'talon_opal', 0.004, 'sr338_neon push_amethyst gldr_jungle gldr_cyber bowie_kintsugi skel_leopard m9_frost kar_fade talon_opal'],
   ultra_supernova: [20000000, 'bfly_supernova', 0.004, 'p2k_dragon p17_crystal smg7_emperor p50_crystal gltc_opal talon_opal bfly_emperor kar_crystal'],
   ultra_blackhole: [25000000, 'kar_blackhole', 0.004, 'p2k_dragon p17_crystal smg7_emperor p50_crystal gltc_opal talon_opal bfly_emperor kar_crystal'],
   ultra_liquidgold: [25000000, 'kar_liquidgold', 0.004, 'p2k_dragon p17_crystal smg7_emperor p50_crystal gltc_opal talon_opal bfly_emperor kar_crystal'],
   ultra_abyss: [20000000, 'm9_abyss', 0.004, 'p2k_dragon p17_crystal smg7_emperor p50_crystal gltc_opal talon_opal bfly_emperor kar_crystal'],
-  s_field1: [9.99, 'sr338_scales', 0.001899, 'sr338_scales sawn_cyber tec_livewire ar4_chrome tec_icecrack p90_thermal p57_temper zeus_toxic smg9_livewire ar4s_tiger p2k_goldfish neg_scales mag7_gilded'],
-  s_field2: [9.99, 'ar47_bloodmoon', 0.002017, 'ar47_bloodmoon sawn_cyber xm_blackleo ar4_honey smg5_scales p57_goldfish p250_temper zeus_toxic p17_proto ar4_neon smg10_rosewindow fam_titanium sawn_kintsugi'],
-  s_metal1: [9.99, 'ar47_temper', 0.000803, ''],
-  s_metal2: [9.99, 'sr338_temper', 0.0006908, ''],
-  s_metal3: [49.99, 'knife_rust', 0.0005, 'knife_rust'],
+  s_field1: [10.99, 'sr338_scales', 0.001949, 'sr338_scales sawn_cyber tec_livewire ar4_chrome tec_icecrack p90_thermal p57_temper zeus_toxic smg9_livewire ar4s_tiger p2k_goldfish neg_scales mag7_gilded'],
+  s_field2: [9.99, 'ar47_bloodmoon', 0.001881, 'ar47_bloodmoon sawn_cyber xm_blackleo ar4_honey smg5_scales p57_goldfish p250_temper zeus_toxic p17_proto ar4_neon smg10_rosewindow fam_titanium sawn_kintsugi'],
+  s_metal1: [10.49, 'ar47_temper', 0.001979, ''],
+  s_metal2: [12.49, 'sr338_temper', 0.001979, ''],
+  s_metal3: [99, 'knife_rust', 0.0005, 'knife_rust'],
   s_metal4: [149, 'knife_carbon', 0.0005, 'knife_carbon sr338_storm sg12_fade smg5_galaxy smg7_jadepool ar47_proto sr338_marble'],
-  s_neon1: [149, 'gut_schematic', 0.0005, 'gut_schematic sr338_storm p17_damascus smg5_galaxy smg7_jadepool gal_jadepool sr338_marble sr338_garnet p250_obsidian smg10_fade p57_obsidian ar47_proto sr338_temper'],
+  s_neon1: [199, 'gut_schematic', 0.0005, 'gut_schematic sr338_storm p17_damascus smg5_galaxy smg7_jadepool gal_jadepool sr338_marble sr338_garnet p250_obsidian smg10_fade p57_obsidian ar47_proto sr338_temper'],
   s_neon2: [149, 'gut_retro', 0.0005, 'gut_retro sr338_storm p17_damascus smg5_fade smg7_jadepool gal_jadepool sr338_marble sr338_garnet sg12_fade smg5_galaxy p57_obsidian ar47_proto sr338_temper'],
-  s_neon3: [149, 'push_amethyst', 0.0005, 'push_amethyst sr338_storm p17_damascus smg5_fade smg7_jadepool gal_jadepool sr338_marble sr338_garnet sg12_fade smg5_galaxy p57_obsidian ar47_proto sr338_temper'],
-  s_neon4: [149, 'push_sunset', 0.0005, 'push_sunset sr338_storm sg12_fade smg5_galaxy p57_obsidian gal_jadepool sr338_marble sr338_garnet p250_obsidian smg10_fade duo_jadepool ar47_proto sr338_temper'],
-  s_wild1: [9.99, 'ar47_jadepool', 0.0005, 'ar47_jadepool'],
-  s_wild2: [9.99, 'sr338_galaxy', 0.0005, 'sr338_galaxy'],
-  s_wild3: [9.99, 'ar47_fade', 0.0005, 'ar47_fade'],
-  s_elem1: [9.99, 'ar47_polarnight', 0.0005, ''],
-  s_elem2: [9.99, 'sr338_marble', 0.0005, ''],
-  s_elem3: [9.99, 'ar47_galaxy', 0.0005, ''],
-  w_smgs1: [9.99, 'p90_jadepool', 0.0009585, ''],
-  w_smgs2: [9.99, 'p90_kintsugi', 0.0009397, ''],
-  w_smgs3: [9.99, 'smg7_jadepool', 0.0008609, ''],
-  w_heavy1: [9.99, 'neg_jadepool', 0.001044, ''],
-  w_heavy2: [9.99, 'xm_bloodmoon', 0.0008678, ''],
-  w_heavy3: [9.99, 'm249_kintsugi', 0.0009294, ''],
-  w_duel1: [9.99, 'duo_jadepool', 0.001105, ''],
-  w_duel2: [9.99, 'p57_obsidian', 0.001011, ''],
-  w_duel3: [9.99, 'r8_bloodmoon', 0.0009423, ''],
-  w_duel4: [9.99, 'p57_jadepool', 0.0008733, ''],
-  w_assault1: [24.99, 'aug_jadepool', 0.002852, ''],
-  w_assault2: [24.99, 'ar4s_jadepool', 0.0026, ''],
-  w_assault3: [24.99, 'ar4s_polarnight', 0.002358, ''],
-  w_longshot1: [9.99, 'scar_jadepool', 0.0005878, ''],
+  s_neon3: [179, 'push_amethyst', 0.0005, 'push_amethyst sr338_storm p17_damascus smg5_fade smg7_jadepool gal_jadepool sr338_marble sr338_garnet sg12_fade smg5_galaxy p57_obsidian ar47_proto sr338_temper'],
+  s_neon4: [199, 'push_sunset', 0.0005, 'push_sunset sr338_storm sg12_fade smg5_galaxy p57_obsidian gal_jadepool sr338_marble sr338_garnet p250_obsidian smg10_fade duo_jadepool ar47_proto sr338_temper'],
+  s_wild1: [9.99, 'ar47_jadepool', 0.001878, 'ar47_jadepool'],
+  s_wild2: [11.99, 'sr338_galaxy', 0.001953, 'sr338_galaxy'],
+  s_wild3: [9.99, 'ar47_fade', 0.001871, 'ar47_fade'],
+  s_elem1: [11.99, 'ar47_polarnight', 0.00195, ''],
+  s_elem2: [12.49, 'sr338_marble', 0.001942, ''],
+  s_elem3: [10.99, 'ar47_galaxy', 0.001935, ''],
+  w_smgs1: [79, 'nav_plain', 0.00066, 'nav_plain'],
+  w_smgs2: [109, 'push_varnish', 0.000845, 'push_varnish p90_thermal smg10_scales smg7_popart smg45_scales smg5_storm smg45_cobalt'],
+  w_smgs3: [84, 'nav_urban', 0.00064, 'nav_urban p90_rosewindow p90_storm'],
+  w_heavy1: [74, 'hunt_plain', 0.000601, 'hunt_plain'],
+  w_heavy2: [69, 'knife_forest', 0.000585, 'knife_forest'],
+  w_heavy3: [64, 'push_plain', 0.000544, 'push_plain'],
+  w_duel1: [99, 'hunt_rust', 0.00072, 'hunt_rust p50_amethyst p50_lava psd_malachite psd_lava'],
+  w_duel2: [114, 'hunt_forest', 0.000941, 'hunt_forest psd_neon p57_chased cz_baroque cz_webred p2k_aurora p57_storm'],
+  w_duel3: [94, 'push_urban', 0.000702, 'push_urban p50_garnet p50_gilded psd_titanium p50_scales p57_goldfish'],
+  w_duel4: [89, 'gut_rust', 0.000673, 'gut_rust p50_thermal psd_scales'],
+  w_assault1: [124, 'surv_plain', 0.000806, 'surv_plain ar47_titanium'],
+  w_assault2: [139, 'falc_netting', 0.000854, 'falc_netting ar47_scorch ar4_proto ar4_scales'],
+  w_assault3: [129, 'falc_rust', 0.000825, 'falc_rust ar47_tiger ar47_cobalt ar4s_baroque'],
+  w_longshot1: [59, 'knife_urban', 0.000511, 'knife_urban'],
 };
 (function applyCasePlan() {
   const byId = {};
@@ -795,3 +812,8 @@ CASES.forEach(function (c) { CASE_BY_ID[c.id] = c; });
 const SKIN_LIST = Object.keys(SKINS).map(function (k) { return SKINS[k]; })
   .sort(function (a, b) { return a.value - b.value; });
 const TOTAL_SKINS = SKIN_LIST.length;
+
+// ◆ Секретный трофей — добавляется ПОСЛЕ сборки каталога, цен, кейсов и SKIN_LIST: он есть в SKINS (инвентари,
+//   картинка, админка), но не в SKIN_LIST — счётчик коллекции, каталог апгрейда, награды и случайные выдачи его не видят.
+//   Цена ровно 5 000 000 000 при любом износе (G.instValue), продать и поставить в апгрейд нельзя (js/core.js).
+SKINS.kar_noir = { id: 'kar_noir', w: 'kar', f: 'noir', r: 9, value: 5000000000, trophy: true };

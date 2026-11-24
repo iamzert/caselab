@@ -5,7 +5,11 @@
 // поэтому апгрейд всегда немного убыточен в среднем и не даёт бесконечных денег.
 const Upgrade = (function () {
   const t = G.t, $ = UI.$, A = UI.actions, COIN = UI.COIN;
-  const PAGE = 24;       // 4 ряда по 6 плиток на компьютере (на телефоне — 3 в ряд)
+  // строки шапки экрана (вкладки «Апгрейд | Контракт») и заголовок колеса — раунд 7
+  Object.assign(I18N.ru, { up_tab_up: 'Апгрейд', up_tab_ct: 'Контракт', up_ring_title: 'Шанс апгрейда' });
+  Object.assign(I18N.en, { up_tab_up: 'Upgrade', up_tab_ct: 'Contract', up_ring_title: 'Upgrade chance' });
+  let tab = 'up';        // вкладка экрана: 'up' — апгрейд, 'contract' — контракт обмена (js/scr_contracts.js)
+  const PAGE = 24;      // 4 ряда по 6 плиток на компьютере (на телефоне — 3 в ряд)
   let stake = [];        // uid выбранных предметов
   let bal = 0;           // монеты в ставке
   let target = null;     // skinId цели
@@ -56,7 +60,7 @@ const Upgrade = (function () {
 
   function stakeValue() {
     let v = bal;
-    stake.forEach((u) => { const x = G.findInst(u); if (x) v += G.sellPrice(x); });
+    stake.forEach((u) => { const x = G.findInst(u); if (x && !G.isSecret(x.s)) v += G.sellPrice(x); });
     return v;
   }
 
@@ -96,7 +100,7 @@ const Upgrade = (function () {
   // ---------- Панели ставки и цели ----------
   // Одна вещь в ставке — крупно, как цель; 2–4 — в две колонки; 5–6 — в три (класс nN)
   function renderStake() {
-    const items = stake.map((u) => G.findInst(u)).filter(Boolean);
+    const items = stake.map((u) => G.findInst(u)).filter((x) => x && !G.isSecret(x.s));
     stake = items.map((x) => x.u);
     const n = items.length;
     $('#up-stake').innerHTML = n === 1
@@ -107,7 +111,7 @@ const Upgrade = (function () {
   }
 
   function renderTarget() {
-    if (target && !SKINS[target]) target = null;
+    if (target && (!SKINS[target] || G.isSecret(target))) target = null;
     if (!target) quick = '';
     $('#up-target').innerHTML = target
       ? '<div class="up-big">' + UI.itemCard(target, { price: targetPrice(target) }) + '</div>'
@@ -121,7 +125,11 @@ const Upgrade = (function () {
     else if (invSort === 'new') list.sort((a, b) => b.u - a.u);
     else list.sort((a, b) => G.sellPrice(b) - G.sellPrice(a));
     $('#up-inv').innerHTML = list.length
-      ? list.map((x) => UI.itemCard(x, { act: 'up-stake', selected: stake.indexOf(x.u) >= 0 })).join('')
+      // трофей виден, но заблокирован: поставить его нельзя (подсказка — по нажатию)
+      ? list.map((x) => {
+        const card = UI.itemCard(x, { act: 'up-stake', selected: stake.indexOf(x.u) >= 0, cls: G.isSecret(x.s) ? 'locked' : '' });
+        return G.isSecret(x.s) ? card.replace(/<\/button>$/, UI.ic('lock', 'it-lock') + '</button>') : card;
+      }).join('')
       : '<div class="empty small">' + t('up_empty_inv') + '</div>';
   }
 
@@ -147,6 +155,26 @@ const Upgrade = (function () {
     UI.setText($('#up-page'), (page + 1) + ' / ' + pages);
   }
 
+  // Вкладки экрана: апгрейд и контракт делят одну шапку; контракт рисует js/scr_contracts.js
+  const hasCt = () => typeof Contracts !== 'undefined';
+  function renderTabs() {
+    if (tab === 'contract' && !hasCt()) tab = 'up';
+    UI.$$('.up-tabs button').forEach((b) => {
+      const on = b.getAttribute('data-id') === tab;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    $('#up-pane').hidden = tab !== 'up';
+    $('#ct-pane').hidden = tab !== 'contract';
+  }
+
+  function render(arg) {
+    if (arg === 'up' || arg === 'contract') tab = arg;
+    renderTabs();
+    if (tab === 'contract') { Contracts.render(); $('#up-fast').classList.toggle('on', G.S.settings.fast); return; }
+    renderAll();
+  }
+
   function renderAll() {
     bal = Math.min(bal, coinsFloor());
     renderStake();
@@ -158,6 +186,7 @@ const Upgrade = (function () {
   }
 
   function tick() {
+    if (tab === 'contract') { if (Contracts.tick) Contracts.tick(); $('#up-fast').classList.toggle('on', G.S.settings.fast); return; }
     const r = $('#up-bal-range');
     const max = coinsFloor();
     if (Number(r.max) !== max) r.max = String(max);
@@ -175,7 +204,17 @@ const Upgrade = (function () {
     $('#up-fast').classList.toggle('on', G.S.settings.fast);
   }
 
-  Screens.reg('upgrade', { render: renderAll, tick: tick });
+  Screens.reg('upgrade', { render: render, tick: tick });
+
+  // Переключатель «Апгрейд | Контракт»; зовут и с других экранов (инвентарь: UI.actions['up-tab']('contract'))
+  A['up-tab'] = function (id) {
+    if (UI.isSpinning()) return;
+    const next = id === 'contract' && hasCt() ? 'contract' : 'up';
+    if (UI.screen() !== 'upgrade') { tab = next; UI.showScreen('upgrade'); return; }
+    if (next === tab) return;
+    tab = next;
+    render();
+  };
 
   // ---------- Выбор ----------
   function changed() { quick = ''; markQuick(); renderStake(); renderRing(); renderCatalog(); tick(); }
@@ -183,6 +222,8 @@ const Upgrade = (function () {
   A['up-stake'] = function (u, el) {
     if (UI.isSpinning()) return;
     u = Number(u);
+    const x = G.findInst(u);
+    if (x && G.isSecret(x.s)) { UI.toast(t('trophy_no_up'), 'bad'); return; }
     const i = stake.indexOf(u);
     if (i >= 0) stake.splice(i, 1);
     else {
@@ -200,7 +241,7 @@ const Upgrade = (function () {
     changed();
   };
   A['up-target'] = function (id) {
-    if (UI.isSpinning()) return;
+    if (UI.isSpinning() || !SKINS[id] || G.isSecret(id)) return;   // трофей целью быть не может
     target = id;
     quick = '';
     renderTarget();
@@ -392,13 +433,14 @@ const Upgrade = (function () {
 
   // ---------- Запуск апгрейда ----------
   async function go() {
-    const ch = chance(), real = realChance();   // считаем до списания ставки
+    const ch = chance(), real = realChance(), sv = stakeValue();   // считаем до списания ставки
     if (UI.isSpinning() || ch <= 0) { UI.toast(t('up_need')); return; }
     if (!stake.length && G.invFull(1)) { UI.toast(t('inv_full', { n: INVENTORY_MAX }), 'bad'); return; }
     if (!G.canPay(bal)) { UI.toast(t('not_enough'), 'bad'); return; }
 
     // Ставка списывается сразу
     G.spend(bal);
+    stake = stake.filter((u) => { const x = G.findInst(u); return x && !G.isSecret(x.s); });   // трофей не сгорает в апгрейде
     G.removeInsts(stake);
     const tgt = target;
     // при гарантированной победе стрелка останавливается внутри видимой зелёной зоны
@@ -407,6 +449,8 @@ const Upgrade = (function () {
     G.S.upgrades++;
     G.track('u', 1);
     if (win) { G.S.upWins++; G.track('uw', 1); }
+    // событие для опыта и достижений: chance — видимый шанс (0..1), stake — стоимость ставки, target — цена цели
+    G.emit('upgrade', { win: win, chance: ch, stake: sv, target: targetPrice(tgt) });
     let inst = null;
     if (win) inst = G.addInst(tgt, G.rollFloat('ft'), 'up').inst;
     G.save(false);
@@ -482,6 +526,7 @@ const Upgrade = (function () {
   A['up-go'] = function () { go(); };
 
   return {
-    preselect: function (u) { stake = [u]; bal = 0; target = null; page = 0; },
+    tab: () => tab,
+    preselect: function (u) { tab = 'up'; const x = G.findInst(u); stake = x && !G.isSecret(x.s) ? [u] : []; bal = 0; target = null; page = 0; },
   };
 })();

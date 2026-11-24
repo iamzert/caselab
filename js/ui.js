@@ -55,13 +55,66 @@ const UI = (function () {
   }
 
   // ---------- Уведомления ----------
+  // Одна стопка #toasts (место — см. ниже у TST): одинаковая ширина,
+  // не больше 3 видимых, остальные ждут в очереди; каждое видно 2.7 с. Тосты других модулей
+  // (достижения кладут свои прямо в #toasts) стопка тоже забирает в очередь и убирает сама.
+  // Пока виден пузырь подсказки (html[data-onb="1"]), новые уведомления придерживаются.
+  // Место стопки — r7_glass.css: широкий экран — внизу справа (до 3 тостов), телефон и планшет
+  // (≤ 900 px, нижнее меню) — поверх полосы дропа под шапкой, по одному, чтобы не лечь на шапку страницы.
+  const TST = { max: 3, ms: 2700, out: 200, qmax: 6, stale: 6000 };
+  const toastNarrow = window.matchMedia('(max-width: 900px)');
+  const toastMax = () => (toastNarrow.matches ? 1 : TST.max);
+  const toastQ = [];
+  const toastBox = $('#toasts');
+  const toastHeld = () => document.documentElement.getAttribute('data-onb') === '1';
+  const toastLive = () => Array.prototype.filter.call(toastBox.children, (e) => e._tm && !e.classList.contains('out'));
+  function toastHide(el) {
+    if (el._out) return;
+    el._out = true; clearTimeout(el._tt);
+    el.classList.add('out');
+    setTimeout(() => { el.remove(); toastPump(); }, TST.out);
+  }
+  function toastPump() {
+    if (toastHeld()) return;
+    let live = toastLive().length;
+    while (toastQ.length && live < toastMax()) {
+      const q = toastQ.shift();
+      if (q.bad && Date.now() - q.at > TST.stale) continue;   // ошибка, дождавшаяся очереди, уже не к месту
+      const el = q.el;
+      el._tm = true; el._out = false; el.classList.remove('out');
+      toastBox.appendChild(el);
+      el._tt = setTimeout(() => toastHide(el), TST.ms);
+      live++;
+    }
+  }
+  function toastPush(el, bad) {
+    toastQ.push({ el: el, bad: !!bad, at: Date.now() });
+    if (toastQ.length > TST.qmax) toastQ.shift();
+    toastPump();
+  }
+  // чужой тост, положенный прямо в стопку, — в очередь; убранный своим таймером — освобождает место
+  new MutationObserver((ms) => {
+    ms.forEach((m) => {
+      m.addedNodes.forEach((n) => { if (n.nodeType === 1 && !n._tm) { n.remove(); toastPush(n, n.classList.contains('bad')); } });
+      m.removedNodes.forEach((n) => { if (n._tm && !n._out) { clearTimeout(n._tt); n._out = true; } });
+    });
+    toastPump();
+  }).observe(toastBox, { childList: true });
+  new MutationObserver(toastPump).observe(document.documentElement, { attributes: true, attributeFilter: ['data-onb'] });
+  if (toastNarrow.addEventListener) toastNarrow.addEventListener('change', toastPump);
   function toast(text, kind) {
+    text = String(text);
+    // то же сообщение уже на экране — продлеваем его, в очереди — не дублируем
+    const same = (e) => e._txt === text;
+    const shown = toastLive().find(same);
+    if (shown) { clearTimeout(shown._tt); shown._tt = setTimeout(() => toastHide(shown), TST.ms); return; }
+    if (toastQ.some((q) => same(q.el))) return;
     const el = document.createElement('div');
     el.className = 'toast' + (kind ? ' ' + kind : '');
     el.innerHTML = (kind === 'good' ? ic('check') : kind === 'bad' ? ic('x') : '') + '<span></span>';
     el.lastChild.textContent = text;
-    $('#toasts').appendChild(el);
-    setTimeout(() => el.remove(), 2700);
+    el._txt = text; el._tm = true;   // своё: наблюдатель стопки его не перехватывает
+    toastPush(el, kind === 'bad');
   }
   G.toast = toast;
 
@@ -99,7 +152,8 @@ const UI = (function () {
     opts = opts || {};
     const root = $('#modal-root');
     const x = opts.locked ? '' : '<button class="m-x" data-act="close" aria-label="close">' + ic('x') + '</button>';
-    root.innerHTML = '<div class="modal-back"><div class="modal' + (opts.wide ? ' wide' : '') + '">' + x + html + '</div></div>';
+    // cls — дополнительный класс окна (например, 'sec' — чёрное окно секретного предмета)
+    root.innerHTML = '<div class="modal-back"><div class="modal' + (opts.wide ? ' wide' : '') + (opts.cls ? ' ' + opts.cls : '') + '">' + x + html + '</div></div>';
     root.classList.add('show');
     modalOnClose = opts.onClose || null;
     modalIsLocked = !!opts.locked;
@@ -117,6 +171,7 @@ const UI = (function () {
     const cb = modalOnClose;
     modalOnClose = null;
     if (cb && !skipCb) cb();
+    if (giftQ.length) setTimeout(nextGift, 0);   // подарок ждал, пока закроется это окно
   }
 
   let confirmCb = null;
@@ -135,7 +190,8 @@ const UI = (function () {
   // Аватар игрока: в сохранении и в живой ленте остаются прежние ключи G.AVATARS (эмодзи — только идентификатор),
   // на экране — монохромный значок Phosphor на графитовой плитке
   const AVA_IC = { '🐺': 'dog', '🦊': 'cat', '🐯': 'paw', '🦅': 'bird', '🐉': 'ghost', '💀': 'skull', '🤖': 'robot', '👑': 'crown', '🐍': 'sword', '🦂': 'bug', '🔥': 'fire', '⚡': 'bolt' };
-  function avaIcon(a) { return ic(AVA_IC[a] || 'user'); }
+  // аватары-награды уровней (lv_*) — значки из js/xp.js
+  function avaIcon(a) { return ic(AVA_IC[a] || (typeof XP !== 'undefined' && XP.avaIc(a)) || 'user'); }
   // выбранный аватар — значок, иначе первая буква ника (экранированная)
   function avaHTML(a) { return a ? avaIcon(a) : G.playerName().charAt(0).toUpperCase().replace(/[&<>"']/g, (m) => '&#' + m.charCodeAt(0) + ';'); }
 
@@ -145,16 +201,20 @@ const UI = (function () {
     const inst = typeof src === 'string' ? null : src;
     const skinId = inst ? inst.s : src;
     const sk = SKINS[skinId];
-    const price = o.price != null ? o.price : (inst ? G.sellPrice(inst) : sk.value);
+    const price = o.price != null ? o.price : (inst ? G.shownPrice(inst) : sk.value);
+    const secret = G.isSecret(skinId);
     const tag = o.act ? 'button' : 'div';
     const attrs = o.act ? ' data-act="' + o.act + '" data-id="' + (inst && !o.useSkinId ? inst.u : skinId) + '"' : '';
     let top = '<div class="it-top">';
     // износ — полной подписью и короткой (узкая плитка показывает короткую, CSS @container)
     const wid = inst ? G.wearOf(inst.f).id : '';
+    // у трофея износ на цену не влияет — вместо него подпись редкости
     top += o.chance != null ? '<span class="it-chance">' + G.fmtPct(o.chance) + '</span>'
+      : secret ? '<span class="it-sec" title="' + t('rar_secret') + '"><span class="wl">' + t('rar_secret') + '</span><span class="ws">' + t('rar_secret_s') + '</span></span>'
       : (inst ? '<span class="it-wear" title="' + t('wear_' + wid) + '"><span class="wl">' + t('wear_' + wid) + '</span><span class="ws">' + t('wear_' + wid + '_s') + '</span></span>' : '<span></span>');
     top += '<span class="it-price">' + COIN + G.fmt(price) + '</span></div>';
     return '<' + tag + ' class="it r' + sk.r + (o.cls ? ' ' + o.cls : '') + (o.selected ? ' sel' : '') + '"' + attrs + '>' +
+      (secret ? '<i class="it-glint" aria-hidden="true"></i>' : '') +   // тонкая светлая рамка с медленным холодным бликом
       top + '<div class="it-art">' + Art.item(skinId, inst ? inst.f : null) + '</div>' +
       // «новый» — не плашка поверх картинки, а короткая зелёная метка в строке скина (верхний ряд остаётся одному значку)
       '<div class="it-name">' + (G.isStar(skinId) ? '★ ' : '') + G.skinName(skinId) + '</div>' +
@@ -273,11 +333,26 @@ const UI = (function () {
     const h = Math.floor(m / 60);
     return h < 24 ? t('ago_h', { n: h }) : t('ago_d', { n: Math.floor(h / 24) });
   }
+  // «Топ»: повторы одного предмета у одного игрока — одна строка (самый дорогой экземпляр) со счётчиком «×7».
+  // Список уже отсортирован по цене, поэтому первый встреченный экземпляр и есть самый дорогой.
+  function feedGroup(list, live) {
+    const out = [], at = {};
+    list.forEach((x) => {
+      const key = (live ? (x.pk || 'n:' + x.n) : 'me') + '|' + x.s;
+      if (at[key] !== undefined) { out[at[key]].cnt++; return; }
+      at[key] = out.length;
+      out.push(Object.assign({}, x, { cnt: 1 }));
+    });
+    return out.slice(0, G.C.TOP_MAX);
+  }
+  let feedRows = [];           // дропы строк на экране — по номеру строки клик по нику находит игрока
   function renderFeed() {
     const S = G.S;
     const live = typeof Live !== 'undefined' && Live.enabled;
     const top = feedMode === 'top';
-    const list = live ? (top ? Live.top() : Live.items()) : (top ? S.top : S.feed);
+    const raw = live ? (top ? Live.top() : Live.items()) : (top ? S.top : S.feed);
+    const list = top ? feedGroup(raw, live) : raw;
+    feedRows = list;
     const st = live ? Live.state() : 'on';
     setText($('#feed-title'), t(top ? 'feed_best' : 'feed_mine'));
     setText($('#feed-count'), String(list.length));
@@ -286,25 +361,30 @@ const UI = (function () {
     const me = G.playerName();
     const now = live ? Live.now() : Date.now();
     const shown = new Set();
-    const rows = list.map((x) => {
+    const q = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+    const rows = list.map((x, i) => {
       const sk = SKINS[x.s];
       const key = feedMode + (x.k || x.s + '|' + x.f);
       shown.add(key);
       const c = x.c ? CASE_BY_ID[x.c] : null;
-      const cls = 'fd r' + sk.r + (feedShown.has(key) ? '' : ' new') + (live && (x.me || x.n === me) ? ' me' : '') + (c ? ' link' : '');
-      // подсказка: из какого кейса и когда; строка с кейсом открывает этот кейс
+      const mine = live && (x.me || x.n === me);
+      const cls = 'fd r' + sk.r + (feedShown.has(key) ? '' : ' new') + (mine ? ' me' : '') + (c ? ' link' : '');
       const nm = (G.isStar(x.s) ? '★ ' : '') + G.skinName(x.s);
       const fin = G.finishName(x.s) + ' (' + wearShort(x.f) + ')';
-      // подсказка: полное имя (в строке оно обрезается), кейс и давность; строка с кейсом открывает этот кейс
-      const tip = [nm + ' | ' + fin, c ? t('feed_case', { c: G.nm(c.name) }) : '', live && x.t ? feedAgo(now - x.t) : ''].filter(Boolean).join(' · ');
-      const attrs = (c ? ' data-act="feed-case" data-id="' + c.id + '"' : '') + ' title="' + tip.replace(/"/g, '&quot;') + '"';
-      // одна компактная строка: картинка | предмет / ник … цена (без аватара-эмодзи); вне живого канала вместо ника — скин
-      // (без износа: он есть в подсказке, а строке нужно место под название скина)
+      const cnt = x.cnt > 1 ? x.cnt : 0;
+      // подсказка: полное имя (в строке оно обрезается), повторы, кейс и давность; строка с кейсом открывает этот кейс
+      const v = G.instValue(x);
+      const tip = [nm + ' | ' + fin, G.fmt(v), cnt ? t('feed_rep', { n: cnt }) : '', c ? t('feed_case', { c: G.nm(c.name) }) : '', live && x.t ? feedAgo(now - x.t) : ''].filter(Boolean).join(' · ');
+      const attrs = (c ? ' data-act="feed-case" data-id="' + c.id + '"' : '') + ' title="' + q(tip) + '"';
+      // плотная строка: картинка (с «×N» в «Топ») | ник … цена / предмет; полоса редкости — слева по краю строки.
+      // Ник — отдельная кнопка: открывает профиль игрока (свой — свой профиль). Вне живого канала вместо ника — скин.
+      const who = live
+        ? '<span class="fd-nm" data-act="feed-who" data-id="' + i + '" title="' + q(t(mine ? 'feed_myprof' : 'feed_prof')) + '">' + x.n + '</span>'
+        : '<span class="fd-sk">' + G.finishName(x.s) + '</span>';
       return '<div class="' + cls + '"' + attrs + '>' +
-        '<div class="fd-art">' + Art.item(x.s, x.f) + '</div>' +
-        '<div class="fd-txt"><b>' + nm + (x.up ? ic('upgrade', 'fd-mk') : '') + (x.g ? ic('rewards', 'fd-mk') : '') + '</b>' +
-        '<em>' + COIN + G.fmt(G.instValue(x)) + '</em>' +
-        (live ? '<span class="fd-nm">' + x.n + '</span>' : '<span class="fd-sk">' + G.finishName(x.s) + '</span>') + '</div></div>';
+        '<div class="fd-art">' + Art.item(x.s, x.f) + (cnt ? '<span class="fd-x">×' + cnt + '</span>' : '') + '</div>' +
+        '<div class="fd-txt"><div class="fd-l1">' + who + '<em>' + COIN + (v >= 1e6 ? G.fmt(v) : G.fmtInt(v)) + '</em></div>' +
+        '<b>' + nm + (x.up ? ic('upgrade', 'fd-mk') : '') + (x.g ? ic('rewards', 'fd-mk') : '') + '</b></div></div>';
     });
     feedShown = shown;
     // пусто — короткая серая строка вверху списка; нет связи — такая же строка внизу колонки, список (если был) остаётся
@@ -342,7 +422,35 @@ const UI = (function () {
   }
   G.onChange = refresh;
 
-  function setSpinning(v) { spinning = v; refresh(); }
+  function setSpinning(v) { spinning = v; refresh(); if (!v && giftQ.length) setTimeout(nextGift, 0); }
+
+  // ---------- Окно «Подарок» (G.giftReceive) ----------
+  // Сдержанно: крупно предмет, редкость, цена и «Забрать» — без конфетти и вспышек.
+  // Во время прокрутки или пока открыто другое окно подарок ждёт в очереди и показывается после.
+  const giftQ = [];
+  function gift(inst, from) {
+    giftQ.push({ inst: inst, from: from || '' });
+    // предмет уже в инвентаре — открытый экран с сеткой перерисовываем сразу
+    if (!spinning && ['inv', 'profile', 'upgrade'].indexOf(screen) >= 0) Screens.render(screen);
+    refresh();
+    setTimeout(nextGift, 0);
+  }
+  function nextGift() {
+    if (!giftQ.length || spinning || $('#modal-root').classList.contains('show')) return;
+    const g = giftQ.shift(), x = g.inst;
+    if (!G.findInst(x.u)) { nextGift(); return; }
+    const sk = SKINS[x.s], secret = G.isSecret(x.s);
+    modal('<h3 class="m-title">' + ic('rewards') + t('gift_title') + '</h3>' +
+      '<div class="drop-one r' + sk.r + '"><div class="drop-art">' + Art.item(x.s, x.f) + '</div></div>' +
+      '<div class="drop-rar r' + sk.r + '">' + t('rar_' + RARITIES[sk.r].id) + '</div>' +
+      '<div class="drop-name">' + (G.isStar(x.s) ? '★ ' : '') + G.skinName(x.s) + ' <span>| ' + G.finishName(x.s) + '</span></div>' +
+      '<div class="drop-wear">' + (secret ? t('trophy_note') : wearShort(x.f) + ' · ' + x.f.toFixed(4)) + '</div>' +
+      '<div class="drop-price">' + COIN + G.fmt(G.instValue(x)) + '</div>' +
+      (g.from === 'admin' ? '<p class="hint">' + t('gift_from_admin') + '</p>' : '') +
+      '<div class="m-btns"><button class="btn primary big" data-act="close">' + t('take') + '</button></div>',
+    { cls: secret ? 'sec gift' : 'gift' });
+    if (typeof Sfx !== 'undefined' && Sfx.win) Sfx.win(Math.min(5, sk.r));
+  }
 
   // Кнопки звука есть в левой колонке и на экране апгрейда
   function setSoundIcon() { $$('[data-act="sound"]').forEach((b) => setHTML(b, ic(G.S.settings.sound ? 'sound' : 'mute'))); }
@@ -357,9 +465,122 @@ const UI = (function () {
     setText($('#hdr-name'), G.playerName());
   }
 
+  // ---------- Облегчённое стекло (html.gl-lite) ----------
+  // backdrop-filter дорог на слабых устройствах. Замеряем кадры (rAF): один раз в покое — когда ушла
+  // заставка и опустела очередь отрисовки картинок (Art), и до трёх раз при прокрутке. Кадры дольше
+  // 100 мс отбрасываем как разовые (подгрузка, сборка мусора). Средний кадр дольше ~28 мс (< 35 к/с) —
+  // плохой замер; два плохих подряд, из них хотя бы один при прокрутке, — стекло остаётся только у шапки
+  // и окон (r7_glass.css). Решение хранится 7 дней и сбрасывается при смене версии картинок (Art.ver).
+  // Слабый телефон — сразу облегчённый, без записи. Старое бессрочное «1» в хранилище — замеряем заново.
+  // Проверка на 127.0.0.1: ?gl=lite — включить сразу, ?gl=full — не замерять. Замеры — в html[data-gl-ms].
+  (function glassProbe() {
+    const root = document.documentElement, KEY = 'cl_gl_lite', LIMIT = 28, SPIKE = 100, TTL = 7 * 864e5;
+    const ver = () => String((typeof Art !== 'undefined' && Art.ver) || '');
+    const dev = /^(127.0.0.1|localhost)$/.test(location.hostname) ? new URLSearchParams(location.search).get('gl') : null;
+    const lite = (why, keep) => {
+      if (root.classList.contains('gl-lite')) return;
+      root.classList.add('gl-lite'); root.dataset.glWhy = why;
+      if (keep) try { localStorage.setItem(KEY, JSON.stringify({ v: ver(), t: Date.now() })); } catch (e) { /* хранилище недоступно — решим заново */ }
+    };
+    if (dev === 'lite') { lite('dev'); return; }
+    if (dev === 'full') return;
+    let saved = null;
+    try { saved = localStorage.getItem(KEY); } catch (e) { /* нет хранилища */ }
+    if (saved !== null) {
+      let d = null;
+      try { d = JSON.parse(saved); } catch (e) { /* испорчено — замеряем заново */ }
+      const age = d && typeof d === 'object' ? Date.now() - Number(d.t) : NaN;
+      if (age >= 0 && age < TTL && d.v === ver()) { lite('saved'); return; }
+      try { localStorage.removeItem(KEY); } catch (e) { /* нет хранилища */ }
+    }
+    const nav = navigator, coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+    if (coarse && ((nav.hardwareConcurrency || 8) <= 4 || (nav.deviceMemory || 8) <= 2)) { lite('weak'); return; }
+    // очередь отрисовки картинок пуста (Art.prewarm([]) завершается ровно тогда); при первом заходе
+    // без кэша картинки на слабом устройстве рисуются долго — дольше 20 с от загрузки не ждём
+    const T0 = performance.now(), CAP = 20000;
+    const artIdle = () => new Promise((res) => {
+      const left = CAP - (performance.now() - T0);
+      if (left <= 0) { res(); return; }
+      const tm = setTimeout(res, left);
+      (typeof Art !== 'undefined' && Art.prewarm ? Art.prewarm([]) : Promise.resolve()).then(() => { clearTimeout(tm); res(); });
+    });
+    let bad = 0, badScroll = false;
+    function verdict(ms, tag) {
+      if (ms === null) return;   // замер не состоялся — серию не прерываем и не продлеваем
+      if (ms > LIMIT) { bad++; if (tag === 'scroll') badScroll = true; } else { bad = 0; badScroll = false; }
+      if (bad >= 2 && badScroll) lite(tag, true);
+    }
+    // n кадров подряд: средняя длительность без всплесков > 100 мс и без самого долгого из оставшихся
+    function measure(n, tag, valid, done) {
+      const ts = [];
+      const step = (t) => {
+        ts.push(t);
+        if (ts.length <= n) { requestAnimationFrame(step); return; }
+        const d = [];
+        for (let i = 1; i < ts.length; i++) { const v = ts[i] - ts[i - 1]; if (v <= SPIKE) d.push(v); }
+        let ms = null;
+        if (d.length >= n / 2 && (!valid || valid())) {
+          d.sort((a, b) => a - b); d.pop();
+          ms = d.reduce((s, v) => s + v, 0) / d.length;
+        }
+        root.dataset.glMs = (root.dataset.glMs ? root.dataset.glMs + ' ' : '') + tag + ':' + (ms === null ? '-' : ms.toFixed(1));
+        verdict(ms, tag);
+        if (done) done(ms);
+      };
+      requestAnimationFrame(step);
+    }
+    // 1) покой: ушла заставка и дорисованы картинки (рисование ящиков и предметов — не про стекло)
+    let waited = 0;
+    const start = setInterval(() => {
+      const ld = document.getElementById('loader');
+      if ((ld && !ld.classList.contains('hide')) && (waited += 250) < 15000) return;
+      clearInterval(start);
+      artIdle().then(() => setTimeout(() => measure(90, 'idle'), 400));
+    }, 250);
+    // 2) прокрутка: до трёх замеров по 45 кадров; засчитывается, только если листали весь замер
+    let runs = 0, busy = false, scrolls = 0;
+    const onScroll = () => {
+      scrolls++;
+      if (busy || runs >= 3 || root.classList.contains('gl-lite')) return;
+      busy = true;
+      artIdle().then(() => {
+        const s0 = scrolls;
+        measure(45, 'scroll', () => scrolls - s0 >= 10, (ms) => { busy = false; if (ms !== null) runs++; });
+      });
+    };
+    ['main', 'feed-list'].forEach((id) => { const el = document.getElementById(id); if (el) el.addEventListener('scroll', onScroll, { passive: true }); });
+  })();
+
   // ---------- Навигация ----------
+  // Короткий кроссфейд при смене экрана. Прозрачность (opacity) у стеклянной панели или её предка
+  // выключает размытие под ней на время анимации, и по окончании оно появлялось бы скачком.
+  // Поэтому у стеклянной панели проявляются подложка, размытие и тень (из прозрачного), а прозрачностью —
+  // только её содержимое; обёртки со стеклом внутри разбираются по детям. Свои стеклянные панели помечайте .glass.
+  // Дёшево: длительность читается один раз, конечные значения — свои у панели (неявный последний кадр),
+  // без getComputedStyle на каждую панель; в облегчённом режиме — одна анимация на весь экран.
+  const GLASS_SEL = '.glass, .panel, .up-panel, .up-bal, .up-quick, .bonus, .shop-card, .rw-card, .rw-daily, .q-row, .rw-top, .col-sec, .cp-odds, .roll, .mroll, .subnav';
+  const REDUCE = window.matchMedia ? matchMedia('(prefers-reduced-motion: reduce)') : null;
+  let fadeOpt = null;
+  function screenFade(sc) {
+    if (!sc || !sc.animate || (REDUCE && REDUCE.matches)) return;
+    if (!fadeOpt) fadeOpt = { duration: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--t-screen')) || 140, easing: 'linear' };
+    const fx = (el) => el.animate([{ opacity: 0 }, { opacity: 1 }], fadeOpt);
+    if (document.documentElement.classList.contains('gl-lite')) { fx(sc); return; }   // без размытия — целиком
+    const glass = sc.querySelectorAll(GLASS_SEL);
+    if (!glass.length) { fx(sc); return; }
+    const holds = new Set();
+    glass.forEach((g) => { for (let e = g.parentElement; e && e !== sc && !holds.has(e); e = e.parentElement) holds.add(e); });
+    const glassFx = (el) => el.animate([{ backgroundColor: 'transparent', backdropFilter: 'blur(0px) saturate(100%)', boxShadow: 'none' }, {}], fadeOpt);
+    (function walk(node) {
+      for (const ch of node.children) {
+        if (ch.matches(GLASS_SEL)) { glassFx(ch); walk(ch); } else if (holds.has(ch)) walk(ch); else fx(ch);
+      }
+    })(sc);
+  }
+
   function showScreen(name, arg) {
     if (spinning) return;
+    const was = screen;
     screen = name;
     $$('.screen').forEach((s) => s.classList.toggle('active', s.id === 'scr-' + name));
     const navId = name === 'case' ? 'cases' : name;
@@ -367,6 +588,7 @@ const UI = (function () {
     $('#main').scrollTop = 0;
     Screens.render(name, arg);
     refresh();
+    if (was !== name) screenFade($('#scr-' + name));   // после отрисовки: проявляются уже новые элементы
   }
 
   function applyI18n() {
@@ -397,6 +619,15 @@ const UI = (function () {
     $('#feed-list').scrollLeft = 0;
   };
   // Клик по дропу в ленте — открыть кейс, из которого он выпал (не во время прокрутки)
+  // Клик по нику в живой ленте — открытый профиль игрока (js/pubprofile.js); свой ник — свой профиль
+  actions['feed-who'] = function (id) {
+    const x = feedRows[Number(id)];
+    if (!x || spinning || typeof Live === 'undefined') return;
+    const p = Live.profileOf(x);
+    if (!p) return;
+    if (p.me) showScreen('profile');
+    else if (typeof PubProfile !== 'undefined' && PubProfile.open) PubProfile.open(p);
+  };
   actions['feed-case'] = function (id) {
     if (!spinning && Object.prototype.hasOwnProperty.call(CASE_BY_ID, id) && actions['case']) actions['case'](id);
   };
@@ -413,7 +644,7 @@ const UI = (function () {
     ic: ic, plural: plural, short: short, glowOf: glowOf, caseStats: caseStats,
     logo: () => LOGO_SVG + '<span class="logo-text">' + logoText() + '</span>',
     toast: toast, floatText: floatText, burst: burst,
-    modal: modal, closeModal: closeModal, confirm: confirmBox, modalLocked: () => modalIsLocked,
+    modal: modal, closeModal: closeModal, confirm: confirmBox, modalLocked: () => modalIsLocked, gift: gift,
     itemCard: itemCard, caseCard: caseCard, wearShort: wearShort, avaIcon: avaIcon, avaHTML: avaHTML,
     renderFeed: renderFeed, refresh: refresh, setSpinning: setSpinning, isSpinning: () => spinning,
     setSoundIcon: setSoundIcon, setProfileBadge: setProfileBadge,

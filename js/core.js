@@ -106,11 +106,43 @@ const G = (function () {
   G.nm = (o) => o[G.lang] || o.ru;
   G.changed = function () { if (G.onChange) G.onChange(); };
 
+  // ================= События =================
+  // G.on(ev, fn) — подписка, G.emit(ev, data) — событие (опыт, достижения, колесо и т. п. слушают действия игрока).
+  // Ошибка подписчика не ломает действие игрока: остальные подписчики отрабатывают, а ошибка выбрасывается
+  // отдельно (видна в консоли при разработке). Список событий — tools/plans/R7_SPEC.md.
+  const LISTEN = {};
+  G.on = function (ev, fn) { (LISTEN[ev] = LISTEN[ev] || []).push(fn); };
+  G.emit = function (ev, data) {
+    (LISTEN[ev] || []).slice().forEach((fn) => { try { fn(data); } catch (e) { setTimeout(() => { throw e; }); } });
+  };
+
+  // ================= Разделы сохранения для модулей =================
+  // G.ext(name, { def, clean }) — свой раздел G.S.ext[name] (опыт, достижения, колесо, витрина…). Регистрировать
+  // при загрузке файла модуля (до boot). sanitize пропускает зарегистрированные разделы через clean,
+  // а незнакомые переносит как есть — данные модулей не теряются, даже если модуль отключён.
+  const EXT = {};
+  function extValue(name, raw) {
+    const sp = EXT[name];
+    if (raw === undefined || raw === null) return sp.def();
+    try { const v = sp.clean ? sp.clean(raw) : raw; return v === undefined || v === null ? sp.def() : v; } catch (e) { return sp.def(); }
+  }
+  G.ext = function (name, spec) {
+    EXT[name] = { def: spec && spec.def ? spec.def : () => ({}), clean: spec && spec.clean };
+    return G.S ? G.extOf(name) : null;
+  };
+  // Раздел текущего сохранения (создаётся по умолчанию, если его ещё нет)
+  G.extOf = function (name) {
+    if (!G.S.ext || typeof G.S.ext !== 'object') G.S.ext = {};
+    if (!(name in G.S.ext)) G.S.ext[name] = EXT[name] ? EXT[name].def() : {};
+    return G.S.ext[name];
+  };
+
   // ================= Состояние =================
   function defaultState() {
     return {
       v: 2, coins: START_COINS, total: 0,
       inv: [], uid: 1, found: {}, feed: [], top: [],
+      gifts: [],    // id применённых подарков из админки (последние GIFTS_MAX) — повторная доставка ничего не даёт
       up: { click: 0, auto: 0, luck: 0, sell: 0 },
       opened: 0, clicks: 0, upgrades: 0, upWins: 0, best: null,
       daily: { last: 0, streak: 0 },
@@ -130,7 +162,13 @@ const G = (function () {
       profile: { name: '', ava: '' },   // ник и аватар из регистрации (хранятся в сохранении)
       pid: newPid(),                    // постоянный случайный id игрока
       savedAt: 0,
+      ext: extDefaults(),               // разделы модулей (G.ext): опыт, достижения, колесо, витрина…
     };
+  }
+  function extDefaults() {
+    const o = {};
+    Object.keys(EXT).forEach((k) => { o[k] = EXT[k].def(); });
+    return o;
   }
   function newPid() {
     const a = new Uint8Array(9);
@@ -141,6 +179,8 @@ const G = (function () {
 
   const num = (v, d) => (typeof v === 'number' && isFinite(v) && v >= 0 ? v : d);
   const validInst = (x) => x && SKINS[x.s] && typeof x.f === 'number' && x.f >= 0 && x.f <= 1;
+  const GIFTS_MAX = 200;
+  const giftId = (v) => (typeof v === 'string' && /^[\w:.\-]{1,64}$/.test(v) ? v : typeof v === 'number' && isFinite(v) ? String(v) : '');
 
   G.sanitize = function (raw) {
     const d = defaultState();
@@ -150,14 +190,28 @@ const G = (function () {
     d.lastSeen = num(raw.lastSeen, Date.now());
     if (typeof raw.adOwed === 'string' && CASE_BY_ID[raw.adOwed]) d.adOwed = raw.adOwed;
     if (Array.isArray(raw.inv)) {
-      raw.inv.forEach((x) => { if (validInst(x) && d.inv.length < INVENTORY_MAX) d.inv.push({ u: Math.floor(num(x.u, 0)), s: x.s, f: x.f }); });
+      // трофеи (секретная редкость) места в инвентаре не занимают и не теряются при полном инвентаре
+      let n = 0;
+      raw.inv.forEach((x) => {
+        if (!validInst(x)) return;
+        const tr = G.isSecret(x.s);
+        if (!tr && n >= INVENTORY_MAX) return;
+        if (!tr) n++;
+        d.inv.push({ u: Math.floor(num(x.u, 0)), s: x.s, f: x.f });
+      });
+    }
+    if (Array.isArray(raw.gifts)) {
+      raw.gifts.forEach((v) => { const id = giftId(v); if (id && d.gifts.indexOf(id) < 0) d.gifts.push(id); });
+      if (d.gifts.length > GIFTS_MAX) d.gifts = d.gifts.slice(-GIFTS_MAX);
     }
     // уникальные id предметов
     const seen = {};
     d.inv.forEach((x) => { if (!x.u || seen[x.u]) x.u = d.uid++; seen[x.u] = 1; if (x.u >= d.uid) d.uid = x.u + 1; });
-    if (raw.found) Object.keys(raw.found).forEach((id) => { if (SKINS[id]) d.found[id] = 1; });
+    // коллекция — только предметы каталога (трофей в счётчик коллекции не входит)
+    if (raw.found) Object.keys(raw.found).forEach((id) => { if (SKINS[id] && !G.isSecret(id)) d.found[id] = 1; });
     const feedItem = (x) => ({ s: x.s, f: x.f, up: !!x.up, g: !!x.g });
-    const dear = (x) => validInst(x) && G.instValue(x) >= C.FEED_MIN;
+    // лента и «Топ» — только настоящие дропы: трофей туда не попадает
+    const dear = (x) => validInst(x) && !G.isSecret(x.s) && G.instValue(x) >= C.FEED_MIN;
     if (Array.isArray(raw.feed)) d.feed = raw.feed.filter(dear).slice(0, C.FEED_MAX).map(feedItem);
     if (Array.isArray(raw.top)) d.top = raw.top.filter(dear).slice(0, C.TOP_MAX).map(feedItem);
     if (validInst(raw.best)) d.best = { s: raw.best.s, f: raw.best.f };
@@ -192,6 +246,10 @@ const G = (function () {
       if (G.AVATARS.indexOf(raw.profile.ava) >= 0) d.profile.ava = raw.profile.ava;
     }
     if (typeof raw.pid === 'string' && /^[a-z0-9]{6,16}$/.test(raw.pid)) d.pid = raw.pid;
+    // разделы модулей: зарегистрированные — через clean, незнакомые — как есть (данные не теряются)
+    const rx = raw.ext && typeof raw.ext === 'object' && !Array.isArray(raw.ext) ? raw.ext : {};
+    Object.keys(rx).forEach((k) => { if (!EXT[k] && /^[a-z][a-z0-9_]{0,23}$/.test(k)) d.ext[k] = rx[k]; });
+    Object.keys(EXT).forEach((k) => { d.ext[k] = extValue(k, rx[k]); });
     return d;
   };
 
@@ -231,9 +289,12 @@ const G = (function () {
 
   // Цена конкретного экземпляра (с учётом износа), без бонуса торговца
   // читаемые цены (readablePrice из data.js): до 100 — с копейками, дальше шаг 1 / 10 / 100 / 10 000 / 1 000 000
-  G.instValue = (x) => Math.max(0.01, readablePrice(SKINS[x.s].value * G.wearOf(x.f).mult));
-  // Цена продажи (с бонусом торговца)
-  G.sellPrice = (x) => Math.max(0.01, readablePrice(G.instValue(x) * G.sellMult()));
+  // Трофей (секретная редкость) — ровно цена предмета при любом износе
+  G.instValue = (x) => (G.isSecret(x.s) ? SKINS[x.s].value : Math.max(0.01, readablePrice(SKINS[x.s].value * G.wearOf(x.f).mult)));
+  // Цена продажи (с бонусом торговца); трофей не продаётся — 0
+  G.sellPrice = (x) => (G.isSecret(x.s) ? 0 : Math.max(0.01, readablePrice(G.instValue(x) * G.sellMult())));
+  // Что показывать ценой экземпляра в карточках: цена продажи, у трофея — его стоимость
+  G.shownPrice = (x) => (G.isSecret(x.s) ? G.instValue(x) : G.sellPrice(x));
 
   G.rollFloat = function (tierId) {
     let w = null;
@@ -378,20 +439,31 @@ const G = (function () {
   if (/^(127\.0\.0\.1|localhost)$/.test(location.hostname)) G._mix = { lvFor: lvFor, shape: shape, drawWeights: drawWeights };
 
   // ================= Инвентарь =================
-  G.invFull = (n) => G.S.inv.length + (n || 1) > INVENTORY_MAX;
+  // Занятые места: трофеи места не занимают (подарок кладётся и в полный инвентарь)
+  G.invSlots = () => G.S.inv.reduce((n, x) => n + (G.isSecret(x.s) ? 0 : 1), 0);
+  G.invFull = (n) => G.invSlots() + (n || 1) > INVENTORY_MAX;
 
   // Добавляет экземпляр предмета, возвращает { inst, isNew }.
   // src: 'up' — выигран в апгрейде, 'gift' — приз из наград, иначе — из кейса.
   // src: 'case' (caseId — из какого кейса), 'up' — апгрейд, 'gift' — награда, 'admin' — выдача из админки
+  // src: 'contract' — контракт обмена, 'wheel' — колесо фортуны, 'ach' — достижение, 'lvl' — награда уровня.
+  // После добавления — событие 'inst' { inst, isNew, src, caseId } (опыт, достижения).
   G.addInst = function (skinId, f, src, caseId) {
+    const r = addInstRaw(skinId, f, src, caseId);
+    G.emit('inst', { inst: r.inst, isNew: r.isNew, src: src || 'case', caseId: caseId });
+    return r;
+  };
+  function addInstRaw(skinId, f, src, caseId) {
     const S = G.S;
     const inst = { u: S.uid++, s: skinId, f: f };
     S.inv.push(inst);
-    const isNew = !S.found[skinId];
-    S.found[skinId] = 1;
+    const secret = G.isSecret(skinId);
+    const isNew = !secret && !S.found[skinId];
+    if (!secret) S.found[skinId] = 1;
     const v = G.instValue(inst);
     if (!S.best || v > G.instValue(S.best)) S.best = { s: skinId, f: f };
-    if (v < C.FEED_MIN) return { inst: inst, isNew: isNew };
+    // трофей — не дроп: в ленту, «Топ» и живой дроп не идёт
+    if (secret || v < C.FEED_MIN) return { inst: inst, isNew: isNew };
     // Лента: только дорогие дропы (от FEED_MIN)
     const entry = { s: skinId, f: f, up: src === 'up', g: src === 'gift' || src === 'admin' };
     // в общий живой дроп сайта (js/live.js) — только настоящие дропы, выдача из админки туда не идёт
@@ -405,7 +477,7 @@ const G = (function () {
       if (S.top.length > C.TOP_MAX) S.top.length = C.TOP_MAX;
     }
     return { inst: inst, isNew: isNew };
-  };
+  }
 
   G.findInst = (u) => G.S.inv.filter((x) => x.u === u)[0] || null;
 
@@ -415,16 +487,46 @@ const G = (function () {
     G.S.inv = G.S.inv.filter((x) => !set[x.u]);
   };
 
-  // Продаёт экземпляры, возвращает выручку
+  // Продаёт экземпляры, возвращает выручку. Трофеи пропускаются (продать нельзя) — и в «Продать всё» тоже
   G.sellInsts = function (uids, mult) {
     let gain = 0;
     const set = {};
     uids.forEach((u) => { set[u] = 1; });
+    G.S.inv.forEach((x) => { if (set[x.u] && G.isSecret(x.s)) delete set[x.u]; });
+    uids = Object.keys(set).map(Number);
     G.S.inv.forEach((x) => { if (set[x.u]) gain += G.sellPrice(x) * (mult || 1); });
     G.removeInsts(uids);
     G.addCoins(gain);
     if (gain > 0) G.track('s', gain);
+    if (uids.length) G.emit('sell', { n: uids.length, gain: gain });
     return gain;
+  };
+
+  // ================= Билеты: бесплатные открытия кейсов =================
+  // Награды уровней, колеса и достижений дают билеты на конкретный кейс; показ и списание — экран кейса.
+  G.ext('tickets', {
+    def: () => ({}),
+    clean: (v) => {
+      const o = {};
+      if (v && typeof v === 'object') Object.keys(v).forEach((id) => { const n = Math.floor(Number(v[id])); if (CASE_BY_ID[id] && n > 0) o[id] = Math.min(999, n); });
+      return o;
+    },
+  });
+  G.ticketCount = (caseId) => (G.S && G.S.ext && G.S.ext.tickets && G.S.ext.tickets[caseId]) || 0;
+  G.grantTicket = function (caseId, n) {
+    if (!CASE_BY_ID[caseId]) return false;
+    const t = G.extOf('tickets');
+    t[caseId] = Math.min(999, (t[caseId] || 0) + Math.max(1, Math.floor(n || 1)));
+    G.emit('ticket', { caseId: caseId, n: t[caseId] });
+    G.changed();
+    return true;
+  };
+  G.useTicket = function (caseId) {
+    const t = G.extOf('tickets');
+    if (!t[caseId]) return false;
+    if (--t[caseId] <= 0) delete t[caseId];
+    G.changed();
+    return true;
   };
 
   // ================= Периоды и счётчики заданий =================
@@ -463,15 +565,51 @@ const G = (function () {
     if (k === 'o') G.S.week.o += v;
   };
 
+  // Стоимость инвентаря: цены продажи, трофей — по своей стоимости (это настоящий предмет)
   G.invWorth = function () {
     let w = 0;
-    G.S.inv.forEach((x) => { w += G.sellPrice(x); });
+    G.S.inv.forEach((x) => { w += G.shownPrice(x); });
     return w;
+  };
+  // Сколько получишь за «Продать всё» (без трофеев)
+  G.sellableWorth = function () {
+    let w = 0, n = 0;
+    G.S.inv.forEach((x) => { if (!G.isSecret(x.s)) { w += G.sellPrice(x); n++; } });
+    return { v: w, n: n };
   };
 
   G.skinName = (id) => G.nm(WEAPONS[SKINS[id].w].name);
   G.finishName = (id) => G.nm(FINISHES[SKINS[id].f].name);
   G.isStar = (id) => !!WEAPONS[SKINS[id].w].star;
+  // Секретная редкость (трофей): не продаётся, не ставится в апгрейд, не выпадает
+  G.isSecret = (id) => !!(SKINS[id] && RARITIES[SKINS[id].r] && RARITIES[SKINS[id].r].id === 'secret');
+
+  // ================= Подарок из админки =================
+  // G.giftReceive(skinId, { f, from, id }) → экземпляр или null. Кладёт предмет даже в полный инвентарь,
+  // сохраняет сразу и показывает окно «Подарок». Повторный вызов с тем же id ничего не делает.
+  // Подарок — не дроп: в ленту, «Топ» и живой дроп не попадает.
+  G.giftReceive = function (skinId, o) {
+    o = o || {};
+    const S = G.S;
+    if (!S || typeof skinId !== 'string' || !SKINS[skinId]) return null;
+    if (!Array.isArray(S.gifts)) S.gifts = [];
+    const id = giftId(o.id);
+    if (id && S.gifts.indexOf(id) >= 0) return null;
+    const secret = G.isSecret(skinId);
+    const f = typeof o.f === 'number' && isFinite(o.f) && o.f >= 0 && o.f <= 1 ? o.f : G.rollFloat(secret ? 'fn' : null);
+    const inst = { u: S.uid++, s: skinId, f: f };
+    S.inv.push(inst);
+    if (!secret) S.found[skinId] = 1;
+    if (!S.best || G.instValue(inst) > G.instValue(S.best)) S.best = { s: skinId, f: f };
+    if (id) {
+      S.gifts.push(id);
+      if (S.gifts.length > GIFTS_MAX) S.gifts.splice(0, S.gifts.length - GIFTS_MAX);
+    }
+    G.save(true);
+    G.changed();
+    if (typeof UI !== 'undefined' && UI.gift) UI.gift(inst, typeof o.from === 'string' ? o.from : '');
+    return inst;
+  };
 
   // ================= Реклама =================
   // Реклама за вознаграждение. onReward вызывается только при полном просмотре.

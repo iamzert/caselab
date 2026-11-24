@@ -2,9 +2,22 @@
 
 // Экран «Фарм»: монета-кликер, бесплатный кейс, монеты за рекламу, прокачка.
 // Плюс офлайн-доход при запуске. Ежедневный бонус — на экране «Награды».
+// Раунд 7: монета на сцене без панели, рядом — клики в секунду, прогресс уровня, всплывающие начисления;
+// прокачка — сплошные полосы .bar; покупки — второстепенные стеклянные кнопки с ценой золотым текстом
+// (золотая заливка на экране — только у главного действия «Открыть» бесплатного кейса).
+Object.assign(I18N.ru, {
+  fm_cps: 'Кликов/с', fm_tap: 'За клик', fm_inc: 'Доход/с', fm_lvl: 'ур. {a} / {b}', fm_next: 'Ур. {n}: {r}',
+});
+Object.assign(I18N.en, {
+  fm_cps: 'Taps/s', fm_tap: 'Per tap', fm_inc: 'Income/s', fm_lvl: 'lv. {a} / {b}', fm_next: 'Lv. {n}: {r}',
+});
+
 const Farm = (function () {
   const t = G.t, $ = UI.$, A = UI.actions, COIN = UI.COIN;
   let offlineGain = 0;
+  const CPS_WIN = 3000;      // окно «кликов в секунду» — скользящее за 3 с
+  const POPS_MAX = 8;        // одновременно всплывающих цифр у монеты
+  let taps = [];             // время последних кликов (только в окне CPS_WIN)
 
   const adCoinsReward = () => round2(Math.max(3, G.clickPower() * 60 + G.income() * 120));
 
@@ -25,16 +38,39 @@ const Farm = (function () {
       const l = G.S.up[u.id];
       const maxed = l >= u.max;
       const a = upEffect(u, l), b = maxed ? a : upEffect(u, l + 1);
-      // сегменты уровня: пройденные — золотые, следующий — приглушённо-золотой
-      let pips = '';
-      for (let i = 0; i < u.max; i++) pips += '<i' + (i < l ? ' class="on"' : i === l ? ' class="nx"' : '') + '></i>';
+      // уровень — сплошная дорожка 4 px с золотой заливкой и мелкая подпись «ур. 7 / 20»
+      const pct = Math.round(l / u.max * 1000) / 10;
+      const cost = maxed ? 0 : u.cost(l);
       return '<div class="shop-card' + (maxed ? ' max' : '') + '"><div class="shop-ico">' + UI.ic(SHOP_ICON[u.id] || 'up') + '</div>' +
-        '<div class="shop-info"><b>' + t('up_' + u.id) + ' <span class="lvl">' + t('level', { v: l }) + '</span></b>' +
-        '<small>' + t('up_' + u.id + '_d', { a: a, b: '<em>' + b + '</em>' }) + '</small><div class="pips">' + pips + '</div></div>' +
+        '<div class="shop-info"><b>' + t('up_' + u.id) + '</b>' +
+        // на максимуме — только текущее значение, без «1.90 → 1.90»
+        '<small>' + (maxed ? t('up_' + u.id + '_d', { a: '<em>' + a + '</em>', b: '' }).replace(/\s*→\s*$/, '')
+          : t('up_' + u.id + '_d', { a: a, b: '<em>' + b + '</em>' })) + '</small>' +
+        '<div class="bar"><i style="width:' + pct + '%"></i></div><span class="bar-lbl">' + t('fm_lvl', { a: l, b: u.max }) + '</span></div>' +
         (maxed ? '<button class="btn" disabled>' + t('max') + '</button>'
-          : '<button class="btn primary" data-act="buy" data-id="' + u.id + '" data-cost="' + u.cost(l) + '">' + COIN + G.fmtP(u.cost(l)) + '</button>') +
+          : '<button class="btn fm-buy" data-act="buy" data-id="' + u.id + '" data-cost="' + cost + '">' + COIN + G.fmtP(cost) + '</button>') +
         '</div>';
     }).join('');
+  }
+
+  // Клики в секунду: сколько кликов за последние 3 с, делённое на 3
+  function cps(now) {
+    while (taps.length && now - taps[0] > CPS_WIN) taps.shift();
+    return taps.length / (CPS_WIN / 1000);
+  }
+
+  // Прогресс до следующего уровня (XP.info()); без модуля опыта блок скрыт
+  function lvRow() {
+    const box = $('#fm-lv');
+    if (!box) return;
+    const inf = typeof XP !== 'undefined' && XP.info ? XP.info() : null;
+    box.hidden = !inf;
+    if (!inf) return;
+    UI.setText($('#fm-lv-n'), t('xp_lv') + ' ' + inf.lv + (inf.rank && inf.rank.name ? ' · ' + inf.rank.name : ''));
+    UI.setText($('#fm-lv-x'), inf.next ? G.fmtInt(inf.xp) + ' / ' + G.fmtInt(inf.need) + ' XP' : t('max'));
+    const w = (Math.round(inf.pct * 10) / 10) + '%', bar = $('#fm-lv-bar');
+    if (bar.style.width !== w) bar.style.width = w;
+    UI.setText($('#fm-lv-next'), inf.next && inf.next.text ? t('fm_next', { n: inf.next.lv, r: inf.next.text }) : '');
   }
 
   function render() {
@@ -44,9 +80,14 @@ const Farm = (function () {
 
   function tick() {
     const S = G.S, now = Date.now();
-    UI.setHTML($('#farm-click'), UI.ic('tap') + t('click_power', { v: G.fmt(G.clickPower()) }));
-    UI.setHTML($('#farm-income'), UI.ic('chip') + t('income', { v: G.fmt(G.income()) }));
-    $('#tap-hint').classList.toggle('pulse', S.clicks < 30);
+    UI.setText($('#farm-click'), '+' + G.fmt(G.clickPower()));
+    UI.setText($('#farm-income'), '+' + G.fmt(G.income()));
+    UI.setText($('#fm-cps'), cps(now).toFixed(1));
+    // подсказка «Жми на монету» — только пока игрок не освоился
+    const hint = $('#tap-hint');
+    hint.hidden = S.clicks >= 30;
+    hint.classList.toggle('pulse', S.clicks < 30);
+    lvRow();
 
     UI.setText($('#free-sub'), t('free_case_sub', { name: G.nm(CASE_BY_ID[FREE_CASE_ID].name) }));
     const fb = $('#btn-free');
@@ -75,12 +116,30 @@ const Farm = (function () {
     G.addCoins(p);
     G.S.clicks++;
     G.track('c', 1);
+    G.emit('click', { power: p });   // опыт и достижения
     Sfx.click();
+    taps.push(Date.now());
     const coin = $('#big-coin');
     coin.classList.remove('hit'); void coin.offsetWidth; coin.classList.add('hit');
-    const r = coin.getBoundingClientRect();
-    UI.floatText((e.clientX || r.left + r.width / 2) + (Math.random() * 30 - 15), (e.clientY || r.top + r.height / 2) - 10, '+' + G.fmt(p));
+    pop(e, '+' + G.fmt(p));
     UI.refresh();
+  }
+
+  // Всплывающая цифра начисления у точки клика (внутри сцены монеты, сдержанно, без свечения)
+  function pop(e, text) {
+    const box = $('#fm-pops');
+    if (!box) return;
+    const r = box.getBoundingClientRect();
+    const x = (e && e.clientX ? e.clientX - r.left : r.width / 2) + (Math.random() * 24 - 12);
+    const y = (e && e.clientY ? e.clientY - r.top : r.height / 2) - 14;
+    while (box.childElementCount >= POPS_MAX) box.firstElementChild.remove();
+    const el = document.createElement('span');
+    el.className = 'fm-pop';
+    el.textContent = text;
+    el.style.left = Math.max(16, Math.min(r.width - 16, x)) + 'px';
+    el.style.top = Math.max(0, y) + 'px';
+    box.appendChild(el);
+    setTimeout(() => el.remove(), 760);
   }
 
   A['ad-coins'] = function () {

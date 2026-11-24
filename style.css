@@ -135,7 +135,7 @@
   --fs-24: 24px;                         /* заголовки разделов и окон */
   --fs-hero: 32px;                       /* единственное исключение: шанс апгрейда и сумма выигрыша */
   --fw-name: 500;                        /* имя предмета — средний вес */
-  --c-meta: #8a93a2;                     /* приглушённый серый: счётчик раздела, подписи */
+  --c-meta: #98a1b0;                     /* приглушённый серый: счётчик раздела, подписи (≥ 4.5:1 на стекле, раунд 7) */
   --c-skin: rgba(238, 241, 246, .62);    /* название скина под именем предмета — мельче и тише */
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 20px; --s6: 24px; --s8: 32px;
   --wrap-w: 1120px;                      /* фиксированная ширина контента */
@@ -146,7 +146,7 @@
   --surf-2: rgba(39, 44, 56, .94);       /* шапка панели — на шаг светлее */
   --text: #eef1f6;
   --text2: #b9c1cd;
-  --muted: #838c9c;
+  --muted: #959eae;                      /* раунд 7: светлее — контраст ≥ 4.5:1 на полупрозрачных панелях */
   --dim: #5b6374;
   --acc: #ffb22e;
   --acc-hi: #ffd27a;
@@ -176,6 +176,8 @@
 .r7 { --rc: #2ef2ff; --rca: rgba(46, 242, 255, .3); }
 /* ✧ Артефакт (100М+): розовый; полоска редкости — тот же один цвет (без радуги) */
 .r8 { --rc: #ff5ccd; --rca: rgba(255, 92, 205, .34); --rbar: #ff5ccd; }
+/* ◆ Секретный (трофей из админки): светлое серебро на чёрном, подсветки почти нет — без ореолов */
+.r9 { --rc: #e6e9f0; --rca: rgba(214, 220, 236, .07); --rbar: #e6e9f0; }
 
 /* ---------- База ---------- */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -343,7 +345,7 @@ small { font-size: inherit; }   /* без «smaller» из браузера: р�
 .ld { display: flex; flex-direction: column; align-items: center; gap: 22px; }
 .ld .logo-mark { width: 58px; height: 58px; animation: ldFloat 1.6s ease-in-out infinite; }
 .ld-bar { width: 150px; height: 2px; overflow: hidden; background: rgba(255, 255, 255, .08); }
-.ld-bar i { display: block; width: 40%; height: 100%; background: var(--acc); box-shadow: 0 0 10px var(--acc); animation: ldBar 1.1s cubic-bezier(.5, 0, .5, 1) infinite; }
+.ld-bar i { display: block; width: 40%; height: 100%; background: var(--acc); animation: ldBar 1.1s cubic-bezier(.5, 0, .5, 1) infinite; }
 @keyframes ldBar { from { transform: translateX(-100%); } to { transform: translateX(260%); } }
 @keyframes ldFloat { 50% { transform: translateY(-5px); } }
 
@@ -893,9 +895,10 @@ button.it:active { transform: translateY(0); transition-duration: .08s; }
 .strip .it-art { flex: 1 1 0; min-height: 0; height: auto; margin: 4px 2px 4px; }
 .strip::after { content: ""; position: absolute; inset: 0; z-index: 2; background: rgba(10, 12, 16, .62); opacity: 0; transition: opacity .35s; pointer-events: none; }
 .roll.done .strip::after { opacity: 1; }
-.strip .it.win { z-index: 3; animation: winPop .45s cubic-bezier(.2, .9, .3, 1.25) both; }
+/* победитель — спокойно дорастает до 1.02 без перелёта (кривая без выхода за 1), без пружины */
+.strip .it.win { z-index: 3; animation: winPop .32s cubic-bezier(.2, .7, .3, 1) both; }
 .strip .it.win::before { opacity: 1; box-shadow: inset 0 0 0 2px var(--rc); }
-@keyframes winPop { from { transform: scale(.96); } to { transform: scale(1.04); } }
+@keyframes winPop { from { transform: scale(.98); } to { transform: scale(1.02); } }
 .marker { position: absolute; z-index: 5; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--acc); }
 .marker::before, .marker::after { content: ""; position: absolute; left: 50%; width: 0; height: 0; margin-left: -7px; border: 7px solid transparent; }
 .marker::before { top: 0; border-top-color: var(--acc); }
@@ -1180,10 +1183,6 @@ button.it:active { transform: translateY(0); transition-duration: .08s; }
 .shop-info .lvl { font: 700 var(--fs-14)/1 var(--d); letter-spacing: .05em; color: var(--acc); }
 .shop-info small { display: block; margin-top: 4px; font: 500 var(--fs-12)/1.35 var(--f); color: var(--text2); }
 .shop-info small em { font-style: normal; font-weight: 700; color: #fff; }
-.pips { display: flex; gap: 2px; margin-top: 8px; }
-.pips i { flex: 1; height: 4px; background: rgba(255, 255, 255, .1); }
-.pips i.on { background: var(--acc); }
-.pips i.nx { background: rgba(255, 178, 46, .32); }
 .shop-card .btn { min-width: 116px; }
 
 /* =====================================================================
@@ -1406,7 +1405,7 @@ button.it:active { transform: translateY(0); transition-duration: .08s; }
 #modal-root.show { display: block; }
 .modal-back {
   position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 16px;
-  background: rgba(6, 8, 11, .72); -webkit-backdrop-filter: blur(5px); backdrop-filter: blur(5px); animation: fadeIn .2s ease-out;
+  background: rgba(6, 8, 11, .7); animation: fadeIn .16s ease-out;   /* только затемнение: размыто лишь под самим окном (его стекло) */
 }
 /* Окно: сланцевая панель, тонкая золотая линия сверху, полоса заголовка и крестик справа */
 .modal {
@@ -1455,32 +1454,33 @@ button.it:active { transform: translateY(0); transition-duration: .08s; }
   background: radial-gradient(closest-side, rgba(0, 0, 0, .26), transparent); pointer-events: none;
 }
 .rays { display: none; }
-.drop-art { position: relative; width: 82%; height: 178px; animation: dropIn .5s cubic-bezier(.2, .9, .25, 1.12) both; }
-@keyframes dropIn { from { opacity: 0; transform: translateY(14px) scale(.8); } }
+/* появление без пружины: короткое замедление, лёгкий масштаб .96 → 1 */
+.drop-art { position: relative; width: 82%; height: 178px; animation: dropIn .2s cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes dropIn { from { opacity: 0; transform: translateY(8px) scale(.96); } }
 /* редкость — капс-подпись цветом редкости с тонкими линиями по бокам */
 .drop-rar {
   display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 16px;
   font: 700 var(--fs-11)/1 var(--f); letter-spacing: .16em; text-transform: uppercase; color: var(--rc);
-  animation: riseIn .4s .12s cubic-bezier(.2, .8, .2, 1) both;
+  animation: riseIn .16s .02s cubic-bezier(.2, .7, .3, 1) both;
 }
 .drop-rar::before, .drop-rar::after { content: ""; width: 26px; height: 1px; background: currentColor; opacity: .55; }
-.drop-name { margin-top: 8px; font: 700 var(--fs-18)/1.3 var(--f); color: #fff; animation: riseIn .4s .16s cubic-bezier(.2, .8, .2, 1) both; }
+.drop-name { margin-top: 8px; font: 700 var(--fs-18)/1.3 var(--f); color: #fff; animation: riseIn .16s .04s cubic-bezier(.2, .7, .3, 1) both; }
 .drop-name span { font-weight: 600; color: #aeb6c3; }
-.drop-wear { margin-top: 4px; font: 600 var(--fs-12)/1.3 var(--f); color: #858e9d; animation: riseIn .4s .2s cubic-bezier(.2, .8, .2, 1) both; }
+.drop-wear { margin-top: 4px; font: 600 var(--fs-12)/1.3 var(--f); color: #858e9d; animation: riseIn .16s .05s cubic-bezier(.2, .7, .3, 1) both; }
 .drop-price {
   display: flex; align-items: center; justify-content: center; margin-top: 12px; font: 700 var(--fs-hero)/1 var(--d); letter-spacing: .02em; color: var(--acc);
-  animation: riseIn .4s .24s cubic-bezier(.2, .8, .2, 1) both;
+  animation: riseIn .16s .06s cubic-bezier(.2, .7, .3, 1) both;
 }
 .drop-price .ci { font-size: .72em; margin-right: .3em; }
 @keyframes riseIn { from { opacity: 0; transform: translateY(6px); } }
 .drop-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; max-height: 52vh; overflow-y: auto; }
 .drop-grid .it-art { height: 66px; }
-.drop-grid .it { animation: riseIn .35s cubic-bezier(.2, .8, .2, 1) both; }
-.drop-grid .it:nth-child(2) { animation-delay: .04s; }
-.drop-grid .it:nth-child(3) { animation-delay: .08s; }
-.drop-grid .it:nth-child(4) { animation-delay: .12s; }
-.drop-grid .it:nth-child(5) { animation-delay: .16s; }
-.drop-grid .it:nth-child(n+6) { animation-delay: .2s; }
+.drop-grid .it { animation: riseIn .16s cubic-bezier(.2, .7, .3, 1) both; }
+/* каскад — не длиннее 60 мс на всё окно */
+.drop-grid .it:nth-child(2) { animation-delay: .015s; }
+.drop-grid .it:nth-child(3) { animation-delay: .03s; }
+.drop-grid .it:nth-child(4) { animation-delay: .045s; }
+.drop-grid .it:nth-child(n+5) { animation-delay: .06s; }
 .drop-sum { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; font: 700 var(--fs-11)/1 var(--f); letter-spacing: .12em; text-transform: uppercase; color: #9aa3b2; }
 .drop-sum b { display: flex; align-items: center; font: 700 var(--fs-24)/1 var(--d); letter-spacing: .02em; color: var(--acc); }
 .drop-sum b .ci { font-size: .75em; }
@@ -1553,15 +1553,21 @@ button.it:active { transform: translateY(0); transition-duration: .08s; }
 /* =====================================================================
    УВЕДОМЛЕНИЯ И ЭФФЕКТЫ
    ===================================================================== */
-#toasts { position: fixed; z-index: 70; left: 0; right: 0; top: calc(var(--hdr) + 12px + env(safe-area-inset-top)); display: flex; flex-direction: column; align-items: center; gap: 4px; pointer-events: none; }
+/* Стопка (очередь и не больше 3 видимых — ui.js): справа под шапкой, одна ширина и один левый край */
+#toasts {
+  position: fixed; z-index: 70; right: 16px; top: calc(var(--hdr) + 12px + env(safe-area-inset-top)); width: min(360px, calc(100vw - 32px));
+  display: flex; flex-direction: column; align-items: stretch; gap: 8px; pointer-events: none;
+}
 /* Уведомление: компактная сланцевая плашка, слева цветная полоска статуса, значок в квадрате */
 .toast {
   --tc: var(--acc);
-  display: flex; align-items: center; gap: 8px; max-width: min(92%, 520px); min-height: 42px; padding: 8px 16px 8px 12px; text-align: left;
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 8px 16px 8px 12px; text-align: left;
   font: 600 var(--fs-14)/1.35 var(--f); color: #eef1f6; background: rgba(32, 36, 45, .97);
   box-shadow: inset 3px 0 0 var(--tc), inset 0 0 0 1px rgba(255, 255, 255, .08), 0 2px 4px rgba(0, 0, 0, .3), 0 14px 30px -10px rgba(0, 0, 0, .7);
-  animation: toastIn .32s cubic-bezier(.2, .8, .2, 1), toastOut .3s ease-in 2.4s forwards;
+  animation: toastIn .16s cubic-bezier(.2, .7, .3, 1) both;
 }
+/* уход — по таймеру стопки (ui.js ставит .out) */
+.toast.out { animation: toastOut .2s ease-in forwards; }
 .toast .ic { position: relative; flex-shrink: 0; width: 22px; height: 22px; background: rgba(255, 255, 255, .06); -webkit-mask: none; mask: none; }
 .toast .ic::before {
   content: ""; position: absolute; inset: 4px; background-color: var(--tc);
@@ -1569,8 +1575,8 @@ button.it:active { transform: translateY(0); transition-duration: .08s; }
 }
 .toast.good { --tc: var(--good-hi); }
 .toast.bad { --tc: var(--bad); }
-@keyframes toastIn { from { opacity: 0; transform: translateY(-12px) scale(.98); } }
-@keyframes toastOut { to { opacity: 0; transform: translateY(-8px); } }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-6px); } }
+@keyframes toastOut { to { opacity: 0; transform: translateY(-4px); } }
 .spark { position: fixed; z-index: 80; width: 6px; height: 6px; margin: -3px 0 0 -3px; pointer-events: none; box-shadow: 0 0 4px currentColor; animation: sparkFly 1.1s cubic-bezier(.15, .7, .3, 1) forwards; }
 @keyframes sparkFly { to { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(.3) rotate(220deg); } }
 .float { position: fixed; z-index: 80; pointer-events: none; transform: translateX(-50%); font: 700 var(--fs-24)/1 var(--d); color: var(--acc-hi); text-shadow: 0 2px 8px rgba(0, 0, 0, .7); animation: floatUp .85s ease-out forwards; }
@@ -1756,6 +1762,10 @@ button.it:active { transform: translateY(0); transition-duration: .08s; }
   .drop-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   #toasts { top: calc(var(--hdr) + 10px + env(safe-area-inset-top)); }
 }
+/* телефон: стопка сверху во всю ширину, над содержимым */
+@media (max-width: 600px) {
+  #toasts { left: 12px; right: 12px; width: auto; gap: 6px; }
+}
 @media (max-width: 560px) {
   .case-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .item-grid.inv { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -1896,9 +1906,9 @@ html.font-classic {
 
 /* =====================================================================
    ОЧЕНЬ РЕДКИЙ ДРОП (шанс < 1 %) — оформление слоя из js/fx_rare.js
-   Сцена: вокруг рулетки темнеет, золотые уголки «захватывают» её, указатель и будущий
-   выигрыш отмечены цветом редкости; на остановке — тонкие лучи и кольца за двойником
-   карточки, золотые искры, плашка с шансом. Цвет редкости — --rc из классов .r0–.r8
+   Спокойная сцена (раунд 7): вокруг рулетки темнеет, указатель и будущий выигрыш отмечены
+   цветом редкости; на остановке — двойник карточки и плашка с шансом. Старые лучи, кольца,
+   искры и вспышки удалены вместе с кодом в fx_rare.js. Цвет редкости — --rc из классов .r0–.r8
    (fx_rare.js ставит их на слой, двойник, ленту и строку шанса), золото — --acc.
    Слой #rx-root лежит над приложением (#app, z 1) и под окнами (#modal-root, z 60):
    окно результата проявляется поверх гаснущего эффекта. Движение — только transform и opacity.
@@ -1912,25 +1922,6 @@ html.font-classic {
 
 /* ---------- Затемнение с «окном» над рулеткой (размер и место окна задаёт fx_rare.js) ---------- */
 .rx-dim { position: absolute; left: 0; top: 0; pointer-events: none; box-shadow: 0 0 0 200vmax rgba(5, 7, 10, .74); }
-/* уголки съезжаются к рулетке, как рамка прицела */
-.rx-dim i {
-  position: absolute; width: 20px; height: 20px; border: 0 solid var(--rc);
-  animation: rxLock .55s cubic-bezier(.2, .8, .2, 1) both;
-}
-.rx-dim .c1 { left: -8px; top: -8px; border-width: 2px 0 0 2px; --dx: -14px; --dy: -14px; }
-.rx-dim .c2 { right: -8px; top: -8px; border-width: 2px 2px 0 0; --dx: 14px; --dy: -14px; }
-.rx-dim .c3 { right: -8px; bottom: -8px; border-width: 0 2px 2px 0; --dx: 14px; --dy: 14px; }
-.rx-dim .c4 { left: -8px; bottom: -8px; border-width: 0 0 2px 2px; --dx: -14px; --dy: 14px; }
-@keyframes rxLock { from { opacity: 0; transform: translate(var(--dx), var(--dy)); } }
-/* тонкие линии по верхнему и нижнему краю окна, гаснут к концам */
-.rx-dim b {
-  position: absolute; left: -40px; right: -40px; height: 1px; opacity: .55;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), var(--rc) 16%, var(--rc) 84%, rgba(255, 255, 255, 0));
-  animation: rxLine .7s .08s cubic-bezier(.2, .8, .2, 1) both;
-}
-.rx-dim .l1 { top: -8px; }
-.rx-dim .l2 { bottom: -8px; }
-@keyframes rxLine { from { opacity: 0; transform: scaleX(.2); } }
 
 /* ---------- Подсказка «нажмите, чтобы пропустить» ---------- */
 .rx-skip {
@@ -1962,39 +1953,8 @@ html.font-classic {
 
 /* ---------- Сцена остановки: слой эффектов, точки-якоря ---------- */
 .rx-fx { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
-.rx-at, .rx-card, .rx-p, .rx-bc { position: absolute; left: 0; top: 0; }
+.rx-at, .rx-card, .rx-bc { position: absolute; left: 0; top: 0; }
 .rx-at { width: 0; height: 0; }
-
-/* лучи: три слоя тонких спиц (редкость, золото, широкие блики), гаснут к краю и у центра.
-   Слой .a у артефактов (r8) заменяется радужным — fx_rare.js задаёт ему background-image. */
-.rx-beams {
-  position: absolute; left: 0; top: 0; width: var(--b); height: var(--b);
-  margin: calc(var(--b) / -2) 0 0 calc(var(--b) / -2); border-radius: 50%;
-}
-.rx-beams i {
-  position: absolute; inset: 0; border-radius: 50%;
-  -webkit-mask: radial-gradient(closest-side, rgba(0, 0, 0, 0) 10%, #000 18%, rgba(0, 0, 0, .25) 34%, rgba(0, 0, 0, 0) 56%);
-  mask: radial-gradient(closest-side, rgba(0, 0, 0, 0) 10%, #000 18%, rgba(0, 0, 0, .25) 34%, rgba(0, 0, 0, 0) 56%);
-}
-.rx-beams .a {
-  background-image: repeating-conic-gradient(from 0deg, rgba(0, 0, 0, 0) 0deg, var(--rc) .5deg 1.1deg, rgba(0, 0, 0, 0) 1.6deg 12deg);
-  opacity: .2; animation: rxSpin 70s linear infinite;
-}
-.rx-beams .b {
-  background-image: repeating-conic-gradient(from 6deg, rgba(0, 0, 0, 0) 0deg, var(--acc) .3deg .6deg, rgba(0, 0, 0, 0) .9deg 12deg);
-  opacity: .22; animation: rxSpin 100s linear infinite reverse;
-}
-.rx-beams .c {
-  background-image: repeating-conic-gradient(from 3deg, rgba(0, 0, 0, 0) 0deg, var(--rc) 2deg 6deg, rgba(0, 0, 0, 0) 8deg 30deg);
-  opacity: .05; animation: rxSpin 150s linear infinite;
-}
-@keyframes rxSpin { to { transform: rotate(1turn); } }
-/* ударные волны: тонкие кольца редкости и золота (масштаб и прозрачность — из fx_rare.js) */
-.rx-ring {
-  position: absolute; left: 0; top: 0; width: var(--rr); height: var(--rr);
-  margin: calc(var(--rr) / -2) 0 0 calc(var(--rr) / -2); border-radius: 50%; border: 2px solid var(--rc); opacity: 0;
-}
-.rx-ring.two { border-width: 1px; border-color: var(--acc); }
 
 /* двойник выигрыша: плитка предмета в чёткой рамке редкости, под ней — настоящая тень */
 .rx-card {
@@ -2004,45 +1964,10 @@ html.font-classic {
 .rx-card .it { width: 100%; height: 100%; }
 .rx-card .it::before { opacity: 1; }
 .rx-card .it-art { flex: 1 1 0; min-height: 0; height: auto; margin: 4px 2px 4px; }
-.rx-sheen {
-  position: absolute; z-index: 4; top: -12%; bottom: -12%; left: 0; width: 34%; pointer-events: none;
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, .4) 50%, rgba(255, 255, 255, 0));
-}
-
-/* искры: фольга (цвет — из fx_rare.js), росчерки, четырёхлучевые звёздочки, угольки */
-.rx-p { display: block; pointer-events: none; will-change: transform, opacity; }
-.rx-p.f { border-radius: 1px; }
-.rx-p.s { border-radius: 1px; background: linear-gradient(180deg, rgba(255, 214, 120, 0), #ffe3a0 55%, #fffaf0); }
-.rx-p.g { background: linear-gradient(135deg, #fffdf4, #ffd37a); clip-path: polygon(50% 0, 58% 42%, 100% 50%, 58% 58%, 50% 100%, 42% 58%, 0 50%, 42% 42%); }
-.rx-p.e { border-radius: 50%; }
-
-/* вспышка в момент остановки (прозрачность ведёт fx_rare.js, центр — на карточке) */
-.rx-flash {
-  position: absolute; inset: 0; opacity: 0; pointer-events: none;
-  background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), rgba(255, 255, 255, .78) 0, rgba(255, 244, 222, .36) 9%, rgba(255, 238, 205, .08) 26%, rgba(255, 255, 255, 0) 46%);
-}
 
 /* ---------- Плашка «Очень редкий дроп · 0.42%» под карточкой ---------- */
 .rx-bc { width: max-content; max-width: calc(100vw - 24px); transform: translateX(-50%); }
 .rx-banner { position: relative; padding: 12px 28px 12px; text-align: center; }
-/* подложка — сланец с золотой кромкой сверху и полосой редкости снизу */
-.rx-bn-plate {
-  position: absolute; inset: 0; overflow: hidden;
-  background: linear-gradient(180deg, rgba(33, 37, 47, .97), rgba(20, 23, 30, .97));
-  box-shadow: inset 0 2px 0 var(--acc), inset 0 -2px 0 var(--rc), inset 0 0 0 1px rgba(255, 255, 255, .06),
-    0 2px 4px rgba(0, 0, 0, .4), 0 20px 40px -14px rgba(0, 0, 0, .85);
-}
-.rx-bn-sheen {
-  position: absolute; top: 0; bottom: 0; left: 0; width: 26%;
-  background: linear-gradient(90deg, rgba(255, 236, 190, 0), rgba(255, 236, 190, .16) 50%, rgba(255, 236, 190, 0));
-}
-/* «крылья» — тонкие золотые линии в стороны с ромбом у плашки */
-.rx-bn-w { position: absolute; top: 50%; width: 58px; height: 1px; margin-top: -.5px; }
-.rx-bn-w.l { right: 100%; margin-right: 8px; transform-origin: 100% 50%; background: linear-gradient(270deg, var(--acc), rgba(255, 178, 46, 0)); }
-.rx-bn-w.r { left: 100%; margin-left: 8px; transform-origin: 0 50%; background: linear-gradient(90deg, var(--acc), rgba(255, 178, 46, 0)); }
-.rx-bn-w::before { content: ""; position: absolute; top: -2.5px; width: 6px; height: 6px; background: var(--acc); transform: rotate(45deg); }
-.rx-bn-w.l::before { right: -3px; }
-.rx-bn-w.r::before { left: -3px; }
 .rx-bn-main { position: relative; display: flex; align-items: center; justify-content: center; gap: 12px; white-space: nowrap; }
 .rx-bn-t { font: 700 var(--fs-24)/1 var(--d); letter-spacing: .06em; text-transform: uppercase; color: #fff; }
 .rx-bn-d { width: 6px; height: 6px; flex-shrink: 0; background: var(--acc); transform: rotate(45deg); }
@@ -2055,37 +1980,6 @@ html.font-classic {
 .rx-bn-sub span:last-child { color: var(--rc); }
 
 /* ---------- Окно результата ---------- */
-/* витрина: медленные тонкие лучи за предметом (белые и цвета редкости) */
-.rx-mrays {
-  position: absolute; left: 50%; top: 50%; width: 760px; height: 760px; margin: -380px 0 0 -380px; pointer-events: none; opacity: .8;
-  background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0) 0deg, rgba(255, 255, 255, .28) .6deg 1.2deg, rgba(255, 255, 255, 0) 1.8deg 12deg);
-  -webkit-mask: radial-gradient(closest-side, rgba(0, 0, 0, 0) 8%, #000 21%, rgba(0, 0, 0, .3) 40%, rgba(0, 0, 0, 0) 60%);
-  mask: radial-gradient(closest-side, rgba(0, 0, 0, 0) 8%, #000 21%, rgba(0, 0, 0, .3) 40%, rgba(0, 0, 0, 0) 60%);
-  animation: rxSpin 90s linear infinite;
-}
-.rx-mrays::before {
-  content: ""; position: absolute; inset: 0; opacity: .34;
-  background: repeating-conic-gradient(from 6deg, rgba(0, 0, 0, 0) 0deg, var(--rc) .6deg 1.4deg, rgba(0, 0, 0, 0) 2deg 12deg);
-}
-/* рамка витрины: уголки цвета редкости, тонкая линия и бегущая по ней искра.
-   Видно только поле padding (маска «рамка минус содержимое») — искра ходит по кромке. */
-.rx-frame {
-  position: absolute; inset: 10px 10px 14px; overflow: hidden; padding: 2px; pointer-events: none;
-  background:
-    linear-gradient(var(--rc), var(--rc)) 0 0 / 18px 18px no-repeat,
-    linear-gradient(var(--rc), var(--rc)) 100% 0 / 18px 18px no-repeat,
-    linear-gradient(var(--rc), var(--rc)) 100% 100% / 18px 18px no-repeat,
-    linear-gradient(var(--rc), var(--rc)) 0 100% / 18px 18px no-repeat,
-    rgba(255, 255, 255, .16);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
-}
-.rx-frame i {
-  position: absolute; left: 50%; top: 50%; width: 900px; height: 900px; margin: -450px 0 0 -450px;
-  background: conic-gradient(from 0deg, rgba(255, 255, 255, 0) 0 76%, var(--rc) 95%, #fff 99.3%, rgba(255, 255, 255, 0) 99.7%);
-  animation: rxSpin 4s linear infinite;
-}
 /* строка шанса: «Шанс выпадения | 0.0025% | 1 из 39 527» на тёмной плашке */
 .rx-odds {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 8px;
@@ -2117,7 +2011,6 @@ html.font-classic {
   .rx-bn-t { font-size: var(--fs-14); letter-spacing: .05em; }
   .rx-bn-p { font-size: var(--fs-18); }
   .rx-bn-sub { margin-top: 4px; font-size: var(--fs-11); letter-spacing: .1em; }
-  .rx-bn-w { display: none; }
   .rx-skip { font-size: var(--fs-11); letter-spacing: .14em; }
 }
 @media (max-width: 360px) {
@@ -2127,9 +2020,1843 @@ html.font-classic {
 
 /* ---------- Без лишнего движения: лучи и искры стоят, рамки появляются сразу ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .rx-beams .a, .rx-beams .b, .rx-beams .c, .rx-mrays, .rx-mk, .rx-glow, .rx-dim i, .rx-dim b, .rx-skip { animation: none; }
-  .rx-frame i { display: none; }
+  .rx-mk, .rx-glow, .rx-skip { animation: none; }
 }
+
+/* =====================================================================
+   ◆ СЕКРЕТНЫЙ ПРЕДМЕТ (r9, трофей из админки)
+   Чёрная плитка, тонкая светлая рамка, по которой медленно проходит холодный блик;
+   полоса редкости — серебро с отблеском. Без ореолов, радуги и конфетти.
+   ===================================================================== */
+.it.r9 {
+  background: linear-gradient(180deg, #060608 0%, #000 100%);
+  box-shadow: inset 0 0 0 1px rgba(226, 230, 240, .22);
+}
+.it.r9 .it-art::before { opacity: .35; }
+/* блик бежит только по рамке: слой во всю плитку, середина вырезана маской (остаётся кольцо 1 px) */
+.it-glint {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none; padding: 1px;
+  background: linear-gradient(115deg, transparent 0 42%, rgba(236, 242, 255, .95) 50%, transparent 58% 100%) 0 0 / 300% 100% no-repeat;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  animation: secGlint 7s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+@keyframes secGlint { 0% { background-position: 100% 0; } 55%, 100% { background-position: 0 0; } }
+/* полоса редкости: серебро с бликом посередине (тот же медленный проход, что и у рамки) */
+.it.r9::after, .drop-one.r9::after {
+  background: linear-gradient(90deg, #8e939e 0%, #d9dde6 30%, #fff 50%, #d9dde6 70%, #8e939e 100%) 0 0 / 220% 100%;
+  animation: secBar 7s cubic-bezier(.45, 0, .55, 1) infinite;
+}
+@keyframes secBar { 0% { background-position: 100% 0; } 55%, 100% { background-position: 0 0; } }
+/* подпись «Секретный» вместо износа в верхней строке плитки */
+.it-sec {
+  flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: 700 var(--fs-11)/1.2 var(--f); letter-spacing: .12em; text-transform: uppercase; color: var(--rc);
+}
+.it-sec .ws { display: none; }
+@container (max-width: 167px) {
+  .it-sec { letter-spacing: .06em; }
+  .it-sec .wl { display: none; }
+  .it-sec .ws { display: inline; }
+}
+/* совсем узкая плитка (список апгрейда): подпись не влезает — остаются цена, чёрная плитка и серебряная полоса */
+@container (max-width: 99px) { .it-sec { display: none; } }
+.it.r9 .it-fin { color: #b9bfcc; }
+/* в списке апгрейда трофей виден, но поставить его нельзя */
+.it.locked { cursor: not-allowed; }
+.it.locked .it-art, .it.locked .it-name, .it.locked .it-fin { opacity: .5; }
+.it-lock { position: absolute; z-index: 3; right: 8px; top: 50%; transform: translateY(-50%); font-size: 16px; color: #e6e9f0; }
+button.it.locked:hover { transform: none; }
+
+/* Окна секретного предмета (просмотр, подарок): чёрное окно с тонкой светлой линией вместо золотой */
+.modal.sec {
+  background: #050507; border-top-color: rgba(230, 233, 240, .55);
+  box-shadow: 0 0 0 1px rgba(226, 230, 240, .14), 0 2px 4px rgba(0, 0, 0, .4), 0 28px 70px -10px rgba(0, 0, 0, .85);
+}
+.modal.sec > .m-title { background: rgba(255, 255, 255, .025); }
+.modal.sec > .m-title .ic { color: #e6e9f0; }
+.drop-one.r9 {
+  background: radial-gradient(46% 50% at 50% 52%, rgba(120, 112, 170, .10), transparent 100%), linear-gradient(180deg, #060608 0%, #000 100%);
+  box-shadow: inset 0 -1px 0 rgba(226, 230, 240, .12);
+}
+.drop-one.r9::before { background: radial-gradient(closest-side, rgba(0, 0, 0, .5), transparent); }
+.modal.sec .drop-price { color: #eef1f6; }
+.modal.sec .float-box { background: rgba(255, 255, 255, .035); }
+.modal.sec .btn:disabled { opacity: .62; filter: none; }
+.modal.gift .drop-one { height: 244px; }
+.modal.gift .drop-art { height: 200px; }
+.modal.gift .hint { margin-top: 8px; }
+@media (max-width: 560px) {
+  .modal.gift .drop-one { height: 210px; }
+  .modal.gift .drop-art { height: 170px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .it-glint { animation: none; background-position: 50% 0; opacity: .5; }
+  .it.r9::after, .drop-one.r9::after { animation: none; background-position: 50% 0; }
+}
+/* заблокированная «Продать» у трофея: нейтральная кнопка с замком, не золотая */
+.modal .btn.trophy-lock:disabled { opacity: 1; filter: none; color: #c9ced8; background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px rgba(226, 230, 240, .16); cursor: not-allowed; }
+.btn.trophy-lock .ic { margin-right: 6px; color: #e6e9f0; }
+
+/* =====================================================================
+   Раунд 7 — СТЕКЛО (агент glass). Контракт: tools/plans/R7_SPEC.md, раздел «Стекло».
+   Слои по плотности: фон 0 → панель 72 % → карточка 85 % → окно 94 %.
+   Панель: графитовая подложка + локальное размытие того, что под ней (фон сам остаётся чётким),
+   фаска (светлая линия сверху, тёмная снизу), мягкая глубокая тень и еле заметное зерно.
+   Без бликов и свечений; углы прямые. Золото — только главные действия.
+   ===================================================================== */
+:root {
+  --gl-panel: rgba(18, 20, 24, .72);     /* контентная панель экрана */
+  --gl-card: rgba(18, 20, 24, .85);      /* карточка внутри панели */
+  --gl-modal: rgba(18, 20, 24, .94);     /* модальное окно */
+  --gl-head: rgba(14, 16, 20, .74);      /* шапка сайта */
+  --gl-blur: blur(14px) saturate(115%);
+  --gl-edge-t: rgba(255, 255, 255, .08); /* фаска: светлая верхняя кромка */
+  --gl-edge-b: rgba(0, 0, 0, .35);       /* фаска: тёмная нижняя кромка */
+  --gl-shadow: 0 18px 40px rgba(0, 0, 0, .45);
+  --gl-hover: rgba(255, 255, 255, .04);  /* осветление подложки при наведении */
+  --gl-panel-h: rgba(28, 29, 33, .72);   /* панель, осветлённая на 4 % (наведение) */
+  --gl-card-h: rgba(28, 29, 33, .85);    /* карточка, осветлённая на 4 % */
+  --gl-line: rgba(255, 255, 255, .08);   /* обводка второстепенной кнопки */
+  /* зерно: белый шум ~1.5 % (feTurbulence, плитка 160 px — рисуется один раз и кешируется) */
+  --gl-noise: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .034 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --t-fast: 120ms;
+  --t-modal: 160ms;
+  --t-screen: 140ms;
+  --gl-ease: cubic-bezier(.2, .7, .3, 1);   /* плавное замедление, без отскока */
+  /* старые переменные панелей — на стекло (экраны, которые ими пользуются, переходят сами) */
+  --pn: var(--gl-panel);
+  --pn-h: rgba(255, 255, 255, .035);
+  --surf-0: rgba(0, 0, 0, .26);
+  --surf-1: var(--gl-panel);
+  --surf-2: rgba(255, 255, 255, .04);
+  --chrome: var(--gl-head);
+}
+/* на экранах апгрейда, наград, профиля и фарма p5_screens.css задавал свои --pn — возвращаем стекло */
+#scr-upgrade, #scr-rewards, #scr-profile, #scr-farm {
+  --pn: var(--gl-panel);
+  --pn-h: rgba(255, 255, 255, .035);
+  --slot: rgba(0, 0, 0, .22);
+}
+
+/* ---------- Панель: .glass и крупные панели всех экранов ---------- */
+.glass,
+.panel, .up-panel, .up-bal, .up-quick, .bonus, .shop-card, .rw-card, .rw-daily, .q-row, .rw-top, .col-sec, .cp-odds {
+  background-color: var(--gl-panel);
+  background-image: var(--gl-noise);
+  -webkit-backdrop-filter: var(--gl-blur); backdrop-filter: var(--gl-blur);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t), inset 0 -1px 0 var(--gl-edge-b), var(--gl-shadow);
+}
+/* шапка панели — тонкий слой поверх стекла, а не отдельная плита */
+.panel-h, .up-ph { background: rgba(255, 255, 255, .035); box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .05); }
+
+/* ---------- Карточка внутри панели: .glass-card ---------- */
+.glass-card {
+  position: relative;
+  background-color: var(--gl-card);
+  background-image: var(--gl-noise);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t), inset 0 -1px 0 var(--gl-edge-b);
+  transition: transform var(--t-fast) var(--gl-ease), background-color var(--t-fast) linear;
+}
+@media (hover: hover) {
+  .glass-card:hover { transform: translateY(-2px); background-color: var(--gl-card-h); }
+  /* строки-панели (задания, прокачка, бонусы): то же осветление на 4 %, без подъёма */
+  .shop-card:hover, .q-row:hover, .bonus:hover { background-color: var(--gl-panel-h); }
+}
+.shop-card, .q-row, .bonus { transition: background-color var(--t-fast) linear; }
+
+/* ---------- Кнопки: золото — только главные действия ---------- */
+/* второстепенная — стеклянная, обводка 8 % (Закрыть, Отмена, Продать всё, за рекламу и т. п.) */
+.btn, .btn.dark, .btn.ad, .btn.toggle {
+  color: #e8ecf2; background: rgba(255, 255, 255, .05);
+  box-shadow: inset 0 0 0 1px var(--gl-line);
+  transition: background-color var(--t-fast) linear, color var(--t-fast) linear, box-shadow var(--t-fast) linear, transform .1s;
+}
+.btn:hover:not(:disabled), .btn.dark:hover:not(:disabled), .btn.ad:hover:not(:disabled), .btn.toggle:hover:not(:disabled) {
+  color: #fff; background-color: rgba(255, 255, 255, .09); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14);
+}
+.btn.ghost { background: transparent; }
+/* главное действие — ровное золото, без глянцевой кромки */
+.btn.primary { color: var(--ink); background: var(--acc); box-shadow: inset 0 -2px 0 rgba(140, 70, 0, .22); }
+.btn.primary:hover:not(:disabled) { color: var(--ink); background: #ffbf4d; box-shadow: inset 0 -2px 0 rgba(140, 70, 0, .22); }
+/* зелёная (бесплатно, билет): белый текст на тёмной зелени — контраст ≥ 4.5:1 (на #23ac62 было 2.7) */
+.btn.good { color: #fff; background: #177a44; box-shadow: inset 0 -2px 0 rgba(0, 30, 12, .35); text-shadow: none; }
+.btn.good:hover:not(:disabled) { color: #fff; background: #1b834a; }
+/* «Пополнить» в профиле — золотая (p5_screens.css): наведение остаётся золотым */
+.prof-bal .btn.good:hover:not(:disabled) { color: var(--ink); background: #ffbf4d; }
+.btn.on, .btn.toggle.on { color: var(--acc); background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 1px var(--gl-line), inset 0 -2px 0 var(--acc); }
+/* неактивная — тускло, без золота и цвета, курсор «нельзя» */
+.btn:disabled, .btn.primary:disabled, .btn.good:disabled, .btn.ad:disabled, .btn.dark:disabled {
+  opacity: 1; filter: none; cursor: not-allowed;
+  color: rgba(232, 236, 242, .42); background: rgba(255, 255, 255, .035);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+}
+.btn:disabled .ic, .btn:disabled .ci { opacity: .55; }
+/* «+» в шапке — пополнить (главное действие): ровное золото */
+.plus { box-shadow: inset 0 -2px 0 rgba(140, 70, 0, .22); transition: background-color var(--t-fast) linear, transform .1s; }
+/* мелкие служебные кнопки — стекло с обводкой 8 % */
+.ibtn, .tbtn, .pg, .foot-lang button, .hbtn {
+  background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px var(--gl-line);
+  transition: background-color var(--t-fast) linear, color var(--t-fast) linear;
+}
+.ibtn:hover, .tbtn:hover, .pg:hover, .hbtn:hover { background: rgba(255, 255, 255, .09); }
+.tbtn.on { color: var(--acc); background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 1px var(--gl-line), inset 0 -2px 0 var(--acc); }
+.foot-lang button.on { color: #fff; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px var(--gl-line), inset 0 -2px 0 var(--acc); }
+/* вкладки: активная — золотая черта снизу, не белая заливка */
+.tabs button { background: rgba(255, 255, 255, .04); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05); transition: background-color var(--t-fast) linear, color var(--t-fast) linear; }
+.tabs button:hover { background: rgba(255, 255, 255, .07); }
+.tabs button.on { color: #fff; background: rgba(255, 255, 255, .08); box-shadow: inset 0 -2px 0 var(--acc); }
+
+/* ---------- Полоса прогресса .bar: сплошная дорожка 4 px, плавная золотая заливка ---------- */
+.bar { position: relative; display: block; height: 4px; overflow: hidden; background: rgba(255, 255, 255, .1); box-shadow: none; }
+.bar > i, .bar > .bar-fill {
+  display: block; height: 100%; width: 0; max-width: 100%;
+  background: linear-gradient(90deg, var(--acc-lo), var(--acc));
+  transition: width .4s var(--gl-ease);
+}
+.bar-lbl { display: block; margin-top: 4px; font: 600 var(--fs-11)/1.3 var(--f); letter-spacing: .04em; color: var(--c-meta); font-variant-numeric: tabular-nums; }
+
+/* ---------- Шапка: стекло, тонкая нижняя линия, лёгкое затемнение сверху ---------- */
+#hdr, #tabbar {
+  background-color: var(--gl-head);
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, .26), rgba(0, 0, 0, 0) 80%), var(--gl-noise);
+  -webkit-backdrop-filter: var(--gl-blur); backdrop-filter: var(--gl-blur);
+}
+#hdr { box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .07), 0 1px 0 rgba(0, 0, 0, .35); }
+#tabbar { background-image: var(--gl-noise); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 -1px 0 rgba(0, 0, 0, .35); }
+/* активный раздел — белый текст и тонкая золотая линия снизу (не заливка, не золотой текст) */
+.topnav button.active { color: #fff; }
+.topnav button::after { height: 2px; transition: transform .16s var(--gl-ease), background-color var(--t-fast) linear; }
+.dot > span::after, #tabbar .dot::after { box-shadow: none; }
+#tabbar button.active { color: #fff; }
+#tabbar button.active .ic { color: var(--acc); }
+
+/* ---------- Левая лента и подменю — стеклянные панели ---------- */
+#feed {
+  background-color: var(--gl-panel); background-image: var(--gl-noise);
+  -webkit-backdrop-filter: var(--gl-blur); backdrop-filter: var(--gl-blur);
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, .06), 1px 0 0 var(--gl-edge-b), 18px 0 40px -24px rgba(0, 0, 0, .45);
+}
+.fd-head, .feed-foot { background: rgba(255, 255, 255, .025); }
+.feed-tabs button { background: transparent; }
+/* подменю «Кейсы» липнет к верху — под ним проезжает контент, поэтому плотность карточки */
+.subnav {
+  background-color: var(--gl-card); background-image: var(--gl-noise);
+  -webkit-backdrop-filter: var(--gl-blur); backdrop-filter: var(--gl-blur);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t), inset 0 -1px 0 var(--gl-edge-b);
+}
+
+/* ---------- Высота: экран не короче окна, подвал всегда внизу ---------- */
+#main { display: flex; flex-direction: column; }
+/* экран занимает всё окно, даже если в нём мало содержимого; подвал — ниже, после прокрутки */
+.screen.active { flex: 1 0 auto; min-height: 100%; }
+.foot { margin-top: auto; flex-shrink: 0; }
+/* подвал — та же стеклянная панель, верхняя фаска */
+.foot {
+  background-color: var(--gl-panel); background-image: var(--gl-noise);
+  -webkit-backdrop-filter: var(--gl-blur); backdrop-filter: var(--gl-blur);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t), 0 -1px 0 var(--gl-edge-b);
+}
+.foot-col b { color: #9aa3b2; }
+.foot-col p, .foot-copy { color: #959eac; }
+
+/* ---------- Карточки предметов и кейсов: подложка-карточка, наведение 2 px и +4 % за 120 мс ---------- */
+.it {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .025)), var(--gl-card);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t);
+  transition: transform var(--t-fast) var(--gl-ease);
+}
+.it::before { background: var(--gl-hover); transition: opacity var(--t-fast) linear; }
+.it.unknown { background: var(--gl-card); }
+.case-card { background: var(--gl-card); box-shadow: inset 0 1px 0 var(--gl-edge-t), var(--gl-shadow); transition: transform var(--t-fast) var(--gl-ease); }
+.cc-art { background: radial-gradient(ellipse 62% 58% at 50% 50%, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0) 100%), linear-gradient(rgba(255, 255, 255, .06), rgba(255, 255, 255, .06)), var(--gl-card); }
+.cc-art::after { background: var(--gl-hover); transition: opacity var(--t-fast) linear; }
+.cc-info { background: rgba(0, 0, 0, .18); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
+/* лента рулетки и полосы на странице кейса — сцена под стеклом */
+.roll, .mroll {
+  background-color: var(--gl-panel);
+  -webkit-backdrop-filter: var(--gl-blur); backdrop-filter: var(--gl-blur);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t), inset 0 -1px 0 var(--gl-edge-b), var(--gl-shadow);
+}
+.back { background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px var(--gl-line); }
+.back:hover { background: rgba(255, 255, 255, .09); }
+.pill { background: rgba(0, 0, 0, .26); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05); }
+.toast { background: var(--gl-modal); -webkit-backdrop-filter: var(--gl-blur); backdrop-filter: var(--gl-blur); }
+/* все тосты стопки (и достижения) — одно появление и один уход: время показа ведёт ui.js */
+#toasts > .toast { animation: toastIn .16s var(--gl-ease) both; }
+#toasts > .toast.out { animation: toastOut .2s ease-in forwards; }
+/* Место стопки: не на цене, заголовках и пузырях подсказок.
+   Широкий экран (без нижнего меню) — внизу справа над краем окна; новый тост снизу, появляется подъёмом.
+   Пока внизу видна полоса выбора инвентаря (там кнопки) — стопка над ней. */
+@media (min-width: 901px) {
+  #toasts { top: auto; bottom: calc(16px + env(safe-area-inset-bottom)); right: 16px; }
+  #toasts > .toast { animation-name: glToastUp; }
+  html:has(.inv-selbar:not([hidden])) #toasts { bottom: calc(96px + env(safe-area-inset-bottom)); }
+}
+@keyframes glToastUp { from { opacity: 0; transform: translateY(8px); } }
+/* Телефон и планшет: одна строка поверх полосы живого дропа под шапкой (она не прокручивается),
+   по центру; виден один тост, остальные ждут (ui.js) — стопка не сползает на шапку страницы */
+@media (max-width: 900px) {
+  #toasts { top: calc(var(--hdr) + 3px + env(safe-area-inset-top)); left: 12px; right: 12px; width: auto; max-width: 480px; margin: 0 auto; }
+}
+
+/* ---------- Окна: стекло 94 %, фаска, тень; появление 160 мс — прозрачность + подъём на 8 px ---------- */
+/* под окном — только затемнение, без размытия всего экрана: размыто лишь под самим окном (его стекло) */
+.modal-back { background: rgba(6, 8, 11, .7); -webkit-backdrop-filter: none; backdrop-filter: none; animation: glFade var(--t-modal) ease-out; }
+.modal {
+  border-top: 0;
+  background-color: var(--gl-modal); background-image: var(--gl-noise);
+  -webkit-backdrop-filter: var(--gl-blur); backdrop-filter: var(--gl-blur);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t), inset 0 -1px 0 var(--gl-edge-b), 0 0 0 1px rgba(255, 255, 255, .04), var(--gl-shadow);
+  animation: glRise var(--t-modal) var(--gl-ease);
+}
+.modal > .m-title { background: rgba(255, 255, 255, .03); box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .06); }
+/* чёрное окно секретного предмета (раунд 6) остаётся чёрным: тонкая светлая линия сверху вместо фаски */
+.modal.sec { background-color: #050507; background-image: none; box-shadow: inset 0 1px 0 rgba(230, 233, 240, .4), 0 0 0 1px rgba(226, 230, 240, .14), var(--gl-shadow); }
+/* плитка предмета в окне — карточка (85 %) на стекле окна */
+.drop-one { background: radial-gradient(42% 46% at 50% 54%, var(--rca, transparent), transparent 100%), linear-gradient(180deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02)), var(--gl-card); }
+.float-box { background: rgba(0, 0, 0, .24); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05); }
+.bg-opt { background: rgba(0, 0, 0, .3); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05); }
+/* строка шанса редкого дропа (p10_rare.css) — в окне то же быстрое появление, что и остальное содержимое */
+.rx-odds { animation: riseIn .16s .06s var(--gl-ease) both; }
+@keyframes glFade { from { opacity: 0; } }
+@keyframes glRise { from { opacity: 0; transform: translateY(8px); } }
+@media (max-width: 560px) {
+  /* нижний лист на телефоне — то же короткое появление, без «выезда» на 60 px */
+  .modal, .modal.wide {
+    box-shadow: inset 0 1px 0 var(--gl-edge-t), 0 0 0 1px rgba(255, 255, 255, .04), 0 -18px 40px rgba(0, 0, 0, .45);
+    animation: glRise var(--t-modal) var(--gl-ease);
+  }
+  .modal.sec { box-shadow: inset 0 1px 0 rgba(230, 233, 240, .4), 0 -18px 40px rgba(0, 0, 0, .5); }
+}
+
+/* ---------- Смена экранов: короткий кроссфейд (только прозрачность, без сдвига) ----------
+   Анимацию ставит ui.js (screenFade) на части экрана, а не на весь экран: прозрачность предка
+   выключила бы размытие стеклянных панелей на время анимации. Старый «подъём» экрана убираем. */
+.screen.active { animation: none; }
+
+/* ---------- Без движения: prefers-reduced-motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .screen.active, .modal, .modal-back { animation: none !important; }
+  .glass-card:hover, button.it:hover, .case-card:hover { transform: none !important; }
+}
+
+/* ---------- Облегчённый режим (слабое устройство): стекло только у шапки и окон ----------
+   Включает ui.js по замеру кадров (html.gl-lite). Панели — сплошная подложка карточки без размытия. */
+html.gl-lite .glass, html.gl-lite .panel, html.gl-lite .up-panel, html.gl-lite .up-bal, html.gl-lite .up-quick,
+html.gl-lite .bonus, html.gl-lite .shop-card, html.gl-lite .rw-card, html.gl-lite .rw-daily, html.gl-lite .q-row,
+html.gl-lite .rw-top, html.gl-lite .col-sec, html.gl-lite .cp-odds, html.gl-lite .roll, html.gl-lite .mroll,
+html.gl-lite #feed, html.gl-lite .subnav, html.gl-lite .foot, html.gl-lite .toast, html.gl-lite .glass-card {
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+  background-color: var(--gl-card);
+}
+/* админ-панель — свой стиль (p11_admin.css): старые значения подложек для неё сохраняем */
+.ap { --chrome: #191c23; --pn: rgba(33, 37, 47, .9); --pn-h: rgba(46, 51, 63, .94); }
+/* счётчик у вкладки раздела — тот же приглушённый серый, что и подписи (контраст ≥ 4.5:1) */
+.chip i { color: var(--c-meta); }
+
+/* =====================================================================
+   Раунд 7 — агент cases-ui: главная (экран «Кейсы») и страница кейса на стекле,
+   плашка серии заходов, цена со скидкой уровня, билеты, сдержанный редкий дроп.
+   Токены стекла (--gl-*) — из r7_glass.css; запасные значения — те же числа из задания.
+   Золото — только «Открыть» (и «Забрать» серии); остальное — стекло и белая обводка 8 %.
+   Прямые углы, без свечений и бликов. См. tools/plans/R7_SPEC.md
+   ===================================================================== */
+
+/* ---------- Стекло панелей экрана кейсов и страницы кейса ---------- */
+#scr-cases .subnav,
+#scr-case .cp-controls, #scr-case .cp-odds, #scr-case .roll, #scr-case .cp-top {
+  background-color: var(--gl-panel, rgba(18, 20, 24, .72));
+  -webkit-backdrop-filter: var(--gl-blur, blur(14px) saturate(115%)); backdrop-filter: var(--gl-blur, blur(14px) saturate(115%));
+}
+#scr-cases .subnav { box-shadow: inset 0 -1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), 0 1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)); }
+/* пульт и шансы — две стеклянные плиты подряд: у каждой фаска (светлая сверху, тёмная снизу), зерно и тень */
+#scr-case .cp-controls {
+  background-image: var(--gl-noise, none);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)), var(--gl-shadow, 0 18px 40px rgba(0, 0, 0, .45));
+}
+#scr-case .cp-odds { box-shadow: inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)), var(--gl-shadow, 0 18px 40px rgba(0, 0, 0, .45)); }
+#scr-case .roll { box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)), var(--gl-shadow, 0 18px 40px rgba(0, 0, 0, .45)); }
+/* шапка страницы кейса («Назад» · раздел и название · факты) — стеклянная полоса: подписи над светлыми
+   фонами (пустыня, побережье, снег) при размытии 0 иначе тонут в сцене; кнопка «Назад» внутри — второстепенная */
+#scr-case .cp-top {
+  padding: 10px 16px 10px 10px; background-image: var(--gl-noise, none);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)), var(--gl-shadow, 0 18px 40px rgba(0, 0, 0, .45));
+}
+#scr-case .cp-top .back { background: rgba(255, 255, 255, .04); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+#scr-case .cp-top .back:hover { background: rgba(255, 255, 255, .08); }
+#scr-case .cp-crumb, #scr-case .cp-fact small { color: #b4bcc9; }
+html.gl-lite #scr-cases .subnav, html.gl-lite #scr-case .cp-controls, html.gl-lite #scr-case .cp-odds,
+html.gl-lite #scr-case .roll, html.gl-lite #scr-case .cp-top {
+  -webkit-backdrop-filter: none; backdrop-filter: none; background-color: var(--gl-card, rgba(18, 20, 24, .85));
+}
+
+/* плитка кейса — стеклянная карточка: студия и полоса полупрозрачные, наведение — подъём 2 px и +4 % света */
+#scr-cases .case-card {
+  background: var(--gl-card, rgba(18, 20, 24, .85));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)), 0 10px 24px rgba(0, 0, 0, .32);
+  transition: transform var(--t-fast, 120ms) ease-out, background-color var(--t-fast, 120ms) ease-out;
+}
+#scr-cases .case-card:hover { background-color: rgba(28, 31, 37, .87); }
+#scr-cases .cc-art { background: radial-gradient(ellipse 62% 58% at 50% 50%, rgba(255, 255, 255, .06), rgba(255, 255, 255, 0) 100%), rgba(39, 44, 54, .55); }
+#scr-cases .cc-art::after { transition-duration: var(--t-fast, 120ms); background: rgba(255, 255, 255, .04); }
+#scr-cases .cc-info { background: transparent; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05); }
+/* «Топ» — не золотая заливка, а тёмная метка с золотой подписью */
+#scr-cases .cc-tag.top { color: var(--acc-hi, #ffc65c); background: rgba(12, 14, 19, .82); box-shadow: inset 2px 0 0 var(--acc, #ffb22e); }
+/* выбранный раздел — тонкая золотая черта снизу, без заливки */
+#scr-cases .chip.on { color: #fff; background: rgba(255, 255, 255, .08); box-shadow: inset 0 -2px 0 var(--acc, #ffb22e); }
+
+/* цена со скидкой: новая — как была, старая — мелко и зачёркнуто */
+.cs-old { margin-left: 6px; font-size: .78em; font-weight: 600; color: #b4bcc9; text-decoration: line-through; text-decoration-thickness: 1px; }
+.btn.primary .cs-old { color: rgba(20, 16, 8, .75); }
+.cp-fact .cs-old { font-family: var(--f); }
+/* билеты на кейс — метка в правом верхнем углу плитки */
+.cc-tk {
+  position: absolute; z-index: 3; right: 0; top: 0; display: flex; align-items: center; height: 20px; padding: 0 8px; pointer-events: none;
+  font: 700 var(--fs-11)/1 var(--f); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+  color: #04170c; background: var(--good-hi, #4fe08a);
+}
+
+/* ---------- Плашка серии заходов (первая строка главной) ---------- */
+.cs-daily {
+  display: flex; align-items: center; gap: 16px; margin: 0 0 16px; padding: 10px 12px 10px 16px; min-height: 56px;
+  /* только цвет: зерно (background-image) приходит от .glass */
+  background-color: var(--gl-panel, rgba(18, 20, 24, .72));
+  -webkit-backdrop-filter: var(--gl-blur, blur(14px) saturate(115%)); backdrop-filter: var(--gl-blur, blur(14px) saturate(115%));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)), var(--gl-shadow, 0 18px 40px rgba(0, 0, 0, .45));
+}
+html.gl-lite .cs-daily { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: var(--gl-card, rgba(18, 20, 24, .85)); }
+.cs-daily:empty { display: none; }
+.cs-d-t { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex-shrink: 0; }
+.cs-d-t b { font: 600 var(--fs-14)/1 var(--d); letter-spacing: .04em; text-transform: uppercase; color: #fff; }
+.cs-d-t small { font: 700 var(--fs-11)/1 var(--f); letter-spacing: .1em; text-transform: uppercase; color: #aab2c0; }
+/* 7 делений серии: пройденные — светлые, сегодняшний — золотая черта, 7-й — с короной */
+.cs-d-seg { display: flex; gap: 3px; flex: 1 1 auto; min-width: 0; max-width: 420px; }
+.cs-d-seg i {
+  position: relative; flex: 1 1 0; height: 22px; display: flex; align-items: center; justify-content: center;
+  background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); color: #8d96a5; font-size: 12px;
+}
+.cs-d-seg i.d { background: rgba(255, 255, 255, .34); color: #fff; }
+.cs-d-seg i.c { background: rgba(255, 255, 255, .1); box-shadow: inset 0 -2px 0 var(--acc, #ffb22e), inset 0 0 0 1px rgba(255, 255, 255, .12); color: #fff; }
+.cs-d-r { display: flex; align-items: center; gap: 12px; margin-left: auto; flex-shrink: 0; }
+.cs-d-r small { font: 700 var(--fs-11)/1.2 var(--f); letter-spacing: .08em; text-transform: uppercase; color: #aab2c0; text-align: right; }
+.cs-d-r small:empty { display: none; }
+.cs-d-cd { font: 700 var(--fs-14)/1 var(--d); font-variant-numeric: tabular-nums; color: #fff; min-width: 7ch; text-align: right; }
+.cs-d-cd .ic { display: none; }
+.cs-daily .btn.primary { height: 36px; padding: 0 20px; }
+.cs-daily.ready .cs-d-w { color: #ffd27a; }
+
+@media (max-width: 640px) {
+  #scr-case .cp-top { padding: 8px 10px 12px; }
+  .cs-daily { flex-wrap: wrap; gap: 8px 12px; padding: 10px 12px; }
+  .cs-d-seg { order: 3; flex-basis: 100%; max-width: none; }
+  .cs-d-seg i { height: 18px; }
+}
+
+/* ---------- Пульт: количество — стеклянные сегменты, выбранный — белый с золотой чертой ---------- */
+#scr-case .cp-count { background: rgba(0, 0, 0, .28); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+#scr-case .cp-count .cnt.on, #scr-case .cp-count .cnt.on:hover:not(:disabled) {
+  color: #fff; background: rgba(255, 255, 255, .14); box-shadow: inset 0 -2px 0 var(--acc, #ffb22e);
+}
+/* «×» у количества и счётчики разделов — светлее: контраст ≥ 4.5:1 и на стекле, и прямо на сцене */
+#scr-case .cnt .x { opacity: .8; }
+#scr-case .cnt.on .x { opacity: .85; }
+#scr-cases .sec-n, #scr-case .sec-n { color: #b9c1cd; }
+#scr-case .cp-controls .btn.toggle:not(.on) { background: rgba(255, 255, 255, .04); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+#scr-case .cp-fact b { flex-wrap: wrap; }
+#scr-case .cp-fact .cs-old { flex-basis: 100%; margin: 4px 0 0; text-align: right; font-size: var(--fs-12); }
+
+/* ---------- Редкий дроп: сдержанно (js/fx_rare.js) ----------
+   Затемнение вокруг рулетки мягче, без рамки-прицела; подсветка будущего выигрыша — тонкая рамка
+   редкости без «дыхания» во всю карточку; на остановке — карточка в золотой рамке и простая плашка. */
+#rx-root.rx-calm { transition-duration: .2s; }
+#rx-root.rx-calm .rx-dim { box-shadow: 0 0 0 200vmax rgba(5, 7, 10, .5); }
+#rx-root.rx-calm .rx-skip { animation-delay: .3s; }
+.rx-glow { background: none; box-shadow: inset 0 0 0 2px var(--rc); animation: none; opacity: .85; }
+.marker .rx-mk { animation: none; }
+.rx-card.rx-gold {
+  overflow: visible;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, .5), 0 18px 40px rgba(0, 0, 0, .55);
+}
+.rx-card.rx-gold .it { box-shadow: 0 0 0 2px var(--acc, #ffb22e); }
+.rx-card.rx-gold .it::before { box-shadow: inset 0 -3px 0 var(--rc); }
+/* плашка шанса — стекло модального слоя, золотая фаска сверху, полоса редкости снизу */
+#rx-root.rx-calm .rx-banner {
+  padding: 10px 20px; background: var(--gl-modal, rgba(18, 20, 24, .94));
+  box-shadow: inset 0 1px 0 var(--acc, #ffb22e), inset 0 -2px 0 var(--rc), 0 18px 40px rgba(0, 0, 0, .45);
+}
+#rx-root.rx-calm .rx-bn-t, #rx-root.rx-calm .rx-bn-p { font-size: var(--fs-18); }
+#rx-root.rx-calm .rx-bn-main { gap: 10px; }
+
+/* окно результата: витрина редкого предмета выезжает снизу в тонкой золотой рамке */
+.drop-one.rx-rare { animation: csRareIn .28s cubic-bezier(.16, .84, .3, 1) both; }
+.rx-goldframe { position: absolute; inset: 0; z-index: 3; pointer-events: none; box-shadow: inset 0 0 0 2px var(--acc, #ffb22e); }
+.drop-one.rx-rare .rx-mrays, .drop-one.rx-rare .rx-frame { display: none; }
+.drop-grid .it.rx-rare::before { box-shadow: inset 0 0 0 2px var(--acc, #ffb22e); }
+.drop-grid .it.rx-rare { animation: csRareIn .28s cubic-bezier(.16, .84, .3, 1) both; }
+@keyframes csRareIn { from { opacity: 0; transform: translateY(14px); } }
+@media (prefers-reduced-motion: reduce) {
+  .drop-one.rx-rare, .drop-grid .it.rx-rare { animation: none; }
+}
+
+/* кнопка билетов «Открыть бесплатно (n)» — на узких экранах отдельным рядом под «Открыть» */
+@media (max-width: 900px) {
+  .cp-controls #cp-open-tk { flex: 1 1 100%; min-width: 0; order: -1; }
+}
+
+/* цены с 6+ знаками и скидкой уровня: на узких экранах старая цена в кнопках «Открыть за…» / «Ещё раз · …»
+   не помещается (артефакты 30 000 000, ножи/перчатки ×N) — прячем её, она уже есть в блоке «Цена» над кнопкой */
+@media (max-width: 640px) {
+  #cp-open .cs-old, [data-act="res-again"] .cs-old { display: none; }
+}
+
+/* зелёные «Открыть бесплатно» и «Открыть бесплатно (n)» (билеты): белый на #23ac62 давал 2.7:1 —
+   тёмно-зелёная ровная заливка: белый текст 5.4:1 (наведение 4.8:1), без глянца и свечения */
+#scr-case .btn.good { color: #fff; background: #177a44; box-shadow: inset 0 -2px 0 rgba(0, 30, 12, .35); text-shadow: none; }
+#scr-case .btn.good:hover:not(:disabled) { color: #fff; background: #1b834a; box-shadow: inset 0 -2px 0 rgba(0, 30, 12, .35); }
+#scr-case .btn.good:disabled { color: rgba(232, 236, 242, .42); background: rgba(255, 255, 255, .035); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+
+/* цена на плитке: дорогие — коротко (27M, 299K), полная — в подсказке и на странице кейса;
+   со скидкой старая зачёркнутая цена при нехватке места переносится строкой ниже, не вылезая за плитку */
+#scr-cases .cc-price { flex-wrap: wrap; column-gap: 6px; row-gap: 3px; min-width: 0; }
+/* монета и новая цена — одним куском (не разрываются переносом ни на плитке, ни в блоке «Цена») */
+.cs-new { display: inline-flex; align-items: center; white-space: nowrap; }
+#scr-cases .cc-price .cs-old { margin-left: 0; white-space: nowrap; }
+
+/* награда серии: «Сегодня +12 · Завтра +16» (после «Забрать» — только «Завтра») */
+.cs-d-pz { display: flex; align-items: center; gap: 16px; margin-left: auto; flex-shrink: 0; }
+.cs-d-pz:empty { display: none; }
+.cs-d-pz span { display: flex; flex-direction: column; gap: 4px; }
+.cs-d-pz small { font: 700 var(--fs-11)/1 var(--f); letter-spacing: .1em; text-transform: uppercase; color: #aab2c0; }
+.cs-d-pz b { display: flex; align-items: center; font: 700 var(--fs-14)/1 var(--f); font-variant-numeric: tabular-nums; color: #fff; white-space: nowrap; }
+.cs-d-pz .tm b { color: #d5dbe4; }
+.cs-d-pz + .cs-d-r { margin-left: 0; }
+@media (max-width: 640px) {
+  .cs-d-t { flex: 1 1 auto; }
+  .cs-d-pz { gap: 12px; }
+  .cs-d-pz + .cs-d-r { flex: 1 1 100%; justify-content: flex-end; }
+}
+
+/* ---------- Последние мелочи перед выкладкой ---------- */
+/* Факты в шапке кейса («Цена · Предметов · Лучший предмет»): подписи и значения — два общих ряда (subgrid).
+   Подпись в две строки (узкий экран) прижата к низу своего ряда, значения всех фактов стоят на одной линии;
+   зачёркнутая старая цена под новой ряд не сдвигает. На широких экранах подписи — в одну строку. */
+#scr-case .cp-facts { display: grid; grid-auto-flow: column; grid-template-rows: auto auto; row-gap: 0; }
+#scr-case .cp-fact { grid-row: span 2; display: grid; grid-template-rows: subgrid; }
+#scr-case .cp-fact small { align-self: end; }
+#scr-case .cp-fact b { align-self: start; }
+@media (min-width: 641px) {
+  #scr-case .cp-fact small { white-space: nowrap; }
+}
+/* неактивная «Открыть за …» (не хватает монет): старая цена не тёмная на тёмном стекле, а светлая приглушённая */
+.btn.primary:disabled .cs-old { color: #a3abb8; }
+/* легенда редкостей под полосой шансов (11 px): светлее — ≥ 4.5:1 и над светлыми сценами (пустыня, снег) при размытии 0 */
+#scr-case .rleg { color: #c6ccd6; }
+
+/* =====================================================================
+   АПГРЕЙД · КОНТРАКТ — раунд 7 (агент upgrade, см. tools/plans/R7_SPEC.md).
+   Панели экрана — на стекле: токены r7_glass.css (запасные значения —
+   те же числа из задания, если токен ещё не объявлен). Прямые углы,
+   золото — только у главной кнопки и активной вкладки.
+   ===================================================================== */
+#scr-upgrade {
+  --upg-panel: var(--gl-panel, rgba(18, 20, 24, .72));
+  --upg-card: var(--gl-card, rgba(18, 20, 24, .85));
+  --upg-edge: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35));
+  --upg-shadow: var(--gl-shadow, 0 18px 40px rgba(0, 0, 0, .45));
+  --upg-line: rgba(255, 255, 255, .06);
+}
+/* стеклянные поверхности экрана: подложка + локальное размытие + фаска + тень + зерно */
+#scr-upgrade .up-panel, #scr-upgrade .up-bal, #scr-upgrade .up-quick, #scr-upgrade .panel,
+#scr-upgrade .up-tabs, #scr-upgrade .up-tools .tbtn, #scr-upgrade .ct-box {
+  background-color: var(--upg-panel);
+  background-image: var(--gl-noise, none);
+  -webkit-backdrop-filter: var(--gl-blur, blur(14px) saturate(115%));
+  backdrop-filter: var(--gl-blur, blur(14px) saturate(115%));
+  box-shadow: var(--upg-edge), var(--upg-shadow);
+}
+/* облегчённый режим (слабое устройство): без размытия, плотнее */
+html.gl-lite #scr-upgrade .up-panel, html.gl-lite #scr-upgrade .up-bal, html.gl-lite #scr-upgrade .up-quick,
+html.gl-lite #scr-upgrade .panel, html.gl-lite #scr-upgrade .up-tabs, html.gl-lite #scr-upgrade .up-tools .tbtn,
+html.gl-lite #scr-upgrade .ct-box {
+  -webkit-backdrop-filter: none; backdrop-filter: none; background-color: var(--upg-card);
+}
+
+/* ---------- Шапка экрана: заголовок · вкладки · турбо и звук ---------- */
+.up-head { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+.up-head .sec-h { margin: 0; }
+.up-tabs { display: flex; }
+.up-tabs button {
+  position: relative; height: 36px; padding: 0 18px; border: 0; background: none; cursor: pointer;
+  color: var(--text2); font: 700 var(--fs-14)/1 var(--d); letter-spacing: .06em; text-transform: uppercase;
+  transition: color var(--t-fast, 120ms), background-color var(--t-fast, 120ms);
+}
+.up-tabs button + button { box-shadow: -1px 0 0 var(--upg-line); }
+.up-tabs button:hover { color: #fff; background: rgba(255, 255, 255, .04); }
+.up-tabs button.on { color: #fff; box-shadow: inset 0 -2px 0 var(--acc); }
+.up-tabs button.on + button { box-shadow: -1px 0 0 var(--upg-line); }
+.up-head .up-tools { margin-left: auto; display: flex; gap: 4px; }
+#scr-upgrade .up-tools .tbtn { width: 36px; height: 36px; font-size: 16px; color: var(--text2); }
+#scr-upgrade .up-tools .tbtn:hover { color: #fff; background-color: rgba(34, 37, 44, .8); }
+#scr-upgrade .up-tools .tbtn.on { color: var(--acc); }
+.up-pane[hidden], .ct[hidden] { display: none !important; }
+
+/* ---------- Три панели: ставка · колесо · цель ---------- */
+#scr-upgrade .up-top, #scr-upgrade .up-mid { --up-c: 372px; }
+#scr-upgrade .up-panel { min-height: 440px; }
+#scr-upgrade .up-ph {
+  min-height: 42px; background: rgba(255, 255, 255, .025); box-shadow: inset 0 -1px 0 var(--upg-line);
+  color: #c9d0da;
+}
+/* колесо — внутри своей панели: поле под заголовком, кольцо по ширине колонки и не шире поля */
+.up-center .up-ph { justify-content: center; }
+.up-ring-box { flex: 1; min-height: 0; display: grid; place-items: center; padding: 16px; }
+#scr-upgrade .up-ring { width: calc(var(--up-c) - 44px); max-width: 100%; height: auto; aspect-ratio: 1; margin: 0; }
+#scr-upgrade .up-sum { box-shadow: inset 0 1px 0 var(--upg-line); }
+/* деления 25/50/75 % внутри диска: сплошной --muted вместо белого 50 % (≥ 4.5:1 и на светлой верхушке диска), чуть крупнее */
+#scr-upgrade .up-lab { font-size: 8px; fill: var(--muted); }
+
+/* ---------- Ряд управления: баланс · кнопка · быстрый выбор ---------- */
+#scr-upgrade .up-mid { align-items: center; }
+#scr-upgrade .up-bal, #scr-upgrade .up-quick { align-self: stretch; }
+/* кнопка — обычная кнопка по центру колонки, а не плита во всю ширину */
+#scr-upgrade #up-go {
+  justify-self: center; width: min(100%, 300px); height: 52px; padding: 0 20px;
+  font-size: var(--fs-24); letter-spacing: .08em; color: var(--ink); background: var(--acc);
+  box-shadow: inset 0 -2px 0 rgba(120, 60, 0, .32), 0 8px 20px rgba(0, 0, 0, .35);
+  transition: background-color var(--t-fast, 120ms), transform .1s;
+}
+#scr-upgrade #up-go:hover:not(:disabled) { background: #ffc04f; }
+/* неактивная: прозрачное стекло с волосяной обводкой, приглушённый текст, подсказка «чего не хватает» */
+#scr-upgrade #up-go:disabled {
+  opacity: 1; filter: none; cursor: not-allowed; transform: none;
+  font-size: var(--fs-14); letter-spacing: .08em; color: rgba(238, 241, 246, .66);
+  background: rgba(18, 20, 24, .55); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+}
+#scr-upgrade .up-quick button.on { color: #fff; background: rgba(255, 255, 255, .06); box-shadow: inset 0 -2px 0 var(--acc), -1px 0 0 var(--hl); }
+
+/* ---------- Списки ---------- */
+#scr-upgrade .panel .panel-h { background: rgba(255, 255, 255, .025); box-shadow: inset 0 -1px 0 var(--upg-line); }
+
+@media (max-width: 1200px) {
+  #scr-upgrade .up-top, #scr-upgrade .up-mid { --up-c: 296px; }
+  #scr-upgrade .up-panel { min-height: 380px; }
+}
+@media (max-width: 900px) {
+  .up-head { gap: 8px; margin-bottom: 12px; }
+  .up-head .sec-h { display: none; }   /* раздел уже назван в нижнем меню — на телефоне в ряду только вкладки и значки */
+  .up-tabs { flex: 1; }
+  .up-tabs button { flex: 1; padding: 0 8px; }
+  #scr-upgrade .up-panel { min-height: 210px; }
+  .up-ring-box { padding: 12px; }
+  #scr-upgrade .up-ring { width: 268px; }
+  #scr-upgrade #up-go { order: 3; width: min(100%, 280px); height: 48px; margin-top: 4px; font-size: var(--fs-18); }
+  #scr-upgrade #up-go:disabled { font-size: var(--fs-14); }
+}
+@media (max-width: 380px) {
+  #scr-upgrade .up-ring { width: 240px; }
+}
+
+/* центральная колонка — обычная панель: заголовок и поле колеса во всю её ширину */
+#scr-upgrade .up-center { align-items: stretch; }
+@media (max-width: 900px) {
+  #scr-upgrade .up-center .up-ph { display: none; }   /* на телефоне колесо без заголовка: экономим высоту */
+}
+
+/* =====================================================================
+   КОНТРАКТ ОБМЕНА (js/scr_contracts.js): 10 слотов · итог · мои предметы
+   ===================================================================== */
+.ct-top { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; margin-bottom: 16px; }
+.ct-box { position: relative; display: flex; flex-direction: column; min-width: 0; }
+.ct-main .up-ph { padding: 10px 12px; }
+.ct-main .up-ph > span { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ct-main .up-ph b { font: 700 var(--fs-14)/1.2 var(--d); letter-spacing: .04em; text-transform: uppercase; color: #fff; }
+.ct-main .up-ph small { font: 500 var(--fs-12)/1.3 var(--f); color: var(--text2); }
+.ct-cnt { font: 500 var(--fs-12)/1 var(--f); color: var(--text2); }
+/* слоты: 5 × 2, пустой — волосяная рамка и номер, заполненный — карточка на стекле с полосой редкости */
+.ct-slots { flex: 1; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 8px; padding: 16px; }
+.ct-slot {
+  position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 148px; padding: 8px; border: 0; text-align: left;
+  color: #fff; background: var(--upg-card); cursor: pointer;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), inset 0 -2px 0 var(--rc, transparent);
+  transition: transform var(--t-fast, 120ms) ease-out, background-color var(--t-fast, 120ms);
+}
+button.ct-slot:hover { transform: translateY(-2px); background-color: rgba(30, 33, 39, .88); }
+.ct-slot.empty { cursor: default; display: grid; place-items: center; background: rgba(255, 255, 255, .02); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+.ct-slot.empty span { font: 700 var(--fs-18)/1 var(--d); color: rgba(255, 255, 255, .58); }   /* ≥ 4.5:1 на фоне слота */
+/* наведение на предметы в списках апгрейда и контракта — как во всём интерфейсе: 120 мс, без filter */
+@media (hover: hover) {
+  #scr-upgrade .item-grid.up button.it { transition: transform var(--t-fast, 120ms) var(--gl-ease, ease-out); }
+}
+.ct-sp { display: flex; align-items: center; justify-content: flex-end; font: 700 var(--fs-12)/1 var(--f); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ct-sp .ci { font-size: 11px; margin-right: .25em; }
+.ct-art { position: relative; flex: 1 1 0; min-height: 0; margin: 4px -4px; }
+.ct-art > * { width: 100%; height: 100%; }
+.ct-nm { font: 600 var(--fs-11)/1.2 var(--f); color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* итог: слот результата, сводка, предупреждение, кнопка */
+.ct-res { display: grid; place-items: center; min-height: 212px; padding: 12px 16px; box-shadow: inset 0 -1px 0 var(--upg-line); }
+.ct-out { width: min(200px, 100%); }
+.ct-out .it { width: 100%; padding: 10px 10px 14px; }
+.ct-out .it-art { height: 120px; }
+.ct-got { margin-top: 8px; text-align: center; font: 500 var(--fs-12)/1.3 var(--f); color: var(--text2); }
+.ct-got b { color: #fff; font-family: var(--d); }
+.ct-got .up { color: #5fe39a; font-weight: 700; }
+.ct-got .dn { color: var(--text2); font-weight: 700; }
+.ct-stats { margin: 0; padding: 4px 16px; }
+.ct-stats > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 7px 0; }
+.ct-stats > div + div { box-shadow: inset 0 1px 0 var(--upg-line); }
+.ct-stats dt { font: 500 var(--fs-12)/1.2 var(--f); color: var(--text2); }
+.ct-stats dd { margin: 0; display: flex; align-items: center; gap: 4px; font: 700 var(--fs-14)/1.2 var(--d); font-variant-numeric: tabular-nums; color: #fff; white-space: nowrap; }
+.ct-stats dd small { font: 500 var(--fs-11)/1 var(--f); color: var(--text2); }
+.ct-warn { padding: 0 16px 4px; font: 500 var(--fs-12)/1.35 var(--f); color: #f2d08c; }
+.ct-warn.bad { color: #ff9aa4; }
+.ct-warn:empty { display: none; }
+.ct-go-row { margin-top: auto; padding: 12px 16px 16px; }
+#ct-go { width: 100%; height: 50px; font-size: var(--fs-18); background: var(--acc); color: var(--ink); box-shadow: inset 0 -2px 0 rgba(120, 60, 0, .32); }
+#ct-go:hover:not(:disabled) { background: #ffc04f; }
+#ct-go.armed { background: #ffd27a; box-shadow: inset 0 0 0 2px rgba(60, 30, 0, .55); }
+#ct-go:disabled {
+  opacity: 1; filter: none; cursor: not-allowed; transform: none; font-size: var(--fs-14);
+  color: rgba(238, 241, 246, .66); background: rgba(18, 20, 24, .55); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+}
+/* список предметов */
+.ct-list .panel-h { flex-wrap: wrap; row-gap: 4px; }
+.ct-tools { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+#ct-inv { height: 440px; flex: none; }
+.ct-note { padding: 8px 12px 10px; font: 500 var(--fs-11)/1.3 var(--f); color: var(--text2); box-shadow: inset 0 1px 0 var(--upg-line); }
+
+@media (max-width: 1200px) {
+  .ct-top { grid-template-columns: minmax(0, 1fr) 280px; }
+  .ct-slot { min-height: 120px; }
+}
+@media (max-width: 900px) {
+  .ct-top { grid-template-columns: 1fr; gap: 8px; margin-bottom: 8px; }
+  .ct-slots { gap: 4px; padding: 8px; }
+  .ct-slot { min-height: 88px; padding: 4px 4px 6px; }
+  .ct-sp { font-size: var(--fs-11); justify-content: center; }
+  .ct-sp .ci { font-size: 10px; }
+  .ct-nm { display: none; }
+  .ct-res { min-height: 0; padding: 12px; }
+  .ct-out { width: 148px; }
+  .ct-out .it-art { height: 80px; }
+  #ct-inv { height: 360px; }
+  .ct-tools { width: 100%; margin-left: 0; flex-wrap: wrap; }
+  .ct-tools .btn { margin-left: auto; }
+}
+
+/* Раунд 7 — агент inv: см. tools/plans/R7_SPEC.md
+   Инвентарь на стекле: одна панель (действия, фильтры, сетка), карточки плотнее панели,
+   адаптивная плотность сетки (data-d, js/scr_inv.js → fit), режим выбора и полоса «Продать». */
+
+/* ---------- Панель экрана ----------
+   Экран тянется на всю высоту области контента (подвал — внизу), а панель — по содержимому:
+   под последним рядом карточек нет пустого стекла, ниже панели — сцена */
+#scr-inv.active { display: flex; flex-direction: column; flex: 1 0 auto; }
+#scr-inv > .wrap {
+  flex: 0 0 auto; display: flex; flex-direction: column;
+  margin-top: 16px; padding-top: 16px; padding-bottom: 20px;
+  background: var(--gl-noise, none), var(--gl-panel, rgba(18, 20, 24, .72));
+  -webkit-backdrop-filter: var(--gl-blur, blur(14px) saturate(115%)); backdrop-filter: var(--gl-blur, blur(14px) saturate(115%));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)),
+    var(--gl-shadow, 0 18px 40px rgba(0, 0, 0, .45));
+}
+html.gl-lite #scr-inv > .wrap { background: var(--gl-card, rgba(18, 20, 24, .85)); -webkit-backdrop-filter: none; backdrop-filter: none; }
+#scr-inv .inv-wrap { flex: 0 0 auto; display: flex; flex-direction: column; }
+/* пустой инвентарь / пустой результат фильтра — строка по центру панели, а не прилипшая к фильтрам */
+#scr-inv .inv-none { flex: 1 0 auto; min-height: 240px; }
+
+/* ---------- Панель действий ----------
+   Все кнопки второстепенные (стекло, обводка 8 %): золото на экране — только «Продать» в полосе выбора */
+#scr-inv .inv-bar .btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: #dfe3ea; background: rgba(255, 255, 255, .04);
+  box-shadow: inset 0 0 0 1px var(--gl-edge-t, rgba(255, 255, 255, .08));
+  transition: background-color var(--t-fast, 120ms), color var(--t-fast, 120ms), box-shadow var(--t-fast, 120ms);
+}
+#scr-inv .inv-bar .btn:hover:not(:disabled) { color: #fff; background: rgba(255, 255, 255, .08); }
+#scr-inv .inv-bar .btn .ic { font-size: 14px; color: #aeb5c2; }
+#scr-inv .inv-bar .btn[hidden] { display: none; }
+/* включённый режим выбора — светлая обводка, без заливки */
+#scr-inv .inv-bar .btn.inv-pick.on { color: #fff; background: rgba(255, 255, 255, .1); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .55); }
+#scr-inv .inv-bar .btn.inv-pick.on .ic { color: #fff; }
+/* «Продать дешёвые» и «Продать всё» — тише: отделены от выбора и контракта тонкой чертой */
+#scr-inv .inv-bar .inv-sl { margin-left: 8px; }
+#scr-inv .inv-bar .inv-sl::before { content: ""; position: absolute; left: -9px; top: 8px; bottom: 8px; width: 1px; background: rgba(255, 255, 255, .1); }
+#scr-inv .inv-bar .inv-sl, #scr-inv .inv-bar .inv-sa { position: relative; color: #b8bfcb; background: transparent; }
+#scr-inv .inv-filt { box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .06); }
+/* стоимость — слева, действия — справа; сортировка переехала в ряд фильтров (справа, тем же мелким шрифтом) */
+#scr-inv .inv-bar .inv-sum { margin-left: 0; margin-right: auto; }
+#scr-inv .inv-filt > .sortsel:not(.fsel) { margin-left: var(--s2, 8px); }
+#scr-inv .inv-filt > .sortsel:not(.fsel) select { width: var(--w, auto); height: 32px; font-size: var(--fs-12); }
+@media (max-width: 1200px) { #scr-inv .inv-sum > small:first-child { display: none; } }
+
+/* ---------- Карточки ----------
+   Плотнее панели (--gl-card), светлая верхняя грань; наведение — подъём 2 px и осветление на 4 % */
+.item-grid.inv .it {
+  background: var(--gl-card, rgba(18, 20, 24, .85));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08));
+  transition: transform var(--t-fast, 120ms) ease-out;
+}
+.item-grid.inv .it::before { background: rgba(255, 255, 255, .04); transition-duration: var(--t-fast, 120ms); }
+.item-grid.inv .it.r9 { background: linear-gradient(180deg, #060608 0%, #000 100%); box-shadow: inset 0 0 0 1px rgba(226, 230, 240, .22); }   /* трофей — как в раунде 6 */
+
+/* ---------- Плотность ----------
+   l — до 8 предметов (по 4 в ряд, на телефоне по 2), m — до 18 (меньше колонок, без пустого хвоста).
+   Картинка растёт вместе с шириной карточки (единицы контейнера — сама карточка) */
+.item-grid.inv[data-d] .it { container-type: inline-size; }
+.item-grid.inv[data-d="m"] .it-art { height: clamp(80px, 46cqw, 124px); margin: 6px -4px 8px; }
+.item-grid.inv[data-d="l"] { gap: 12px; --inv-cmax: 380px; }
+.item-grid.inv[data-d="l"] .it { padding: 12px 14px 15px; }
+.item-grid.inv[data-d="l"] .it-art { height: clamp(84px, 46cqw, 172px); margin: 10px 0 14px; }
+.item-grid.inv[data-d="l"] .it-price { font-size: var(--fs-14); }
+.item-grid.inv[data-d="l"] .it-price .ci { font-size: 13px; }
+.item-grid.inv[data-d="l"] .it-wear, .item-grid.inv[data-d="l"] .it-sec { font-size: var(--fs-12); }
+.item-grid.inv[data-d="l"] .it-name { font-size: var(--fs-14); }
+.item-grid.inv[data-d="l"] .it-fin { margin-top: 3px; font-size: var(--fs-12); }
+
+/* ---------- Режим выбора ----------
+   Квадрат-отметка в левом верхнем углу картинки; отмеченная карточка — светлая рамка 2 px (золото — у кнопки «Продать») */
+.item-grid.inv.picking .it-art::after {
+  content: ""; position: absolute; z-index: 2; left: 4px; top: 0; width: 16px; height: 16px;
+  background: rgba(0, 0, 0, .45) center / 12px no-repeat; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .5);
+  transition: background-color var(--t-fast, 120ms);
+}
+.item-grid.inv[data-d="l"].picking .it-art::after { left: 0; width: 20px; height: 20px; background-size: 14px; }
+.item-grid.inv.picking .it.sel .it-art::after {
+  background-color: #f2f4f7; box-shadow: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2 6.2l2.6 2.6L10 3.4' fill='none' stroke='%23121418' stroke-width='2'/%3E%3C/svg%3E");
+}
+.item-grid.inv.picking .it.locked .it-art::after { display: none; }
+.item-grid.inv.picking .it.sel::before { opacity: 1; background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 2px rgba(242, 244, 247, .85); }
+
+/* Полоса выбора: прилипает к низу области контента, стекло плотности модального окна */
+.inv-selbar {
+  position: sticky; bottom: 12px; z-index: 5; display: flex; align-items: center; gap: 12px;
+  margin-top: 16px; padding: 10px 10px 10px 16px;
+  background: var(--gl-noise, none), var(--gl-modal, rgba(18, 20, 24, .94));
+  -webkit-backdrop-filter: var(--gl-blur, blur(14px) saturate(115%)); backdrop-filter: var(--gl-blur, blur(14px) saturate(115%));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)),
+    var(--gl-shadow, 0 18px 40px rgba(0, 0, 0, .45));
+  animation: invSelIn var(--t-modal, 160ms) ease-out;
+}
+.inv-selbar[hidden] { display: none; }
+@keyframes invSelIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.inv-sel-n { margin-right: auto; font: 700 var(--fs-14)/1.2 var(--f); font-variant-numeric: tabular-nums; color: #fff; }
+.inv-sel-all { font-size: var(--fs-14); }
+.inv-selbar .btn { height: 38px; padding: 0 16px; font-size: var(--fs-14); }
+.inv-selbar .btn:not(.primary) { color: #dfe3ea; background: rgba(255, 255, 255, .04); box-shadow: inset 0 0 0 1px var(--gl-edge-t, rgba(255, 255, 255, .08)); }
+.inv-selbar .btn.primary { min-width: 176px; }
+.inv-selbar .btn.primary .ci { margin: 0 .2em 0 .35em; }
+/* неактивная «Продать» — без золота: тусклая стеклянная, курсор «нельзя» */
+.inv-selbar .btn.primary:disabled {
+  opacity: 1; filter: none; cursor: not-allowed; color: #8d95a3;
+  background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+}
+
+@media (prefers-reduced-motion: reduce) { .inv-selbar { animation: none; } }
+
+/* ---------- Телефон ----------
+   Сумма — первой строкой; ниже «Выбрать», «Контракт» и сортировка; ещё ниже обе продажи */
+@media (max-width: 900px) {
+  #scr-inv > .wrap { margin-top: 8px; padding-top: 12px; }
+}
+@media (max-width: 560px) {
+  #scr-inv .inv-bar { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  #scr-inv .inv-bar .inv-sum { grid-column: 1 / -1; margin-bottom: 4px; }
+  #scr-inv .inv-bar .inv-sl { margin-left: 0; }
+  /* фильтры: поиск и сортировка — первый ряд, три списка — второй, «Сбросить» (если есть фильтр) — третий */
+  #scr-inv .inv-filt .inv-q, #scr-inv .inv-filt.act .inv-q { grid-column: 1 / 4; }
+  #scr-inv .inv-filt > .sortsel:not(.fsel) { grid-column: 4 / 7; grid-row: 1; margin-left: 0; min-width: 0; }
+  #scr-inv .inv-filt > .sortsel:not(.fsel) select { width: 100%; }
+  #scr-inv .inv-reset { grid-column: 1 / -1; grid-row: 3; justify-content: flex-end; }
+  #scr-inv .inv-bar .inv-sl::before { display: none; }
+  #scr-inv .inv-bar .btn { justify-content: center; min-width: 0; }
+  .item-grid.inv[data-d="l"] { gap: 8px; }
+  .item-grid.inv[data-d="l"] .it { padding: 8px 10px 12px; }
+  .item-grid.inv[data-d="l"] .it-art { margin: 6px 0 10px; }
+  .inv-selbar { bottom: 8px; flex-wrap: wrap; gap: 8px; padding: 10px; }
+  .inv-sel-n { flex: 1 1 auto; }
+  .inv-selbar .btn { flex: 1 1 0; padding: 0 8px; }
+  .inv-selbar .btn.primary { flex: 2 1 0; min-width: 0; }
+}
+
+/* ---------- «Пополнить инвентарь» (js/scr_inv.js → renderMore) ----------
+   До 8 предметов под панелью сетки — вторая стеклянная панель той же ширины (стиль — из #scr-inv > .wrap выше):
+   две карточки-подсказки (кейсы, контракты) и строка коллекции. Всё второстепенное: без золота */
+#scr-inv > .inv-more { margin-top: 12px; padding-top: 16px; padding-bottom: 18px; }
+#scr-inv > .inv-more[hidden] { display: none; }
+.inv-more .im-h { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.inv-more .im-h b { font: 800 var(--fs-12)/1.2 var(--f); letter-spacing: .1em; text-transform: uppercase; color: #dfe3ea; }
+.inv-more .im-h small { font: 600 var(--fs-12)/1.2 var(--f); color: var(--c-meta, #9aa3b2); }
+.inv-more .im-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.inv-more .im-tile {
+  display: flex; align-items: center; gap: 16px; min-width: 0; padding: 16px 16px 16px 18px;
+  background: var(--gl-card, rgba(18, 20, 24, .85));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35));
+}
+.inv-more .im-ic {
+  flex: 0 0 auto; display: grid; place-items: center; width: 44px; height: 44px;
+  background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); color: #c3c9d4;
+}
+.inv-more .im-ic .ic { font-size: 20px; }
+.inv-more .im-tx { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.inv-more .im-tx b { font: 700 var(--fs-14)/1.25 var(--f); color: #fff; }
+.inv-more .im-tx small { font: 500 var(--fs-12)/1.4 var(--f); color: #b0b8c4; }
+.inv-more .im-tx em { font: 600 var(--fs-11, 11px)/1.3 var(--f); font-style: normal; letter-spacing: .04em; color: var(--c-meta, #9aa3b2); font-variant-numeric: tabular-nums; }
+.inv-more .im-tile .btn {
+  flex: 0 0 auto; height: 38px; padding: 0 16px; font-size: var(--fs-14);
+  color: #dfe3ea; background: rgba(255, 255, 255, .04); box-shadow: inset 0 0 0 1px var(--gl-edge-t, rgba(255, 255, 255, .08));
+  transition: background-color var(--t-fast, 120ms), color var(--t-fast, 120ms);
+}
+.inv-more .im-tile .btn:hover { color: #fff; background: rgba(255, 255, 255, .09); }
+/* строка коллекции: значок, подпись, «12 из 846», тонкая светлая полоса, бонус, ссылка */
+.inv-more .im-col {
+  display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 12px 6px 0 4px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); color: #b0b8c4;
+}
+.inv-more .im-col > .ic { font-size: 16px; color: #aeb5c2; }
+.inv-more .im-col-t { font: 800 var(--fs-12)/1.2 var(--f); letter-spacing: .1em; text-transform: uppercase; color: #dfe3ea; }
+.inv-more .im-col > b { font: 700 var(--fs-14)/1.2 var(--f); color: #fff; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.inv-more .im-bar { flex: 0 1 220px; min-width: 60px; }
+.inv-more .im-bar > i { background: rgba(236, 239, 244, .7); }
+.inv-more .im-col > small { flex: 1 1 auto; min-width: 0; font: 500 var(--fs-12)/1.35 var(--f); color: #b0b8c4; }
+.inv-more .im-col-go { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; font-size: var(--fs-12); color: #c3c9d4; }
+.inv-more .im-col-go .ic { font-size: 12px; transform: rotate(-90deg); }
+.inv-more .im-col-go:hover { color: #fff; }
+@media (max-width: 900px) { #scr-inv > .inv-more { margin-top: 8px; } }
+@media (max-width: 760px) {
+  .inv-more .im-row { grid-template-columns: 1fr; gap: 8px; }
+}
+@media (max-width: 560px) {
+  .inv-more .im-h { flex-direction: column; gap: 4px; }
+  .inv-more .im-tile { flex-wrap: wrap; gap: 12px; padding: 14px; }
+  .inv-more .im-tx { flex-basis: calc(100% - 56px); }
+  .inv-more .im-tile .btn { flex: 1 1 100%; }
+  .inv-more .im-col { flex-wrap: wrap; gap: 8px 10px; }
+  .inv-more .im-bar { order: 5; flex: 1 1 100%; }
+  .inv-more .im-col > small { order: 6; flex-basis: 100%; }
+  .inv-more .im-col-go { margin-left: auto; }
+}
+
+/* =====================================================================
+   Раунд 7 — экран «Награды» (агент rewards): стекло для призов, ежедневного
+   бонуса и заданий, таймеры в ячейках одной ширины, «Топ дроп» со счётчиком
+   повторов, колесо фортуны (js/wheel.js). Токены стекла — r7_glass.css.
+   ===================================================================== */
+
+/* ---------- Призы по таймеру: стекло, ячейки таймера ---------- */
+#scr-rewards .rw-card { overflow: hidden; }
+#scr-rewards .rw-foot { border-top: 1px solid var(--gl-edge-b, rgba(0, 0, 0, .35)); box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)); background: rgba(0, 0, 0, .12); }
+/* блок части таймера: число из ячеек и подпись под ним */
+#scr-rewards .cd { gap: 8px; }
+#scr-rewards .cd span { width: auto; padding: 0; background: none; box-shadow: none; }
+#scr-rewards .cd b { gap: 2px; font: 700 var(--fs-20, 20px)/1 var(--d); font-variant-numeric: tabular-nums; }
+/* каждая цифра — ячейка фиксированной ширины: смена 1 → 0 ничего не сдвигает */
+#scr-rewards .cd b i {
+  display: grid; place-items: center; width: 24px; height: 32px; font-style: normal;
+  background: var(--gl-card, rgba(18, 20, 24, .85));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35));
+}
+#scr-rewards .cd small { margin-top: 6px; text-align: center; color: var(--c-meta); }
+#scr-rewards .rw-cond .bar { height: 4px; margin-top: 6px; }
+
+/* ---------- Ежедневный бонус: дни — карточки на стекле ---------- */
+#scr-rewards .rw-dd {
+  background: var(--gl-card, rgba(18, 20, 24, .85));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35));
+}
+#scr-rewards .rw-dd.cur { background: rgba(40, 42, 47, .9); }
+#scr-rewards .rw-dd.done small, #scr-rewards .rw-dd.done b { opacity: .55; }
+
+/* ---------- Задания ---------- */
+#scr-rewards .q-ico, #scr-rewards .q-rw {
+  background: var(--gl-card, rgba(18, 20, 24, .85));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35));
+}
+#scr-rewards .q-prog .bar { height: 4px; }
+
+/* ---------- Топ дроп: подложка-стекло, повторы — одна карточка с «×N» ---------- */
+#scr-rewards .rw-top-l { background: rgba(255, 255, 255, .035); box-shadow: inset -1px 0 0 var(--gl-edge-b, rgba(0, 0, 0, .35)); }
+#scr-rewards .rw-top-list { background: transparent; }
+#scr-rewards .rw-top-list .it { position: relative; }
+.rw-x {
+  position: absolute; z-index: 3; left: 6px; top: 30px; min-width: 30px; height: 20px; padding: 0 6px;
+  display: grid; place-items: center;
+  font: 700 var(--fs-12, 12px)/1 var(--d); font-variant-numeric: tabular-nums; letter-spacing: .02em; color: #fff;
+  background: rgba(10, 11, 14, .82);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 0 0 1px rgba(255, 255, 255, .12);
+  pointer-events: none;
+}
+/* ---------- Колесо фортуны: плоский диск на стекле, вращение без эффектов ---------- */
+#rw-wheel:empty { display: none; }
+.wh { --whs: 320px; display: grid; grid-template-columns: auto minmax(0, 600px); justify-content: center; align-items: center; gap: 56px; padding: 28px 32px; }
+.wh-stage { display: grid; place-items: center; padding: 10px; }
+.wh-wheel { position: relative; width: var(--whs); height: var(--whs); }
+/* неподвижный обод: тёмное кольцо с фаской */
+.wh-wheel::before {
+  content: ""; position: absolute; inset: -10px; border-radius: 50%;
+  background: var(--gl-card, rgba(18, 20, 24, .85));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)), 0 10px 24px rgba(0, 0, 0, .35);
+}
+.wh-slot { position: absolute; inset: 0; }
+.wh-disc {
+  position: absolute; inset: 0; border-radius: 50%; overflow: hidden; will-change: transform;
+  background-color: rgba(26, 28, 33, .92);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
+}
+/* тонкие разделители сегментов */
+.wh-disc::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  background: repeating-conic-gradient(from -15deg, rgba(255, 255, 255, .13) 0 .4deg, transparent .4deg 30deg);
+}
+.wh-seg { position: absolute; left: 50%; top: 0; width: 68px; height: 50%; margin-left: -34px; transform-origin: 50% 100%; }
+/* подпись стоит прямо при любом угле диска (контр-поворот — js/wheel.js labTf): центр подписи на 0.7 радиуса */
+.wh-seg span {
+  position: absolute; left: 50%; top: 30%; will-change: transform;
+  display: flex; flex-direction: column; align-items: center; gap: 4px; white-space: nowrap;
+  font: 700 var(--fs-14, 14px)/1 var(--d); font-variant-numeric: tabular-nums; color: #fff; text-align: center;
+}
+.wh-seg b { display: flex; align-items: baseline; gap: 2px; }
+.wh-seg .ic { font-size: 18px; color: var(--text2); }
+.wh-seg .ci { font-size: 16px; }
+.wh-seg small { font: 700 10px/1 var(--f); letter-spacing: .08em; text-transform: uppercase; color: var(--text2); }
+.wh-seg b small { font-size: 9px; letter-spacing: .04em; }
+.wh-seg.k-c4 .ic, .wh-seg.k-it .ic { color: #fff; }
+/* указатель — прямой треугольник сверху */
+.wh-ptr {
+  position: absolute; z-index: 3; left: 50%; top: -14px; width: 24px; height: 20px; margin-left: -12px;
+  background: var(--acc); clip-path: polygon(0 0, 100% 0, 50% 100%);
+  filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .5));
+}
+.wh-hub {
+  position: absolute; z-index: 2; left: 50%; top: 50%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 22px; color: var(--text2);
+  background: var(--gl-modal, rgba(18, 20, 24, .94));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)), 0 0 0 1px rgba(255, 255, 255, .1);
+}
+
+/* правая часть: карточка приза, состояние и кнопки, шансы */
+.wh-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.wh-res { min-height: 112px; display: flex; align-items: stretch; }
+.wh-desc { align-self: center; max-width: 420px; margin: 0; font: 500 var(--fs-14, 14px)/1.5 var(--f); color: var(--text2); }
+.wh-card {
+  position: relative; flex: 1; display: flex; align-items: center; gap: 16px; min-width: 0; padding: 16px;
+  background: var(--gl-card, rgba(18, 20, 24, .85)); background-image: var(--gl-noise, none);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35));
+  animation: whIn 200ms var(--gl-ease, ease-out) both;
+}
+.wh-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: rgba(255, 255, 255, .22); }
+.wh-card.k-c4::before { background: rgba(255, 255, 255, .5); }
+.wh-card[class*=" r"]::before { background: var(--rc); }
+@keyframes whIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.wh-art { position: relative; flex: 0 0 112px; height: 80px; display: grid; place-items: center; overflow: hidden; background: rgba(0, 0, 0, .22); }
+.wh-art .wimg { inset: 6px; }
+.wh-crate { position: absolute; inset: 4px; display: block; }
+.wh-crate img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.wh-big { font-size: 34px; color: var(--text2); line-height: 1; }
+.wh-big .ci { font-size: 34px; }
+.wh-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.wh-txt small { font: 700 var(--fs-11, 11px)/1 var(--f); letter-spacing: .1em; text-transform: uppercase; color: var(--c-meta); }
+.wh-txt b { max-width: 100%; display: flex; align-items: center; font: 700 var(--fs-18, 18px)/1.2 var(--d); color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wh-txt b .ci { font-size: .85em; margin: 0 .2em; }
+.wh-txt span { font: 500 var(--fs-12, 12px)/1.4 var(--f); color: var(--text2); }
+.wh-txt span .ci { font-size: .9em; }
+.wh-txt .btn { margin-top: 6px; height: 32px; padding: 0 12px; font-size: var(--fs-12, 12px); }
+
+.wh-ctl { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.wh-st { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.wh-st small { font: 700 var(--fs-11, 11px)/1 var(--f); letter-spacing: .1em; text-transform: uppercase; color: var(--c-meta); }
+.wh-st.ok small { color: #fff; }
+.wh-cd { display: flex; align-items: center; gap: 4px; font: 700 var(--fs-20, 20px)/1 var(--d); font-variant-numeric: tabular-nums; color: #fff; }
+.wh-cd:empty { display: none; }
+.wh-cd span { display: flex; gap: 2px; }
+.wh-cd i {
+  display: grid; place-items: center; width: 24px; height: 32px; font-style: normal;
+  background: var(--gl-card, rgba(18, 20, 24, .85));
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35));
+}
+.wh-cd em { width: 8px; text-align: center; font-style: normal; color: var(--c-meta); }
+.wh-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.wh-btns .btn.big { min-width: 180px; }
+.wh-btns .btn .ic { margin-right: 6px; }
+
+.wh-odds { padding-top: 14px; border-top: 1px solid var(--gl-line, rgba(255, 255, 255, .08)); }
+.wh-odds small { display: block; margin-bottom: 8px; font: 700 var(--fs-11, 11px)/1 var(--f); letter-spacing: .1em; text-transform: uppercase; color: var(--c-meta); }
+.wh-odds ul { display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 0; padding: 0; list-style: none; }
+.wh-odds li { display: flex; align-items: center; gap: 6px; font: 500 var(--fs-12, 12px)/1 var(--f); color: var(--text2); }
+.wh-odds li .ic, .wh-odds li .ci { font-size: 13px; color: var(--c-meta); }
+.wh-odds li b { font-weight: 700; font-variant-numeric: tabular-nums; color: #fff; }
+
+@media (max-width: 900px) {
+  .wh { --whs: 280px; grid-template-columns: minmax(0, 1fr); justify-items: center; gap: 24px; padding: 24px 16px; }
+  .wh-side { width: 100%; }
+}
+@media (max-width: 520px) {
+  .wh { --whs: 260px; }
+  .wh-seg { width: 58px; margin-left: -29px; }
+  .wh-seg span { gap: 3px; font-size: 12px; }
+  .wh-seg .ic { font-size: 16px; }
+  .wh-ctl { flex-direction: column; align-items: stretch; }
+  .wh-btns .btn { flex: 1; }
+  .wh-art { flex-basis: 92px; height: 68px; }
+  #scr-rewards .cd b i { width: 22px; height: 30px; }
+}
+
+/* ---------- Раунд 7, доводка: золото только у кнопки «Забрать» ----------
+   Карточки призов, дни серии и задания — нейтральные: вид приза различается иконкой
+   и белой полоской сверху, прогресс условия — белой заливкой. Золотая только кнопка
+   действия (.btn.primary), когда приз можно забрать. */
+#scr-rewards .rw-card { --rw-c: rgba(255, 255, 255, .22); }
+#scr-rewards .rw-card.k-w { --rw-c: rgba(255, 255, 255, .4); }
+#scr-rewards .rw-info h3 .ic { color: var(--text2); }
+#scr-rewards .bar > i, #scr-rewards .bar > .bar-fill { background: rgba(255, 255, 255, .62); }
+#scr-rewards .q-row.done .bar > i { background: rgba(255, 255, 255, .85); }
+/* дни серии: текущий день — светлее и с белой полоской, без золотого текста */
+#scr-rewards .rw-dd.cur::before { background: rgba(255, 255, 255, .6); }
+#scr-rewards .rw-dd.cur small, #scr-rewards .rw-dd.cur > .ic { color: #fff; }
+#scr-rewards .rw-ribbon { color: var(--text2); }
+/* задания: выполненное отмечено белой кромкой; золото — только у кнопки награды */
+#scr-rewards .q-row.done::before { background: rgba(255, 255, 255, .5); }
+#scr-rewards .q-ico, #scr-rewards .q-row.done .q-ico { color: var(--text2); }
+
+/* =====================================================================
+   Раунд 7 — ФАРМ (агент farm). Контракт: tools/plans/R7_SPEC.md.
+   Монета стоит на сцене без панели, с мягкой тенью; рядом — компактная стеклянная сводка
+   (клики в секунду, за клик, доход, прогресс уровня); начисления всплывают у монеты.
+   Прокачка — стеклянные строки с полосой .bar (сплошная дорожка 4 px) и подписью «ур. 7 / 20».
+   ===================================================================== */
+
+/* ---------- Сцена монеты: без плиты ---------- */
+#scr-farm .farm { align-items: center; }
+#scr-farm .farm-coin {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  padding: 8px 0; overflow: visible;
+  background: none; -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none;
+}
+.fm-stage { position: relative; display: grid; place-items: center; width: 260px; height: 260px; }
+#scr-farm .big-coin {
+  width: 216px; height: 216px;
+  /* мягкая тень самой монеты — висит над сценой */
+  filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .38));
+}
+/* пятно тени на «полу» под монетой; при нажатии монета ближе к полу — тень плотнее и уже */
+.fm-shadow {
+  position: absolute; left: 50%; bottom: 2px; width: 190px; height: 30px; transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(0, 0, 0, .5), rgba(0, 0, 0, .22) 55%, rgba(0, 0, 0, 0));
+  pointer-events: none; transition: transform .14s ease-out, opacity .14s ease-out;
+}
+.fm-stage:has(.big-coin:active) .fm-shadow { transform: translateX(-50%) scale(.92); opacity: .85; }
+
+/* ---------- Всплывающие начисления: маленькая тёмная плашка, без свечения ---------- */
+.fm-pops { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+.fm-pop {
+  position: absolute; transform: translate(-50%, 0); padding: 2px 6px; white-space: nowrap;
+  font: 700 var(--fs-14)/1.2 var(--d); letter-spacing: .02em; color: var(--acc-hi);
+  font-variant-numeric: tabular-nums;
+  background: rgba(12, 14, 18, .82); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+  animation: fmPop .76s cubic-bezier(.2, .7, .3, 1) forwards;
+}
+@keyframes fmPop {
+  0% { opacity: 0; transform: translate(-50%, 4px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -40px); }
+}
+
+/* подсказка — короткая метка на тёмной подложке (читается на любом фоне), исчезает после 30 кликов */
+#scr-farm .tap-hint {
+  padding: 4px 10px; font-size: var(--fs-12); color: var(--text2);
+  background: rgba(12, 14, 18, .72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
+}
+#scr-farm .tap-hint.pulse { color: var(--acc); animation-name: fmHintPulse; }
+/* пульс прозрачности 1 → 0.8 → 1: в нижней точке текст остаётся читаемым (≥ 4.5:1 на любом фоне) */
+@keyframes fmHintPulse { 50% { opacity: .8; } }
+
+/* ---------- Сводка рядом с монетой: стекло-карточка ---------- */
+.fm-hud {
+  width: 100%; max-width: 400px;
+  background-color: var(--gl-card); background-image: var(--gl-noise);
+  -webkit-backdrop-filter: var(--gl-blur); backdrop-filter: var(--gl-blur);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t), inset 0 -1px 0 var(--gl-edge-b), var(--gl-shadow);
+}
+.fm-stats { display: grid; grid-template-columns: repeat(3, 1fr); }
+.fm-st { min-width: 0; padding: 10px 12px; }
+.fm-st + .fm-st { box-shadow: inset 1px 0 0 rgba(255, 255, 255, .06); }
+.fm-st small {
+  display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 600 var(--fs-11)/1.2 var(--f); letter-spacing: .06em; text-transform: uppercase; color: #aab2bf;
+}
+.fm-st b {
+  display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 700 var(--fs-18)/1 var(--d); letter-spacing: .02em; color: #fff; font-variant-numeric: tabular-nums;
+}
+.fm-lv { padding: 10px 12px 12px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
+.fm-lv-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.fm-lv-h b {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font: 700 var(--fs-14)/1 var(--d); letter-spacing: .05em; text-transform: uppercase; color: #fff;
+}
+.fm-lv-h span { flex-shrink: 0; font: 600 var(--fs-12)/1 var(--f); color: var(--text2); font-variant-numeric: tabular-nums; }
+#fm-lv-next { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #aab2bf; }
+#fm-lv-next:empty { display: none; }
+
+/* ---------- Прокачка: стекло, сплошная полоса, мелкая подпись уровня ---------- */
+#scr-farm .shop-card + .shop-card { margin-top: 4px; }
+#scr-farm .shop-info .bar { margin-top: 8px; }
+#scr-farm .shop-info .bar-lbl { color: #b0b8c4; }
+#scr-farm .shop-card.max .bar > i { background: var(--acc); }
+#scr-farm .shop-card .btn { min-width: 116px; }
+/* покупка прокачки — второстепенная стеклянная кнопка (общий .btn), цена — золотым текстом;
+   золотая заливка на экране только у главного действия «Открыть» */
+#scr-farm .fm-buy:not(:disabled), #scr-farm .fm-buy:hover:not(:disabled) { color: var(--acc); }
+/* иконка прокачки — нейтральная; золото только у купленного до конца */
+#scr-farm .shop-ico { color: var(--text2); background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05); }
+#scr-farm .shop-card.max .shop-ico { color: var(--acc); }
+/* значки строк «Бесплатный кейс», «Монеты за рекламу» и значок на кнопке рекламы — нейтральные, как у прокачки;
+   золото в блоке — только у главной кнопки «Открыть» */
+#scr-farm .bonus .b-ico, #scr-farm .bonus .b-ico.ad { color: var(--text2); background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05); }
+#scr-farm #btn-adcoins .ic { color: var(--text2); }
+#scr-farm #btn-adcoins:hover:not(:disabled) .ic { color: #fff; }
+
+/* облегчённый режим (html.gl-lite): без размытия, сплошная подложка карточки */
+html.gl-lite .fm-hud { -webkit-backdrop-filter: none; backdrop-filter: none; }
+
+/* ---------- Телефон ---------- */
+@media (max-width: 1080px) {
+  #scr-farm .farm-coin { padding: 0 0 8px; }
+}
+@media (max-width: 560px) {
+  .fm-stage { width: 200px; height: 200px; }
+  #scr-farm .big-coin { width: 168px; height: 168px; }
+  .fm-shadow { width: 148px; height: 24px; }
+  .fm-st { padding: 8px 10px; }
+  .fm-st b { font-size: 16px; }
+  #scr-farm .farm-coin { gap: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .fm-pop { animation-duration: .4s; }
+}
+
+/* Раунд 7 — агент xp: см. tools/plans/R7_SPEC.md */
+/* ---------- Уровень в шапке (#hdr-lv, наполняет js/xp.js): номер, ранг, тонкая полоса опыта ---------- */
+#hdr-lv { position: relative; display: flex; align-items: center; height: 34px; margin-left: 4px; }
+#hdr-lv:empty { display: none; }
+.lv-btn {
+  display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 12px 0 10px; border: 0;
+  color: var(--text); background: rgba(255, 255, 255, .045); cursor: pointer;
+  transition: background-color var(--t-fast, 120ms);
+}
+.lv-btn:hover { background: rgba(255, 255, 255, .08); }
+.lv-n { display: flex; align-items: baseline; gap: 4px; font: 700 var(--fs-18)/1 var(--d); font-variant-numeric: tabular-nums; }
+.lv-n small { font: 700 var(--fs-11)/1 var(--f); letter-spacing: .08em; color: var(--c-meta); }
+.lv-n b { display: inline-block; min-width: 1.2em; text-align: left; color: #fff; }
+/* Ширина колонки — по названию ранга (самое длинное, «Новобранец», ~86 px — первый ранг каждого новичка), не уже 76 px */
+.lv-col { display: flex; flex-direction: column; gap: 6px; width: auto; min-width: 76px; max-width: 112px; }
+.lv-rk {
+  font: 700 var(--fs-11)/1 var(--f); letter-spacing: .05em; text-transform: uppercase; text-align: left;
+  color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#hdr-lv .bar { position: relative; display: block; height: 4px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+#hdr-lv .bar i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--acc); transition: width .42s cubic-bezier(.2, .8, .2, 1); }
+
+/* «+45 XP» — небольшая плашка под блоком уровня, тает за секунду */
+.xp-pop {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 40; pointer-events: none; white-space: nowrap;
+  padding: 4px 8px; font: 700 var(--fs-12)/1 var(--d); letter-spacing: .03em; color: var(--acc-hi);
+  background: var(--gl-card, rgba(18, 20, 24, .85)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 6px 16px rgba(0, 0, 0, .4);
+  animation: xpPop 1.25s ease-out forwards;
+}
+.xp-pop small { font: 700 var(--fs-11)/1 var(--f); color: var(--text2); letter-spacing: .06em; }
+.xp-pop + .xp-pop { top: calc(100% + 34px); }
+@keyframes xpPop {
+  0% { opacity: 0; transform: translateY(-4px); }
+  12% { opacity: 1; transform: none; }
+  72% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(6px); }
+}
+
+/* Повышение уровня: полоса дозаполняется (переход ширины), номер въезжает снизу, плашка коротко теплеет */
+#hdr-lv.lv-up .lv-n b { animation: lvNum .46s cubic-bezier(.2, .8, .2, 1); }
+#hdr-lv.lv-up .lv-btn { animation: lvWarm .9s ease-out; }
+@keyframes lvNum { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes lvWarm { from { background: rgba(255, 178, 46, .2); } to { background: rgba(255, 255, 255, .045); } }
+
+/* Средняя ширина: без названия ранга (оно в подсказке и в профиле) — иначе шапка вплотную к навигации */
+@media (max-width: 1200px) {
+  .lv-rk { display: none; }
+  .lv-col { width: 48px; min-width: 0; }
+  .lv-btn { gap: 8px; padding: 0 10px 0 8px; }
+}
+/* Телефон: уровень — на аватаре (номер в углу, полоса под ним), шапка не становится шире */
+@media (max-width: 560px) {
+  #hdr-lv { position: absolute; right: 8px; top: 50%; width: 32px; height: 32px; margin: -16px 0 0; z-index: 2; pointer-events: none; }
+  .lv-btn { position: absolute; inset: 0; display: block; height: auto; padding: 0; background: none; }
+  .lv-btn:hover { background: none; }
+  .lv-n {
+    position: absolute; left: -5px; bottom: -6px; height: 14px; min-width: 16px; padding: 0 3px; justify-content: center; align-items: center;
+    font: 700 10px/1 var(--d); background: #0b0d11; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .2);
+  }
+  .lv-n small { display: none; }
+  .lv-n b { min-width: 0; text-align: center; }
+  .lv-col { position: absolute; left: 13px; right: 0; bottom: -6px; width: auto; min-width: 0; }
+  #hdr-lv .bar { height: 3px; background: rgba(0, 0, 0, .6); }
+  #hdr-lv.lv-up .lv-btn { animation: none; }
+  .xp-pop { top: calc(100% + 12px); }
+}
+
+/* ---------- Рамки аватара (награды уровней): ровная линия вокруг, без свечения.
+   Для своих превью: элемент с классом .xp-fr и data-fr="<id>" (js/xp.js, XP.catalog().frame) ---------- */
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr] { outline: 2px solid var(--fr, #8b95a3); outline-offset: 2px; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="steel"] { --fr: #8b95a3; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="bronze"] { --fr: #b0703c; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="cobalt"] { --fr: #3d72d9; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="jade"] { --fr: #3fae7a; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="crimson"] { --fr: #c4384a; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="gold"] { --fr: #ffb22e; outline-style: double; outline-width: 4px; outline-offset: 1px; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="silver"] { --fr: #cfd5de; outline-style: double; outline-width: 4px; outline-offset: 1px; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="violet"] { --fr: #8d5ad8; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="carbon"] { --fr: #6b717c; outline-style: double; outline-width: 4px; outline-offset: 1px; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="onyx"] { --fr: #e6e9f0; outline-width: 1px; outline-offset: 3px; box-shadow: 0 0 0 2px #0b0d11, 0 0 0 3px #e6e9f0; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="ivory"] { --fr: #ece3cf; }
+:is(.avatar, .xp-big-mark, .xp-fr)[data-fr="legend"] { --fr: #ffd27a; outline-offset: 3px; box-shadow: 0 0 0 1px #0b0d11, 0 0 0 2px #ffb22e; }
+@media (max-width: 560px) {
+  #ava-btn[data-fr] { outline-width: 1px; outline-offset: 2px; }
+  #ava-btn[data-fr="gold"], #ava-btn[data-fr="silver"], #ava-btn[data-fr="carbon"] { outline-width: 3px; outline-offset: 1px; }
+}
+
+/* ---------- Окно крупной награды (каждый 10-й уровень) ---------- */
+.modal.xp-big-m { max-width: 420px; }
+.xp-big { text-align: center; }
+.xp-big-mark {
+  width: 76px; height: 76px; margin: 8px auto 16px; display: grid; place-items: center;
+  font: 700 36px/1 var(--d); color: #fff; background: var(--raise); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+}
+.xp-big-mark .ic { font-size: 38px; }
+.xp-big-mark b { font-variant-numeric: tabular-nums; }
+.xp-big-k { font: 700 var(--fs-11)/1 var(--f); letter-spacing: .14em; text-transform: uppercase; color: var(--acc); margin-bottom: 8px; }
+.xp-big .m-title { justify-content: center; margin-bottom: 6px; }
+.xp-big-rk { font: 600 var(--fs-12)/1.3 var(--f); letter-spacing: .06em; text-transform: uppercase; color: var(--text2); }
+.xp-big-list { list-style: none; margin: 16px 0 8px; padding: 0; text-align: left; }
+.xp-big-list li {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-bottom: 4px;
+  font: 600 var(--fs-14)/1.3 var(--f); color: var(--text);
+  background: rgba(255, 255, 255, .045); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), inset 0 -1px 0 rgba(0, 0, 0, .3);
+}
+.xp-big-list li .ic { color: var(--text2); font-size: 16px; }
+.xp-big .hint { margin: 8px 0 4px; }
+
+/* Раунд 7 — агент profile: см. tools/plans/R7_SPEC.md
+   Профиль: блок уровня, аватар-кнопка с рамкой, точки встройки (витрина, достижения, лидеры),
+   окно «Аватар и рамка», окно настроек (сегменты, сброс прогресса в два шага). Стекло, кнопки и .bar — r7_glass.css */
+
+/* ---------- Аватар: кнопка выбора аватара и рамки ---------- */
+button.prof-ava { padding: 0; border: 0; cursor: pointer; }
+.prof-ava { margin: 3px; transition: background-color var(--t-fast, 120ms) linear; }
+.prof-ava .pa-ed {
+  position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; display: grid; place-items: center;
+  font-size: 12px; color: #fff; background: rgba(10, 12, 15, .82); box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .08);
+  opacity: 0; transition: opacity var(--t-fast, 120ms) linear;
+}
+.prof-ava:hover .pa-ed, .prof-ava:focus-visible .pa-ed { opacity: 1; }
+.prof-ava.ico:hover { background-color: #2a2f38; }
+@media (hover: none) { .prof-ava .pa-ed { opacity: 1; } }
+/* рамка на крупном аватаре профиля: тот же цвет из r7_xp.css (--fr), линия тоньше относительно размера */
+.prof-ava.xp-fr[data-fr] { outline-offset: 3px; }
+
+/* ---------- Блок уровня ---------- */
+.prof-level {
+  display: flex; align-items: stretch; gap: 16px; padding: 12px 16px 14px;
+  box-shadow: inset 0 1px 0 var(--hl, rgba(255, 255, 255, .06));
+}
+.pl-num {
+  flex-shrink: 0; min-width: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 4px 8px 6px; background: rgba(0, 0, 0, .28); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+}
+.pl-num small { font: 700 var(--fs-11)/1 var(--f); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.pl-num b { font: 700 40px/1 var(--d); color: #fff; font-variant-numeric: tabular-nums; }
+.pl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.pl-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.pl-rank {
+  display: flex; align-items: center; gap: 6px; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font: 700 var(--fs-12)/1.2 var(--f); letter-spacing: .1em; text-transform: uppercase; color: var(--text2);
+}
+.pl-rank .ic { flex-shrink: 0; font-size: 14px; color: var(--acc); }
+.pl-xp { flex-shrink: 0; font: 600 var(--fs-12)/1.2 var(--f); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pl-xp b { font: 700 var(--fs-14)/1 var(--d); color: #fff; }
+.prof-level .bar { height: 4px; }
+.pl-next { font: 500 var(--fs-12)/1.4 var(--f); color: var(--muted); }
+.pl-next b { font-weight: 600; color: #dfe3ea; }
+
+/* ---------- Точки встройки: витрина над вкладками, вкладки достижений и лидеров ---------- */
+.prof-show { margin-top: 12px; }
+.prof-show:empty, .prof-pane:empty { display: none; }
+.prof-pane { min-height: 120px; }
+#prof-tabs { min-width: 0; }
+
+/* ---------- Окно «Аватар и рамка» ---------- */
+.modal.ap-m { max-width: 520px; }
+.ap-prev { display: flex; align-items: center; gap: 16px; padding: 4px 0 8px; text-align: left; }
+.ap-face {
+  position: relative; width: 72px; height: 72px; flex-shrink: 0; display: grid; place-items: center; overflow: hidden; margin: 4px;
+  background: #07080b; font: 700 32px/1 var(--d); color: var(--acc);
+}
+.ap-face.ico { background: var(--raise); color: #d3d8e0; }
+.ap-face.ico .ic { font-size: 36px; }
+.ap-face img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ap-pid { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.ap-pid b { font: 700 var(--fs-18)/1.2 var(--f); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ap-pid small { font: 600 var(--fs-12)/1.2 var(--f); color: var(--muted); }
+.ap-pid small span { color: #dfe3ea; }
+
+.ap-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: 4px; }
+.ap-opt, .ap-fopt {
+  position: relative; border: 0; padding: 0; color: #aeb5c1; background: rgba(0, 0, 0, .3);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .05); cursor: pointer;
+  transition: background-color var(--t-fast, 120ms) linear, color var(--t-fast, 120ms) linear;
+}
+.ap-opt { height: 48px; display: grid; place-items: center; }
+.ap-opt .ic { font-size: 22px; }
+.ap-letter { font: 700 var(--fs-18)/1 var(--d); color: var(--acc); }
+.ap-opt:hover:not(:disabled), .ap-fopt:hover:not(:disabled) { color: #fff; background: rgba(255, 255, 255, .06); }
+/* выбранный вариант — тонкая светлая обводка и золотая линия снизу (как активная вкладка), без заливки */
+.ap-opt.on, .ap-fopt.on { color: #fff; background: rgba(255, 255, 255, .08); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22), inset 0 -2px 0 var(--acc); }
+.ap-opt.lock, .ap-fopt.lock { cursor: not-allowed; color: #5d6470; background: rgba(0, 0, 0, .22); }
+.ap-opt.lock > .ic { opacity: .45; }
+.ap-lk {
+  position: absolute; right: 2px; bottom: 2px; display: flex; align-items: center; gap: 2px;
+  padding: 2px 3px; background: rgba(10, 12, 15, .82); font: 700 10px/1 var(--f); color: #aab2bf; font-variant-numeric: tabular-nums;
+}
+.ap-lk .ic { font-size: 9px; opacity: 1; }
+
+.ap-fgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.ap-fopt { height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 8px; text-align: left; }
+.ap-fopt small { min-width: 0; font: 600 var(--fs-12)/1.2 var(--f); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* образец рамки: маленький тёмный квадрат, рамка — из r7_xp.css (.xp-fr[data-fr]) */
+.ap-sw { flex-shrink: 0; width: 16px; height: 16px; margin: 3px; background: #2a2f38; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1); }
+.ap-sw.xp-fr[data-fr] { outline-width: 1px; outline-offset: 2px; }
+.ap-sw.xp-fr[data-fr="gold"], .ap-sw.xp-fr[data-fr="silver"], .ap-sw.xp-fr[data-fr="carbon"] { outline-width: 3px; outline-offset: 1px; }
+.ap-fopt.lock .ap-sw { opacity: .5; }
+.ap-fopt.lock .ap-lk { position: static; flex-shrink: 0; margin-left: auto; }
+.ap-fopt.lock small { color: #808894; }
+.ap-m .hint { text-align: left; }
+
+/* ---------- Окно настроек ---------- */
+.modal.set-m { max-width: 440px; }
+.set-m .set-row { min-height: 52px; padding: 8px 0; color: #e6e9ef; box-shadow: 0 1px 0 rgba(255, 255, 255, .06); }
+.set-m .set-row:first-child { padding-top: 0; min-height: 44px; }
+.set-m .set-row > .btn { height: 32px; padding: 0 12px; font-size: var(--fs-12); }
+/* ВКЛ/ВЫКЛ, RU/EN — компактный сегмент: общая подложка, выбранный — светлее и с тонкой золотой линией снизу */
+.pf-seg {
+  display: inline-flex; flex-shrink: 0; gap: 0; padding: 2px;
+  background: rgba(0, 0, 0, .32); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08);
+}
+.pf-seg button {
+  min-width: 48px; height: 28px; padding: 0 12px; border: 0; color: #9aa3b2; background: transparent; cursor: pointer;
+  font: 700 var(--fs-12)/1 var(--f); letter-spacing: .08em; text-transform: uppercase;
+  transition: background-color var(--t-fast, 120ms) linear, color var(--t-fast, 120ms) linear;
+}
+.pf-seg button:hover { color: #fff; }
+.pf-seg button.on { color: #fff; background: rgba(255, 255, 255, .1); box-shadow: inset 0 -2px 0 var(--acc); cursor: default; }
+.set-m .m-btns { margin-top: 20px; }
+/* Сброс прогресса: мелкая ссылка в самом низу → предупреждение с кнопкой «Да, сбросить» */
+.set-danger { margin-top: 18px; padding-top: 12px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
+.set-reset {
+  padding: 4px 8px; border: 0; background: none; cursor: pointer;
+  font: 600 var(--fs-12)/1.3 var(--f); color: #9aa3b2; text-decoration: underline; text-decoration-color: rgba(154, 163, 178, .45);
+  text-underline-offset: 3px; transition: color var(--t-fast, 120ms) linear;
+}
+.set-reset:hover, .set-reset:focus-visible { color: #ffb3bc; text-decoration-color: rgba(255, 179, 188, .6); }
+.set-warn { text-align: left; }
+.set-warn p {
+  margin: 0; padding: 10px 12px; font: 500 var(--fs-12)/1.5 var(--f); color: #f1d4d8;
+  background: rgba(196, 56, 74, .12); box-shadow: inset 2px 0 0 #c4384a;
+}
+.set-warn .m-btns { margin-top: 10px; }
+
+/* ---------- Телефон ---------- */
+@media (max-width: 640px) {
+  .prof-level { gap: 12px; padding: 12px; }
+  .pl-num { min-width: 56px; }
+  .pl-num b { font-size: 34px; }
+  .pl-top { flex-wrap: wrap; row-gap: 4px; }
+  /* четыре вкладки — в одну строку на всю ширину: шрифт и поля меньше, без прокрутки (запасная прокрутка — на самых узких) */
+  #prof-tabs { max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  #prof-tabs::-webkit-scrollbar { display: none; }
+  #prof-tabs button { flex: 1 1 auto; min-width: 0; padding: 0 6px; font-size: 11px; letter-spacing: .02em; white-space: nowrap; }
+  .ap-prev { gap: 12px; }
+  .ap-face { width: 60px; height: 60px; }
+  .ap-fgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .set-m .set-row > .btn { max-width: 58%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (max-width: 360px) {
+  #prof-tabs button { padding: 0 4px; font-size: 10px; letter-spacing: 0; }
+}
+
+/* ---------- Лучший дроп: секретный трофей (чёрная плитка) ---------- */
+/* У обычного дропа фон плитки снят, а у .it.r9 чёрный фон остаётся — растянутая по высоте панели плитка
+   превращалась в высокую плиту поверх разделителя. Плитка трофея берёт свою высоту (картинка + поля) и встаёт по центру,
+   как картинка обычного дропа. */
+.pb-tile .it.r9 { align-self: center; }
+
+/* =====================================================================
+   Раунд 7 — ДОСТИЖЕНИЯ (агент ach): список в профиле (#prof-ach, ACH.render) и тост получения.
+   Карточки — стекло 85 % (.glass-card); открытые — ярче, закрытые — тусклее, с полосой прогресса.
+   Иконки — монохромные маски проекта (ic i-*). Углы прямые, без свечений; золото — только заливка полос.
+   ===================================================================== */
+.ach { display: block; }
+/* панель вкладки — стекло 72 % (класс .glass из r7_glass.css); карточки внутри — 85 % */
+.ach-in { padding: 14px 16px 16px; }
+.ach-hd { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.ach-h { display: inline-flex; align-items: center; gap: 8px; font: 700 var(--fs-14)/1.2 var(--f); letter-spacing: .08em; text-transform: uppercase; color: #eef1f6; }
+.ach-h .ic { color: rgba(255, 255, 255, .72); }
+.ach-cnt { font: 600 var(--fs-12)/1.2 var(--f); color: #c9ced8; font-variant-numeric: tabular-nums; }
+.ach-cnt b { font-size: var(--fs-14); color: #fff; }
+.bar.ach-all { margin-bottom: 14px; }
+
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: 8px; }
+/* подпись группы — тонкая строка на всю ширину сетки */
+.ach-g {
+  grid-column: 1 / -1; margin-top: 8px; padding-bottom: 4px;
+  font: 700 var(--fs-11)/1.2 var(--f); letter-spacing: .12em; text-transform: uppercase; color: #c9ced8;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .06);
+}
+.ach-g:first-child { margin-top: 0; }
+
+/* ---------- Карточка ---------- */
+.ach-c { display: flex; align-items: flex-start; gap: 12px; min-width: 0; padding: 12px; }
+.ach-ic {
+  position: relative; flex-shrink: 0; display: grid; place-items: center; width: 40px; height: 40px;
+  background: rgba(255, 255, 255, .06); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06);
+}
+.ach-ic > .ic { width: 22px; height: 22px; color: rgba(255, 255, 255, .34); }
+/* замок закрытого — мелкий значок в углу иконки */
+.ach-ic > .ach-lk { position: absolute; right: 3px; bottom: 3px; width: 12px; height: 12px; color: rgba(255, 255, 255, .5); }
+.ach-tx { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.ach-nm { font: 700 var(--fs-14)/1.25 var(--f); color: rgba(238, 241, 246, .78); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ach-ds { font: 500 var(--fs-12)/1.35 var(--f); color: var(--c-meta); }
+.ach-rw { font: 600 var(--fs-11)/1.35 var(--f); color: rgba(238, 241, 246, .62); font-variant-numeric: tabular-nums; }
+/* прогресс: дорожка и подпись «37 / 100» в одну строку */
+.ach-pg { display: flex; align-items: center; gap: 10px; margin-top: 5px; }
+.ach-pg .bar { flex: 1; min-width: 0; }
+.ach-pg .bar-lbl { margin: 0; flex-shrink: 0; }
+
+/* открытое — ярче: белая иконка на светлой плашке, белый текст, отметка «Получено» */
+.ach-c.on { background-color: rgba(30, 32, 37, .85); }
+.ach-c.on .ach-ic { background: rgba(255, 255, 255, .12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.ach-c.on .ach-ic > .ic { color: #fff; }
+.ach-c.on .ach-nm { color: #fff; }
+.ach-c.on .ach-ds { color: rgba(238, 241, 246, .74); }
+.ach-c.on .ach-rw { color: rgba(238, 241, 246, .74); }
+.ach-ok { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font: 600 var(--fs-11)/1.3 var(--f); letter-spacing: .04em; color: var(--good-hi); font-variant-numeric: tabular-nums; }
+.ach-ok .ic { width: 13px; height: 13px; }
+
+/* ---------- Тост получения: две строки (название и награда) ---------- */
+.toast.ach-toast { --tc: var(--acc); padding-right: 18px; animation: toastIn .2s ease-out, toastOut .3s ease-in 3.4s forwards; }
+.ach-tt { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ach-tt b { font: 700 var(--fs-14)/1.3 var(--f); color: #fff; }
+.ach-tt small { font: 600 var(--fs-12)/1.3 var(--f); color: rgba(238, 241, 246, .74); font-variant-numeric: tabular-nums; }
+.ach-tt small:empty { display: none; }
+
+@media (max-width: 600px) {
+  .ach-grid { grid-template-columns: 1fr; gap: 6px; }
+  .ach-c { gap: 10px; padding: 9px 10px; }
+  .ach-ic { width: 34px; height: 34px; }
+  .ach-ic > .ic { width: 19px; height: 19px; }
+  .ach-tx { gap: 2px; }
+  .ach-g { margin-top: 6px; }
+  .ach-in { padding: 12px 10px 12px; }
+}
+
+/* =====================================================================
+   Раунд 7 — левая лента дропа (агент feed). Контракт: tools/plans/R7_SPEC.md.
+   Плотная строка: тонкая полоса редкости по левому краю | крупная миниатюра |
+   ник … цена в одну строку, под ними — название предмета. Ник — кнопка профиля.
+   В «Топ» повторы одного предмета у одного игрока — одна строка со счётчиком «×N».
+   Стекло самой панели (#feed) — общие токены из r7_glass.css.
+   ===================================================================== */
+#feed .fd {
+  height: 50px; gap: 9px; padding: 3px 10px 3px 8px;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .045);
+  transition: background-color var(--t-fast) linear;
+}
+#feed .fd:hover { background: var(--gl-hover); }
+/* полоса редкости — 2 px по левому краю строки (раньше — под картинкой) */
+#feed .fd::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--rc); }
+/* свой дроп — золотой ник (полоса слева занята редкостью) */
+#feed .fd.me { box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .045); }
+
+/* миниатюра — крупнее (62×44), подложка — тёмная карточка с лёгким оттенком редкости снизу */
+#feed .fd-art {
+  width: 62px; height: 44px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .07) 0%, rgba(255, 255, 255, .02) 55%, var(--rca) 100%), var(--gl-card);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t), inset 0 -1px 0 var(--gl-edge-b);
+}
+#feed .fd-art::after, #feed .fd.r8 .fd-art::after { display: none; }
+#feed .fd-art .wimg { inset: 3px 4px 4px; }
+/* счётчик повторов «×7» — плашка в углу миниатюры, моноширинные цифры */
+.fd-x {
+  position: absolute; right: 0; top: 0; z-index: 1; padding: 2px 4px 1px;
+  background: rgba(8, 9, 12, .86); color: #fff;
+  font: 700 var(--fs-11)/1.2 var(--d); font-variant-numeric: tabular-nums; letter-spacing: .02em;
+}
+
+/* текст: строка «ник … цена», под ней — название предмета */
+#feed .fd-txt { display: flex; flex-direction: column; align-items: stretch; justify-content: center; gap: 1px; }
+.fd-l1 { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+#feed .fd-l1 > span {
+  flex: 1; min-width: 0; font: 500 var(--fs-11)/1.34 var(--f); color: #b9c0cb;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#feed .fd-l1 em {
+  flex-shrink: 0; display: flex; align-items: center;
+  font: 700 var(--fs-12)/1.34 var(--d); font-style: normal; font-variant-numeric: tabular-nums; color: var(--acc); letter-spacing: .02em; white-space: nowrap;
+}
+#feed .fd-l1 em .ci { font-size: 10px; margin-right: 4px; }
+#feed .fd-txt b {
+  font: var(--fw-name) var(--fs-12)/1.34 var(--f); color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* ник — ссылка на профиль: светлеет и подчёркивается при наведении */
+#feed .fd-nm { cursor: pointer; transition: color var(--t-fast) linear; }
+#feed .fd-nm:hover { color: #fff; text-decoration: underline; text-underline-offset: 2px; }
+#feed .fd.me .fd-nm { color: var(--acc); }
+
+/* телефон: горизонтальная полоса 54 px — ячейка шире, миниатюра 56×44, те же две строки */
+@media (max-width: 900px) {
+  #feed-list .fd { flex: 0 0 176px; height: auto; gap: 8px; padding: 4px 8px 4px 7px; box-shadow: inset -1px 0 0 rgba(255, 255, 255, .05); }
+  #feed-list .fd.me { box-shadow: inset -1px 0 0 rgba(255, 255, 255, .05); }
+  #feed-list .fd-art { width: 56px; height: 44px; }
+  #feed-list .fd-art .wimg { inset: 3px 3px 4px; }
+  #feed-list .fd-txt b { font-size: var(--fs-11); }
+  #feed-list .fd-l1 em { font-size: var(--fs-11); }
+  #feed-list .fd-txt .fd-sk { display: block; }
+  .fd-x { padding: 1px 3px 0; font-size: 10px; }
+  /* пустая лента: строка не в одну линию (обрезалась правым краем на 390 px), а в две — в ширину полосы */
+  #feed #feed-list .fd-empty {
+    flex: 1 1 0; min-width: 0; padding: 0 12px;
+    white-space: normal; overflow-wrap: anywhere; font-size: var(--fs-11); line-height: 1.3;
+  }
+}
+
+/* =====================================================================
+   Раунд 7 — агент social: витрина профиля (.shc-*), публичный профиль (.pp-*), лидерборды (.lb-*).
+   Стекло и токены — r7_glass.css. Прямые углы, без свечений; золото — только цены и активная вкладка.
+   ===================================================================== */
+
+/* ---------- Витрина в профиле ---------- */
+.shc { padding: 12px 16px 16px; }
+.shc-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 12px; }
+.shc-h b { font: 700 var(--fs-11)/1 var(--f); letter-spacing: .1em; text-transform: uppercase; color: #c9ced8; }
+.shc-n { font: 700 var(--fs-12)/1 var(--d); letter-spacing: .04em; color: #fff; }
+.shc-h small { margin-left: auto; font: 500 var(--fs-11)/1.3 var(--f); color: var(--muted); }
+.shc-row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.shc-slot { position: relative; min-width: 0; height: 156px; }
+.shc-it, .shc-empty {
+  position: relative; display: flex; flex-direction: column; align-items: stretch; width: 100%; height: 100%; min-width: 0;
+  padding: 8px 10px 10px; border: 0; border-radius: 0; text-align: left; cursor: pointer; color: #fff;
+  background-color: var(--gl-card); background-image: var(--gl-noise);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t), inset 0 -1px 0 var(--gl-edge-b);
+  transition: transform var(--t-fast) var(--gl-ease), background-color var(--t-fast) linear;
+}
+/* полоса редкости снизу — как у плиток предметов */
+.shc-it::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--rc); }
+.shc-art { position: relative; flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; margin: 0 -4px 6px; }
+.shc-art .wimg { width: 100%; height: 100%; }
+.shc-nm, .shc-fin { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shc-nm { font: var(--fw-name) var(--fs-12)/1.3 var(--f); }
+.shc-fin { font: 500 var(--fs-11)/1.3 var(--f); color: var(--c-skin); }
+.shc-pr { display: flex; align-items: center; gap: 4px; margin-top: 4px; font: 700 var(--fs-12)/1 var(--d); font-style: normal; color: var(--acc); letter-spacing: .02em; }
+.shc-empty { align-items: center; justify-content: center; gap: 8px; text-align: center; color: var(--muted); font: 600 var(--fs-11)/1.2 var(--f); letter-spacing: .06em; text-transform: uppercase;
+  background-color: rgba(255, 255, 255, .025); background-image: none; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07); }
+.shc-empty .ic { font-size: 20px; color: #c9ced8; }
+.shc-rm {
+  position: absolute; top: 4px; right: 4px; z-index: 2; width: 26px; height: 26px; display: grid; place-items: center; padding: 0;
+  border: 0; border-radius: 0; cursor: pointer; color: #dfe3ea; background: rgba(10, 12, 15, .82); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1);
+  opacity: 0; transition: opacity var(--t-fast) linear, background-color var(--t-fast) linear;
+}
+.shc-rm .ic { font-size: 13px; }
+.shc-slot:hover .shc-rm, .shc-rm:focus-visible { opacity: 1; }
+.shc-rm:hover { background: rgba(40, 43, 50, .95); color: #fff; }
+@media (hover: hover) {
+  .shc-it:hover, .shc-empty:hover { transform: translateY(-2px); background-color: var(--gl-card-h); }
+  .shc-empty:hover { background-color: rgba(255, 255, 255, .055); color: #dfe3ea; }
+}
+@media (hover: none) { .shc-rm { opacity: 1; } }
+
+/* окно выбора предмета */
+.shc-modal { text-align: left; }
+.shc-sub { margin: -6px 0 12px; font: 500 var(--fs-12)/1.3 var(--f); color: var(--muted); text-align: center; }
+.shc-grid { max-height: min(60vh, 560px); overflow-y: auto; padding: 2px 4px 2px 0; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+.shc-grid .it.sel { box-shadow: inset 0 0 0 1px var(--acc); }
+.shc-more, .shc-none { margin: 10px 0 0; font: 500 var(--fs-12)/1.4 var(--f); color: var(--muted); text-align: center; }
+.shc-none { padding: 18px 0; }
+
+/* ---------- Публичный профиль (окно; стекло 94 % — общие стили модалок) ---------- */
+.pp-modal { max-width: 560px; text-align: left; }
+.pp-head { display: flex; align-items: center; gap: 16px; padding-right: 36px; }
+.pp-ava {
+  position: relative; width: 72px; height: 72px; flex-shrink: 0; display: grid; place-items: center; overflow: hidden; margin: 4px;
+  background: #07080b; font: 700 var(--fs-hero)/1 var(--d); color: var(--acc);
+}
+.pp-ava.ico { background: var(--raise); color: #d3d8e0; }
+.pp-ava.ico .ic { display: block; font-size: 36px; }
+.pp-ava img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.pp-id { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.pp-nick { font: 700 var(--fs-24)/1.1 var(--f); color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pp-lv { display: flex; align-items: center; gap: 8px; font: 600 var(--fs-12)/1 var(--f); letter-spacing: .06em; text-transform: uppercase; color: #c9ced8; }
+.pp-lv b { color: #fff; font-weight: 700; }
+.pp-lv i { width: 3px; height: 3px; background: currentColor; opacity: .6; }
+.pp-seen { font: 500 var(--fs-11)/1.2 var(--f); color: var(--muted); }
+.pp-old { margin: 14px 0 0; font: 500 var(--fs-12)/1.45 var(--f); color: var(--muted); }
+.pp-cells { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin-top: 18px; }
+.pp-c { padding: 10px 12px; background-color: var(--gl-card); box-shadow: inset 0 1px 0 var(--gl-edge-t), inset 0 -1px 0 var(--gl-edge-b); }
+.pp-c small, .pp-lbl { display: block; font: 700 var(--fs-11)/1 var(--f); letter-spacing: .1em; text-transform: uppercase; color: #9aa3b2; }
+.pp-c b { display: flex; align-items: center; gap: 6px; margin-top: 8px; font: 700 var(--fs-18)/1 var(--d); color: #fff; letter-spacing: .02em; }
+.pp-sec { margin-top: 18px; }
+.pp-lbl { margin-bottom: 8px; }
+.pp-show { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.pp-sl { position: relative; display: flex; flex-direction: column; height: 96px; padding: 6px 6px 8px; min-width: 0;
+  background-color: var(--gl-card); box-shadow: inset 0 1px 0 var(--gl-edge-t), inset 0 -1px 0 var(--gl-edge-b); }
+.pp-sl::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--rc, transparent); }
+.pp-sl0 { background: rgba(255, 255, 255, .025); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+.pp-sl0::after { display: none; }
+.pp-art { position: relative; flex: 1 1 auto; min-height: 0; display: flex; align-items: center; justify-content: center; }
+.pp-art .wimg { width: 100%; height: 100%; }
+.pp-sl em { display: flex; align-items: center; justify-content: center; gap: 3px; font: 700 var(--fs-11)/1 var(--d); font-style: normal; color: var(--acc); white-space: nowrap; overflow: hidden; }
+.pp-best { position: relative; display: flex; align-items: stretch; gap: 14px; padding: 10px 12px 12px;
+  background-color: var(--gl-card); box-shadow: inset 0 1px 0 var(--gl-edge-t), inset 0 -1px 0 var(--gl-edge-b); }
+.pp-best::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--rc); }
+.pp-best .pp-art { flex: 0 0 150px; height: 96px; }
+.pp-bi { min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.pp-rar { font: 700 var(--fs-11)/1 var(--f); letter-spacing: .1em; text-transform: uppercase; color: var(--rc); }
+.pp-bi b { font: 700 var(--fs-14)/1.25 var(--f); color: #fff; }
+.pp-bi > span:not(.pp-rar) { font: 500 var(--fs-12)/1.3 var(--f); color: var(--c-skin); }
+.pp-bi em { display: flex; align-items: center; gap: 5px; margin-top: 2px; font: 700 var(--fs-18)/1 var(--d); font-style: normal; color: var(--acc); }
+.pp-empty { padding: 12px; font: 500 var(--fs-12)/1.4 var(--f); color: var(--muted); background: rgba(255, 255, 255, .025); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .06); }
+
+/* ---------- Лидерборды (вкладка профиля) ---------- */
+.lb { padding: 14px 16px 16px; }
+.lb-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 12px; }
+.lb-h b { font: 700 var(--fs-11)/1 var(--f); letter-spacing: .1em; text-transform: uppercase; color: #c9ced8; }
+.lb-h small { margin-left: auto; font: 500 var(--fs-11)/1.3 var(--f); color: var(--muted); }
+.lb-tabs { margin-bottom: 10px; }
+.lb-tabs button { flex: 1 1 0; min-width: 0; white-space: nowrap; }
+.lb-ts { display: none; }
+.lb-hint { margin: 0 0 8px; padding: 8px 12px; font: 500 var(--fs-12)/1.4 var(--f); color: #c9ced8; background: rgba(255, 255, 255, .035); box-shadow: inset 2px 0 0 rgba(255, 255, 255, .25); }
+.lb-list { display: flex; flex-direction: column; }
+.lb-row {
+  display: grid; grid-template-columns: max(36px, calc(var(--plc, 1) * .64 * var(--fs-14) + 10px)) 32px minmax(0, 1fr) auto; align-items: center; gap: 12px;
+  width: 100%; min-height: 52px; padding: 6px 12px 6px 6px; border: 0; border-radius: 0; text-align: left; cursor: pointer; color: #fff;
+  background: transparent; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .05); transition: background-color var(--t-fast) linear;
+}
+@media (hover: hover) { .lb-row:hover { background-color: var(--gl-hover); } }
+.lb-row.me { background-color: rgba(255, 178, 46, .06); box-shadow: inset 2px 0 0 var(--acc), inset 0 -1px 0 rgba(255, 255, 255, .05); }
+/* --plc — длина самого длинного места в таблице (js/leaders.js): колонка растёт под точное место (12 345, 1 234 567) */
+.lb-pl { font: 700 var(--plf, var(--fs-14))/1 var(--d); color: var(--muted); text-align: center; letter-spacing: .02em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lb-row.p1 .lb-pl, .lb-row.p2 .lb-pl, .lb-row.p3 .lb-pl { color: #fff; font-size: var(--fs-18); }
+.lb-ava { position: relative; width: 32px; height: 32px; display: grid; place-items: center; overflow: hidden; background: #07080b; font: 700 var(--fs-14)/1 var(--d); color: var(--acc); }
+.lb-ava.ico { background: var(--raise); color: #d3d8e0; }
+.lb-ava.ico .ic { display: block; font-size: 18px; }
+.lb-ava img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.lb-nm { min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; row-gap: 3px; }
+.lb-nm b { min-width: 0; max-width: 100%; font: 600 var(--fs-14)/1.2 var(--f); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-nm i { font: 700 var(--fs-11)/1 var(--f); font-style: normal; letter-spacing: .08em; text-transform: uppercase; color: var(--acc); }
+.lb-nm small { flex-basis: 100%; font: 500 var(--fs-11)/1.2 var(--f); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lb-v { display: flex; align-items: center; justify-content: flex-end; gap: 6px; font: 700 var(--fs-14)/1 var(--d); color: #fff; letter-spacing: .02em; white-space: nowrap; }
+.lb-bv { gap: 10px; color: var(--acc); }
+.lb-bv > span:last-child { display: flex; align-items: center; gap: 5px; }
+.lb-art { position: relative; width: 64px; height: 40px; display: flex; align-items: center; justify-content: center; }
+.lb-art .wimg { width: 100%; height: 100%; }
+.lb-art::after { content: ""; position: absolute; left: 8px; right: 8px; bottom: -2px; height: 2px; background: var(--rc); }
+.lb-gap { height: 10px; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .12); margin-bottom: 4px; }
+.lb-empty { padding: 14px 12px; font: 500 var(--fs-12)/1.4 var(--f); color: var(--muted); }
+
+/* ---------- Телефон ---------- */
+@media (max-width: 640px) {
+  .shc { padding: 10px 12px 12px; }
+  .shc-h small { margin-left: 0; flex-basis: 100%; }
+  .shc-row { gap: 4px; }
+  .shc-slot { height: 92px; }
+  .shc-it { padding: 4px 4px 7px; }
+  .shc-nm, .shc-fin { display: none; }
+  .shc-art { margin: 0 0 4px; }
+  .shc-pr { justify-content: center; margin-top: 0; font-size: var(--fs-11); gap: 2px; }
+  .shc-pr .ci { display: none; }
+  .shc-empty span { display: none; }
+  .shc-rm { top: 2px; right: 2px; width: 22px; height: 22px; }
+  .shc-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); max-height: 62vh; }
+  .pp-head { gap: 12px; }
+  .pp-ava { width: 60px; height: 60px; }
+  .pp-nick { font-size: var(--fs-18); }
+  .pp-show { gap: 4px; }
+  .pp-sl { height: 76px; padding: 4px 3px 7px; }
+  .pp-sl em .ci { display: none; }
+  .pp-best .pp-art { flex-basis: 110px; height: 76px; }
+  .lb { padding: 12px 10px 12px; }
+  .lb-h small { margin-left: 0; flex-basis: 100%; }
+  .lb-tabs button { padding-left: 4px; padding-right: 4px; font-size: var(--fs-11); letter-spacing: .04em; }
+  .lb-tl { display: none; }
+  .lb-ts { display: inline; }
+  .lb-row { grid-template-columns: max(26px, calc(var(--plc, 1) * .64 * var(--plf, var(--fs-14)) + 2px)) 28px minmax(0, 1fr) auto; gap: 8px; padding-right: 6px; }
+  /* длинные места (от 6 знаков: 12 345) — на телефоне мельче, чтобы имени осталось место */
+  .lb-list.wide { --plf: var(--fs-12); }
+  .lb-ava { width: 28px; height: 28px; }
+  .lb-art { width: 44px; height: 30px; }
+  .lb-v { font-size: var(--fs-12); }
+}
+
+/* Раунд 7 — агент onboarding: см. tools/plans/R7_SPEC.md */
+/* Подсказки первого входа (js/onboarding.js): небольшой стеклянный пузырь у нужного элемента,
+   уголок-стрелка, прямые углы, без затемнения экрана. Над панелями и шапкой, но под окнами (#modal-root 60). */
+.onb {
+  position: fixed; left: 0; top: 0; z-index: 55;
+  width: max-content; max-width: min(300px, calc(100vw - 16px));
+  padding: 12px 14px 10px;
+  background-color: var(--gl-modal, rgba(18, 20, 24, .94));
+  background-image: var(--gl-noise, none);
+  -webkit-backdrop-filter: var(--gl-blur, none); backdrop-filter: var(--gl-blur, none);
+  border: 1px solid rgba(255, 255, 255, .1);
+  box-shadow: inset 0 1px 0 var(--gl-edge-t, rgba(255, 255, 255, .08)), inset 0 -1px 0 var(--gl-edge-b, rgba(0, 0, 0, .35)), var(--gl-shadow, 0 18px 40px rgba(0, 0, 0, .45));
+  color: var(--text, #eef1f6);
+  border-radius: 0;
+}
+.onb.in { animation: onbIn var(--t-modal, 160ms) cubic-bezier(.2, .7, .3, 1) both; }
+.onb[data-side="t"].in { animation-name: onbInDn; }
+@keyframes onbIn { from { opacity: 0; translate: 0 8px; } to { opacity: 1; translate: 0 0; } }
+@keyframes onbInDn { from { opacity: 0; translate: 0 -8px; } to { opacity: 1; translate: 0 0; } }
+
+/* уголок-стрелка: два треугольника — обводка и заливка, смотрит на элемент.
+   data-side — с какой стороны элемента стоит пузырь; --ax/--ay — центр элемента по краю пузыря */
+.onb-ar, .onb-ar::after { position: absolute; width: 0; height: 0; border: 8px solid transparent; }
+.onb-ar::after { content: ""; }
+/* пузырь под элементом — уголок сверху, остриём вверх */
+.onb-ar { left: var(--ax, 50%); bottom: 100%; margin-left: -8px; border-top: 0; border-bottom-color: rgba(255, 255, 255, .1); }
+.onb-ar::after { left: -8px; top: 1px; border-top: 0; border-bottom-color: rgba(18, 20, 24, .96); }
+/* над элементом — снизу, остриём вниз */
+.onb[data-side="t"] .onb-ar { bottom: auto; top: 100%; border: 8px solid transparent; border-bottom: 0; border-top-color: rgba(255, 255, 255, .1); }
+.onb[data-side="t"] .onb-ar::after { top: auto; bottom: 1px; border: 8px solid transparent; border-bottom: 0; border-top-color: rgba(18, 20, 24, .96); }
+/* справа от элемента — слева, остриём влево */
+.onb[data-side="r"] .onb-ar { left: auto; right: 100%; bottom: auto; top: var(--ay, 50%); margin: -8px 0 0; border: 8px solid transparent; border-left: 0; border-right-color: rgba(255, 255, 255, .1); }
+.onb[data-side="r"] .onb-ar::after { left: 1px; top: -8px; border: 8px solid transparent; border-left: 0; border-right-color: rgba(18, 20, 24, .96); }
+/* слева от элемента — справа, остриём вправо */
+.onb[data-side="l"] .onb-ar { left: 100%; bottom: auto; top: var(--ay, 50%); margin: -8px 0 0; border: 8px solid transparent; border-right: 0; border-left-color: rgba(255, 255, 255, .1); }
+.onb[data-side="l"] .onb-ar::after { left: auto; right: 1px; top: -8px; border: 8px solid transparent; border-right: 0; border-left-color: rgba(18, 20, 24, .96); }
+
+.onb-t { margin: 0 0 10px; font-size: var(--fs-14, 14px); line-height: 1.4; }
+.onb-b { display: flex; align-items: center; justify-content: flex-end; gap: 12px; }
+.onb-skip {
+  padding: 4px 0; background: none; border: 0; border-radius: 0; cursor: pointer;
+  color: var(--c-meta, #98a1b0); font: inherit; font-size: var(--fs-12, 12px);
+  transition: color var(--t-fast, 120ms) linear;
+}
+.onb-skip:hover { color: var(--text, #eef1f6); }
+.onb .btn.onb-go { min-height: 30px; padding: 6px 14px; font-size: var(--fs-12, 12px); border-radius: 0; }
+
+/* элемент, на который указывает подсказка: тонкая золотая обводка, без свечения */
+.onb-hl { outline: 1px solid var(--acc, #ffb22e); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) { .onb.in { animation: none; } }
 
 /* ---------- Админ-панель: меню разделов слева, плотные таблицы, плоские графитовые блоки ---------- */
 #scr-admin > .wrap { max-width: 1480px; }
@@ -2256,3 +3983,23 @@ input.ap-in.s[type="number"] { width: 64px; }
 }
 .ap-cnt:empty { display: none; }
 @media (max-width: 760px) { .ap-end { display: none; } }
+
+/* выход на этом устройстве: подпись в две строки помещается в боковое меню */
+.ap-out { height: auto; min-height: 40px; padding-block: 9px; line-height: 1.25; }
+/* Выдача: секретный скин — карточка-трофей на чёрном, подпись светлая */
+.ap-sx { display: grid; grid-template-columns: 172px minmax(0, 1fr); gap: 14px; align-items: start; background: linear-gradient(90deg, #07080b 0%, #12141a 58%, #1b1e26 100%); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .07), inset 3px 0 0 #e9ecf2; }
+.ap-sx-card .it { width: 172px; height: 136px; cursor: default; }
+.ap-sx-card .it-art { flex: 1 1 0; min-height: 0; height: auto; margin: 4px 2px; }
+.ap-sx-r { min-width: 0; }
+.ap-sx .ap-bt { color: #e9ecf2; letter-spacing: .2em; }
+.ap-sx-n { margin: 0 0 10px; font: 700 15px/1.3 var(--d); color: #fff; }
+.ap-sx-n span { color: var(--acc-hi); font-weight: 600; white-space: nowrap; }
+.ap-pp { min-width: 200px; }
+.ap-sxb { background: #0b0c10; color: #e9ecf2; box-shadow: inset 0 0 0 1px rgba(233, 236, 242, .35); }
+.ap-sxb:hover { background: #16181f; color: #fff; }
+@media (max-width: 760px) {
+  .ap-out { padding-block: 0; min-height: 34px; }
+  .ap-sx { grid-template-columns: minmax(0, 1fr); }
+  .ap-sx-card .it { width: 100%; max-width: 220px; }
+  .ap-pp { min-width: 0; }
+}

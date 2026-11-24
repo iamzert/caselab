@@ -58,7 +58,7 @@ const Fonts = (function () {
     UI.modal('<h3 class="m-title">' + t('font_pick') + '</h3>' +
       '<div class="fn-list">' + LIST.map(optHtml).join('') + '</div>' +
       '<p class="hint">' + t('font_hint') + '</p>' +
-      '<div class="m-btns"><button class="btn primary" data-act="font-done">' + t('close') + '</button></div>');
+      '<div class="m-btns"><button class="btn" data-act="font-done">' + t('close') + '</button></div>');
   }
 
   const A = UI.actions;

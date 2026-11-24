@@ -145,6 +145,10 @@ const I18N = {
 
     rar_common: 'Обычное', rar_uncommon: 'Необычное', rar_rare: 'Редкое', rar_epic: 'Эпическое',
     rar_legendary: 'Легендарное', rar_mythic: 'Мифическое', rar_special: '★ Особое', rar_relic: '✦ Реликвия', rar_ultra: '✧ Артефакт',
+    // ◆ Секретная редкость: трофей из админки (не продаётся, не ставится в апгрейд)
+    rar_secret: 'Секретный', rar_secret_s: 'Секр.', gift_title: 'Подарок', gift_from_admin: 'Подарок от администрации',
+    trophy_note: 'Трофей · не продаётся', trophy_no_sell: 'Трофей — продать нельзя', trophy_no_up: 'Трофей нельзя поставить в апгрейд',
+    sell_all_keep: 'Трофеи останутся в инвентаре.',
     wear_fn: 'Новое', wear_mw: 'Почти новое', wear_ft: 'Испытанное', wear_ww: 'Поношенное', wear_bs: 'Боевое',
     wear_fn_s: 'Нов.', wear_mw_s: 'П.нов.', wear_ft_s: 'Исп.', wear_ww_s: 'Пон.', wear_bs_s: 'Боев.',
 
@@ -182,7 +186,8 @@ const I18N = {
     type_shotgun: 'Дробовики', type_mg: 'Пулемёты', type_knife: 'Ножи', type_gloves: 'Перчатки',
     // реклама уже просмотрена, а кейс открыть не удалось — следующее открытие без рекламы
     open_ad_owed: '<i class="ic i-play"></i>Открыть',
-    rank_0: 'Новичок', rank_1: 'Рекрут', rank_2: 'Боец', rank_3: 'Ветеран', rank_4: 'Эксперт', rank_5: 'Легенда',
+    // ранги по диапазонам уровней (js/xp.js, RANKS): 1–4, 5–9, 10–19, 20–29, 30–44, 45–59, 60–79, 80–100
+    rank_0: 'Новобранец', rank_1: 'Рядовой', rank_2: 'Боец', rank_3: 'Ветеран', rank_4: 'Эксперт', rank_5: 'Мастер', rank_6: 'Элита', rank_7: 'Легенда',
     // очень редкий дроп из кейса (шанс меньше 1 %)
     rare_drop: 'Очень редкий дроп', rare_odds: '1 из {n}', rare_chance: 'Шанс выпадения', rare_skip: 'Нажмите, чтобы пропустить',
   },
@@ -330,6 +335,9 @@ const I18N = {
 
     rar_common: 'Common', rar_uncommon: 'Uncommon', rar_rare: 'Rare', rar_epic: 'Epic',
     rar_legendary: 'Legendary', rar_mythic: 'Mythic', rar_special: '★ Special', rar_relic: '✦ Relic', rar_ultra: '✧ Artifact',
+    rar_secret: 'Secret', rar_secret_s: 'Secret', gift_title: 'Gift', gift_from_admin: 'A gift from the administration',
+    trophy_note: 'Trophy · not for sale', trophy_no_sell: 'Trophy — cannot be sold', trophy_no_up: 'A trophy cannot be used in upgrades',
+    sell_all_keep: 'Trophies stay in your inventory.',
     wear_fn: 'Pristine', wear_mw: 'Lightly Used', wear_ft: 'Field Proven', wear_ww: 'Worn', wear_bs: 'Battle Hardened',
     wear_fn_s: 'Prist.', wear_mw_s: 'L.Used', wear_ft_s: 'F.Prov.', wear_ww_s: 'Worn', wear_bs_s: 'B.Hard.',
 
@@ -365,7 +373,7 @@ const I18N = {
     type_pistol: 'Pistols', type_smg: 'SMGs', type_rifle: 'Rifles', type_sniper: 'Sniper rifles',
     type_shotgun: 'Shotguns', type_mg: 'Machine guns', type_knife: 'Knives', type_gloves: 'Gloves',
     open_ad_owed: '<i class="ic i-play"></i>Open',
-    rank_0: 'Rookie', rank_1: 'Recruit', rank_2: 'Fighter', rank_3: 'Veteran', rank_4: 'Expert', rank_5: 'Legend',
+    rank_0: 'Recruit', rank_1: 'Private', rank_2: 'Fighter', rank_3: 'Veteran', rank_4: 'Expert', rank_5: 'Master', rank_6: 'Elite', rank_7: 'Legend',
     rare_drop: 'Very rare drop', rare_odds: '1 in {n}', rare_chance: 'Drop chance', rare_skip: 'Click to skip',
   },
 };

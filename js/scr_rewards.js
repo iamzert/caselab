@@ -12,7 +12,8 @@ const Rewards = (function () {
     const d = G.S.daily;
     return d.last && Date.now() - d.last < 2 * G.C.DAY ? Math.min(7, d.streak + 1) : 1;
   }
-  const dailyReward = (st) => round2(DAILY[st - 1] + G.income() * 60);
+  // награда за день серии st (1…7; без аргумента — за сегодняшний день)
+  const dailyReward = (st) => round2(DAILY[Math.min(7, Math.max(1, Math.floor(st) || dailyStreak())) - 1] + G.income() * 60);
 
   function renderDays(ready) {
     const cur = ready ? dailyStreak() : Math.max(1, G.S.daily.streak);
@@ -34,7 +35,8 @@ const Rewards = (function () {
     w: { min: 25, max: 120, tier: 'fn', need: 70 },
   };
   const KINDS = ['h', 'd', 'w'];
-  const UNITS = { h: [0, 1, 2, 3], d: [0, 1, 2, 3], w: [0, 1, 2, 3] }; // какие части таймера показывать
+  // какие части таймера показывать: у часового приза дни и часы всегда нули, у дневного — дни
+  const UNITS = { h: [2, 3], d: [1, 2, 3], w: [0, 1, 2, 3] };
   // призы различаются иконкой и тонкой полоской сверху (цвет — p5_screens.css .rw-card.k-*), а не цветом панели
   const K_ICON = { h: 'clock', d: 'rewards', w: 'trophy' };
   const pools = {};
@@ -91,7 +93,7 @@ const Rewards = (function () {
     const prog = Math.min(progress(k), need);
     const cond = need
       ? '<small>' + t('rw_cond_open_short') + '</small><b>' + prog + ' / ' + need + '</b>' +
-        '<div class="bar"><div class="bar-fill" style="width:' + (prog / need * 100) + '%"></div></div>'
+        '<div class="bar"><i style="width:' + (prog / need * 100) + '%"></i></div>'
       : '<small>' + t('rw_cond') + '</small><b>' + t('rw_free') + '</b>';
     const btn = got ? '<button class="btn" disabled>' + UI.ic('check') + t('rw_claimed') + '</button>'
       : condMet(k) ? '<button class="btn primary" data-act="rw-claim" data-id="' + k + '">' + t('rw_claim') + '</button>'
@@ -149,20 +151,43 @@ const Rewards = (function () {
     return '<div class="q-row' + (done ? ' done' : '') + (got ? ' got' : '') + '">' +
       '<div class="q-ico">' + UI.ic(Q_ICON[q.k]) + '</div>' +
       '<div class="q-info"><b>' + t('q_' + q.id) + '</b>' +
-      '<div class="q-prog"><div class="bar"><div class="bar-fill" style="width:' + (pr / q.n * 100) + '%"></div></div><span>' + txt + '</span></div></div>' +
+      '<div class="q-prog"><div class="bar"><i style="width:' + (pr / q.n * 100) + '%"></i></div><span>' + txt + '</span></div></div>' +
       btn + '</div>';
   }
 
   // ================= Отрисовка =================
   let sigD = '', sigT = '', sigQ = '', sigTop = '';
 
-  function render() { sigD = sigT = sigQ = sigTop = ''; tick(); }
+  const hasWheel = () => typeof Wheel !== 'undefined';
+  function render() {
+    sigD = sigT = sigQ = sigTop = '';
+    if (hasWheel()) Wheel.render($('#rw-wheel'));
+    tick();
+  }
+
+  // Повторы одного предмета у одного игрока — одна карточка со счётчиком «×N» (ключ — игрок + скин).
+  // Здесь все дропы свои, игрок один; карточка показывает самый дорогой экземпляр, порядок — по цене.
+  function collapse(list, who) {
+    const by = {}, out = [];
+    list.forEach((x) => {
+      const key = (who ? who(x) : 'me') + '|' + x.s;
+      const g = by[key];
+      if (!g) { by[key] = { x: x, n: 1 }; out.push(by[key]); return; }
+      g.n++;
+      if (G.instValue(x) > G.instValue(g.x)) g.x = x;
+    });
+    return out.sort((a, b) => G.instValue(b.x) - G.instValue(a.x));
+  }
 
   // Лучшие дропы игрока (те же, что во вкладке «Топ» левой ленты)
   function renderTop() {
-    const top = G.S.top;
+    const top = collapse(G.S.top);
     $('#rw-top').innerHTML = top.length
-      ? top.map((x) => UI.itemCard(x, { price: G.instValue(x) })).join('')
+      ? top.map((g) => {
+        const card = UI.itemCard(g.x, { price: G.instValue(g.x), cls: g.n > 1 ? 'rw-many' : '' });
+        // счётчик — в правом нижнем углу карточки, поверх строки названия не ложится
+        return g.n > 1 ? card.replace(/<\/div>$/, '<b class="rw-x" title="×' + g.n + '">×' + g.n + '</b></div>') : card;
+      }).join('')
       : '<div class="empty small">' + t('rw_top_empty', { v: G.fmtInt(G.C.FEED_MIN) }) + '</div>';
   }
 
@@ -174,7 +199,7 @@ const Rewards = (function () {
     const sd = [dr, S.daily.streak, S.daily.last].join();
     if (sd !== sigD) { sigD = sd; renderDays(dr); }
     UI.setText($('#daily-sub'), t('daily_day', { d: dr ? dailyStreak() : Math.max(1, S.daily.streak) }));
-    const stp = S.top.length + ':' + (S.top[0] ? S.top[0].s + S.top[0].f : '') + ':' + G.lang;
+    const stp = S.top.map((x) => x.s + x.f).join() + ':' + G.lang;
     if (stp !== sigTop) { sigTop = stp; renderTop(); }
     const db = $('#btn-daily');
     UI.setHTML(db, dr ? t('take_btn') + ' +' + COIN + G.fmt(dailyReward(dailyStreak())) : t('wait', { t: G.fmtTime(S.daily.last + G.C.DAY - now) }));
@@ -188,12 +213,14 @@ const Rewards = (function () {
     const sq = [p.d, S.day.o, S.day.u, S.day.uw, S.day.c, S.day.s, S.day.r, S.day.q.join('|')].join();
     if (sq !== sigQ) { sigQ = sq; $('#rw-quests').innerHTML = qs.map(questRow).join(''); }
     UI.setText($('#rw-q-reset'), t('rw_q_reset', { t: G.fmtTime(G.periodEnd('d') - now) }));
+    if (hasWheel()) Wheel.tick();
   }
 
   // Красная точка на кнопке «Награды»: что-то можно забрать
   function dot() {
     const p = G.rollPeriods();
     if (dailyReady()) return true;
+    if (hasWheel() && Wheel.ready()) return true;
     if (KINDS.some((k) => !claimed(k, p) && condMet(k))) return true;
     return todayQuests(p.d).some((q) => qDone(q) && !qClaimed(q));
   }
@@ -207,6 +234,7 @@ const Rewards = (function () {
     const v = dailyReward(st);
     G.S.daily = { last: Date.now(), streak: st };
     G.addCoins(v);
+    G.emit('daily', { streak: st });   // опыт и достижения
     Sfx.coin();
     UI.toast(t('daily_got', { d: st, v: G.fmt(v) }), 'good');
     G.save(true);
@@ -245,6 +273,7 @@ const Rewards = (function () {
     if (!q || !qDone(q) || qClaimed(q)) return;
     G.S.day.q.push(q.id);
     G.addCoins(q.r);
+    G.emit('quest', { id: q.id });   // опыт и достижения
     Sfx.coin();
     UI.toast(t('q_got', { v: G.fmt(q.r) }), 'good');
     G.save(false);
@@ -252,5 +281,6 @@ const Rewards = (function () {
     UI.refresh();
   };
 
-  return { dailyReady: dailyReady };
+  // для главной (плашка серии в scr_cases.js): готов ли бонус, день серии, награда за день st (1…7)
+  return { dailyReady: dailyReady, dailyStreak: dailyStreak, dailyReward: dailyReward };
 })();

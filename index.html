@@ -42,6 +42,7 @@
         <div class="bal" title=""><i class="ci"></i><span id="bal">0</span></div>
         <button class="plus" data-act="nav" data-id="farm" aria-label="farm"><i class="ic i-plus"></i></button>
         <button class="hbtn adm-hbtn" data-act="nav" data-id="admin" hidden aria-label="admin"><i class="ic i-gear"></i></button>
+        <div class="hdr-lv" id="hdr-lv"></div>
         <button class="hdr-user" data-act="nav" data-id="profile" aria-label="profile">
           <span class="avatar" id="ava-btn"><img id="ava-img" alt=""><span id="ava-letter"></span></span>
         </button>
@@ -107,17 +108,14 @@
         <section class="screen" id="scr-inv">
           <div class="wrap">
             <div class="inv-bar">
-              <button class="btn dark" data-act="sell-all" data-i18n="sell_all"></button>
-              <button class="btn dark" data-act="sell-low" data-i18n="sell_low"></button>
               <div class="inv-sum"><small data-i18n="inv_worth"></small><b><i class="ci"></i><span id="inv-worth">0</span></b><small id="inv-count"></small></div>
-              <label class="sortsel"><i class="ic i-sort"></i><select id="inv-sort">
-                <option value="new" data-i18n="sort_new"></option>
-                <option value="desc" data-i18n="sort_desc"></option>
-                <option value="asc" data-i18n="sort_asc"></option>
-                <option value="rar" data-i18n="sort_rar"></option>
-              </select><i class="ic i-chev"></i></label>
+              <!-- Раунд 7: слева стоимость, справа действия: выбор нескольких (золотая «Продать» — в полосе выбора), контракт; продажи пачкой — второстепенные. Сортировка — в ряду фильтров -->
+              <button class="btn inv-pick" id="inv-pick" data-act="inv-pick"><i class="ic i-check"></i><span data-i18n="inv_pick"></span></button>
+              <button class="btn inv-ctr" data-act="inv-contract"><i class="ic i-swap"></i><span data-i18n="inv_contract"></span></button>
+              <button class="btn inv-sl" data-act="sell-low" data-i18n="sell_low"></button>
+              <button class="btn inv-sa" data-act="sell-all" data-i18n="sell_all"></button>
             </div>
-            <!-- Фильтры: поиск, тип, редкость, износ (списки заполняет js/scr_inv.js) -->
+            <!-- Фильтры: поиск, тип, редкость, износ (списки заполняет js/scr_inv.js); справа — сортировка -->
             <div class="inv-filt" id="inv-filt">
               <label class="search mini inv-q"><i class="ic i-search"></i><input id="inv-q" type="text" autocomplete="off" data-i18n-ph="inv_search"></label>
               <label class="sortsel fsel"><select id="inv-ft" aria-label="type"></select><i class="ic i-chev"></i></label>
@@ -125,26 +123,51 @@
               <label class="sortsel fsel"><select id="inv-fw" aria-label="wear"></select><i class="ic i-chev"></i></label>
               <span class="inv-found" id="inv-found"></span>
               <button class="lnk inv-reset" id="inv-reset" data-act="inv-reset"><i class="ic i-x"></i><span data-i18n="inv_reset"></span></button>
+              <label class="sortsel"><i class="ic i-sort"></i><select id="inv-sort">
+                <option value="new" data-i18n="sort_new"></option>
+                <option value="desc" data-i18n="sort_desc"></option>
+                <option value="asc" data-i18n="sort_asc"></option>
+                <option value="rar" data-i18n="sort_rar"></option>
+              </select><i class="ic i-chev"></i></label>
             </div>
             <div class="inv-wrap" id="inv-wrap"><div class="item-grid inv" id="inv-grid"></div></div>
+            <!-- Полоса выбора (js/scr_inv.js): сколько выбрано, на какую сумму, главное действие — «Продать» -->
+            <div class="inv-selbar" id="inv-selbar" hidden>
+              <span class="inv-sel-n" id="inv-sel-n"></span>
+              <button class="lnk inv-sel-all" data-act="inv-pick-all" data-i18n="inv_pick_all"></button>
+              <button class="btn" data-act="inv-pick" data-i18n="inv_pick_off"></button>
+              <button class="btn primary" id="inv-sel-sell" data-act="inv-sell-sel" disabled></button>
+            </div>
           </div>
         </section>
 
         <!-- Апгрейд -->
         <section class="screen" id="scr-upgrade">
           <div class="wrap">
+            <!-- шапка экрана: заголовок, вкладки «Апгрейд | Контракт», турбо и звук — одним рядом -->
+            <div class="up-head">
+              <h2 class="sec-h first"><span data-i18n="nav_upgrades"></span></h2>
+              <div class="up-tabs" role="tablist">
+                <button class="on" data-act="up-tab" data-id="up" role="tab" data-i18n="up_tab_up"></button>
+                <button data-act="up-tab" data-id="contract" role="tab" data-i18n="up_tab_ct"></button>
+              </div>
+              <div class="up-tools">
+                <button class="tbtn" id="up-fast" data-act="fast" data-lock="1" data-i18n-title="up_turbo" aria-label="turbo"><i class="ic i-bolt"></i></button>
+                <button class="tbtn" data-act="sound" aria-label="sound"><i class="ic i-sound"></i></button>
+              </div>
+            </div>
+            <div class="ct" id="ct-pane" hidden></div>
+            <div class="up-pane" id="up-pane">
             <div class="up-top">
               <div class="up-panel">
                 <div class="up-ph"><span data-i18n="up_stake_title"></span><button class="lnk" data-act="up-clear-stake" data-i18n="up_clear"></button></div>
                 <div class="up-slot" id="up-stake"></div>
                 <div class="up-sum" id="up-sum"></div>
               </div>
-              <div class="up-center">
+              <div class="up-center up-panel">
                 <div class="up-brand" id="up-brand" hidden></div>
-                <div class="up-tools">
-                  <button class="tbtn" id="up-fast" data-act="fast" data-lock="1" data-i18n-title="up_turbo" aria-label="turbo"><i class="ic i-bolt"></i></button>
-                  <button class="tbtn" data-act="sound" aria-label="sound"><i class="ic i-sound"></i></button>
-                </div>
+                <div class="up-ph"><span data-i18n="up_ring_title"></span></div>
+                <div class="up-ring-box">
                 <div class="up-ring" id="up-ring">
                   <svg viewBox="0 0 200 200" aria-hidden="true">
                     <defs>
@@ -163,6 +186,7 @@
                     <g id="up-ptr"><path d="M100,34 L91,12 L109,12 Z" fill="#ffb22e"/><path d="M100,34 L100,12 L109,12 Z" fill="#d98306"/></g>
                   </svg>
                   <div class="up-ring-txt"><b id="up-chance">0.00%</b><small data-i18n="up_chance"></small><span id="up-mult"></span></div>
+                </div>
                 </div>
               </div>
               <div class="up-panel">
@@ -219,6 +243,7 @@
                 </div>
               </div>
             </div>
+            </div>
           </div>
         </section>
 
@@ -227,13 +252,28 @@
           <div class="wrap">
             <h2 class="sec-h first"><span data-i18n="nav_farm"></span></h2>
             <div class="farm">
-              <div class="panel farm-coin">
-                <div class="farm-stats"><span class="pill" id="farm-click"></span><span class="pill" id="farm-income"></span></div>
+              <div class="farm-coin">
+                <div class="fm-stage">
+                <span class="fm-shadow" aria-hidden="true"></span>
                 <button id="big-coin" class="big-coin" aria-label="coin">
                   <span class="bc-ring"></span>
                   <svg class="bc-mark" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3 28.5 9.5 16 16 3.5 9.5z" fill="rgba(255,244,205,.55)"/><path d="M3.5 9.5 16 16v13.5L3.5 23z" fill="rgba(122,72,0,.45)"/><path d="M28.5 9.5 16 16v13.5L28.5 23z" fill="rgba(122,72,0,.7)"/></svg>
                 </button>
+                <div class="fm-pops" id="fm-pops" aria-hidden="true"></div>
+                </div>
                 <div class="tap-hint" id="tap-hint" data-i18n="tap_hint"></div>
+                <div class="fm-hud">
+                  <div class="fm-stats">
+                    <div class="fm-st"><small data-i18n="fm_cps"></small><b id="fm-cps">0.0</b></div>
+                    <div class="fm-st"><small data-i18n="fm_tap"></small><b id="farm-click"></b></div>
+                    <div class="fm-st"><small data-i18n="fm_inc"></small><b id="farm-income"></b></div>
+                  </div>
+                  <div class="fm-lv" id="fm-lv" hidden>
+                    <div class="fm-lv-h"><b id="fm-lv-n"></b><span id="fm-lv-x"></span></div>
+                    <div class="bar"><i id="fm-lv-bar"></i></div>
+                    <span class="bar-lbl" id="fm-lv-next"></span>
+                  </div>
+                </div>
               </div>
               <div class="farm-side">
                 <div class="bonus">
@@ -258,6 +298,7 @@
           <div class="wrap">
             <h2 class="sec-h first"><span data-i18n="rw_timed"></span></h2>
             <div class="rw-grid" id="rw-timed"></div>
+            <div id="rw-wheel"></div>
             <h2 class="sec-h"><span data-i18n="rw_awards"></span></h2>
             <div class="rw-daily">
               <div class="rw-days" id="rw-days"></div>
@@ -283,13 +324,14 @@
             <div class="prof-top">
               <div class="panel prof-card">
                 <div class="prof-head">
-                  <div class="prof-ava"><img id="prof-img" alt=""><span id="prof-letter"></span></div>
-                  <div class="prof-id"><b id="prof-name"></b><small id="prof-uid"></small><div class="prof-rank" id="prof-rank"></div></div>
+                  <button class="prof-ava" id="prof-ava" data-act="ava-pick" aria-label="avatar"><img id="prof-img" alt=""><span id="prof-letter"></span><i class="ic i-edit pa-ed"></i></button>
+                  <div class="prof-id"><b id="prof-name"></b><small id="prof-uid"></small></div>
                   <div class="prof-icons">
                     <button class="ibtn" data-act="edit-profile" aria-label="edit"><i class="ic i-edit"></i></button>
                     <button class="ibtn" data-act="settings" aria-label="settings"><i class="ic i-gear"></i></button>
                   </div>
                 </div>
+                <div class="prof-level" id="prof-level" hidden></div>
                 <div class="prof-bal">
                   <div><small data-i18n="balance"></small><b><i class="ci"></i><span id="prof-bal">0</span></b></div>
                   <button class="btn good" data-act="nav" data-id="farm"><span data-i18n="topup"></span><i class="ic i-plus"></i></button>
@@ -305,10 +347,13 @@
                 <small class="prof-cloud" id="prof-cloud"></small>
               </div>
             </div>
+            <div class="prof-show" id="prof-showcase" hidden></div>
             <div class="prof-bar">
               <div class="tabs" id="prof-tabs">
                 <button class="on" data-act="prof-tab" data-id="items" data-i18n="tab_items"></button>
                 <button data-act="prof-tab" data-id="col" data-i18n="tab_col"></button>
+                <button data-act="prof-tab" data-id="ach" data-i18n="pf_tab_ach" hidden></button>
+                <button data-act="prof-tab" data-id="lead" data-i18n="pf_tab_lead" hidden></button>
               </div>
               <div class="prof-tools" id="prof-tools">
                 <button class="btn dark mini" data-act="sell-all" data-i18n="sell_all"></button>
@@ -322,6 +367,8 @@
             </div>
             <div class="inv-wrap" id="prof-wrap"><div class="item-grid inv" id="prof-items"></div></div>
             <div id="col-list" hidden></div>
+            <div class="prof-pane" id="prof-ach" hidden></div>
+            <div class="prof-pane" id="prof-leaders" hidden></div>
           </div>
         </section>
 
@@ -394,6 +441,7 @@
   <script src="js/geo_w4_knife_b.js"></script>
   <script src="js/geo_w4_knife_c.js"></script>
   <script src="js/geo_w4_knife_d.js"></script>
+  <script src="js/geo_hand.js"></script>
   <script src="js/geo_w4_gloves_a.js"></script>
   <script src="js/geo_w4_gloves_b.js"></script>
   <script src="js/geo_w4_gloves_c.js"></script>
@@ -402,6 +450,7 @@
   <script src="js/tex_b.js"></script>
   <script src="js/tex_c.js"></script>
   <script src="js/tex_ultra.js"></script>
+  <script src="js/tex_gem.js"></script>
   <script src="js/art.js"></script>
   <script src="js/art_crate.js"></script>
   <script src="js/bg.js"></script>
@@ -416,6 +465,14 @@
   <script src="js/ui.js"></script>
   <script src="js/live.js"></script>
   <script src="js/sync.js"></script>
+  <script src="js/xp.js"></script>
+  <script src="js/achievements.js"></script>
+  <script src="js/wheel.js"></script>
+  <script src="js/showcase.js"></script>
+  <script src="js/pubprofile.js"></script>
+  <script src="js/leaders.js"></script>
+  <script src="js/scr_contracts.js"></script>
+  <script src="js/onboarding.js"></script>
   <script src="js/fx_rare.js"></script>
   <script src="js/fonts.js"></script>
   <script src="js/scr_cases.js"></script>

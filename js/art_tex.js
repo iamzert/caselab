@@ -133,7 +133,8 @@ const Tex = (function () {
   const GEN = {
     gloss(f, R, n) {
       const a = rgb(f.c[0]), b = rgb(f.c[1]);
-      return pixels(0.5, (x, y) => mix(a, b, 0.22 * (0.5 + 0.7 * fbm(n, x * 0.006, y * 0.009, 2))));
+      // узор очень плавный — половинного разрешения хватает (вид прежний, генерация вдвое быстрее)
+      return pixels(0.25, (x, y) => mix(a, b, 0.22 * (0.5 + 0.7 * fbm(n, x * 0.006, y * 0.009, 2))));
     },
     grad(f) {
       return vec((ctx) => {
@@ -142,176 +143,210 @@ const Tex = (function () {
         ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
       });
     },
+    // Металл: ровный тон с мягкими крупными переливами и тонкой шлифовкой.
+    // Блики не запекаем — их даёт свет (art.js); здесь только цвет и фактура.
     metal(f, R, n) {
-      const P = pal([f.c[2], f.c[1], f.c[0], f.c[1], f.c[2]]);
-      return pixels(0.625, (x, y) => {
-        const band = 0.5 + 0.5 * Math.sin(x * 0.028 + y * 0.012 + 2.4 * fbm(n, x * 0.004, y * 0.008, 2));
-        const k = 1 + 0.1 * n(x * 0.015, y * 0.9 + 7.3);
-        const c = P(band);
-        return [c[0] * k, c[1] * k, c[2] * k];
+      const hi = rgb(f.c[0]), mid = rgb(f.c[1]), lo = rgb(f.c[2]);
+      const c = pixels(0.25, (x, y) => {
+        const v = fbm(n, x * 0.0035, y * 0.007, 2);
+        return v > 0 ? mix(mid, hi, Math.min(0.32, v * 0.75)) : mix(mid, lo, Math.min(0.26, -v * 0.6));
       });
+      const ctx = c.getContext('2d');
+      ctx.globalCompositeOperation = 'overlay';
+      ctx.fillStyle = brushed(ctx); ctx.fillRect(0, 0, c.width, c.height);
+      ctx.globalCompositeOperation = 'source-over';
+      return c;
     },
+    // Камуфляж: 3–4 крупных пятна на деталь, гладкие края, без мелкой крошки
     camo(f, R, n, n2, n3) {
       const c = f.c.map(rgb);
-      return pixels(0.625, (x, y) => {
-        const wx = x + 18 * fbm(n3, x * 0.01, y * 0.01, 2);
-        if (fbm(n3, wx * 0.021 + 9, y * 0.03, 2) > 0.3) return c[3];
-        if (fbm(n2, wx * 0.014 + 5, y * 0.024, 3) > 0.16) return c[2];
-        if (fbm(n, wx * 0.011, y * 0.02, 3) > 0.06) return c[1];
+      // пятна крупные — хватает трети разрешения (генерация вдвое быстрее, края остаются мягкими)
+      return pixels(0.17, (x, y) => {
+        const wx = x + 16 * fbm(n3, x * 0.007, y * 0.007, 2);
+        if (fbm(n3, wx * 0.0105 + 9, y * 0.016, 2) > 0.26) return c[3];
+        if (fbm(n2, wx * 0.0075 + 5, y * 0.0125, 2) > 0.13) return c[2];
+        if (fbm(n, wx * 0.006, y * 0.0105, 2) > 0.03) return c[1];
         return c[0];
       });
     },
+    // Ржавчина: крупные мягкие разводы и редкие тёмные пятна вместо мелкой «сыпи»
     noise(f, R, n, n2) {
       const P = pal([f.c[2], f.c[0], f.c[1], f.c[0]]), dark = rgb(f.c[2]);
-      return pixels(0.625, (x, y) => {
-        const c = P(0.5 + 0.75 * fbm(n, x * 0.02, y * 0.03, 5));
-        return n2(x * 0.25, y * 0.25) > 0.45 ? mix(c, dark, 0.55) : c;
+      return pixels(0.25, (x, y) => {
+        const c = P(0.5 + 0.7 * fbm(n, x * 0.009, y * 0.014, 3));
+        return mix(c, dark, 0.4 * smooth(0.18, 0.34, fbm(n2, x * 0.022, y * 0.03, 2)));
       });
     },
+    // Карбон: плетение крупнее и мягче — на карточке читается как фактура, а не рябь
     carbon(f) {
-      const tile = mk(12 * S, 12 * S), t = tile.getContext('2d');
+      const q = 9, tile = mk(q * 2 * S, q * 2 * S), t = tile.getContext('2d');
       t.scale(S, S);
+      const m = 'rgb(' + mix(rgb(f.c[0]), rgb(f.c[1]), 0.75).map(Math.round).join(',') + ')';
       const cell = (x, y, horiz) => {
-        const g = horiz ? t.createLinearGradient(x, y, x, y + 6) : t.createLinearGradient(x, y, x + 6, y);
-        g.addColorStop(0, f.c[0]); g.addColorStop(0.5, f.c[1]); g.addColorStop(1, f.c[0]);
-        t.fillStyle = g; t.fillRect(x, y, 6, 6);
+        const g = horiz ? t.createLinearGradient(x, y, x, y + q) : t.createLinearGradient(x, y, x + q, y);
+        g.addColorStop(0, f.c[0]); g.addColorStop(0.5, m); g.addColorStop(1, f.c[0]);
+        t.fillStyle = g; t.fillRect(x, y, q, q);
       };
-      cell(0, 0, true); cell(6, 0, false); cell(0, 6, false); cell(6, 6, true);
+      cell(0, 0, true); cell(q, 0, false); cell(0, q, false); cell(q, q, true);
       const c = full(), ctx = c.getContext('2d');
       ctx.fillStyle = ctx.createPattern(tile, 'repeat');
       ctx.fillRect(0, 0, c.width, c.height);
       return c;
     },
+    // Полосы: немного широких диагональных полос вместо частой «зебры»
     stripes(f) {
       return vec((ctx) => {
         ctx.fillStyle = f.c[0]; ctx.fillRect(0, 0, W, H);
         ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-0.7);
         ctx.fillStyle = f.c[1];
-        for (let x = -420; x < 420; x += 28) ctx.fillRect(x, -320, 12, 640);
+        for (let x = -440; x < 440; x += 76) ctx.fillRect(x, -320, 30, 640);
         ctx.restore();
       });
     },
     tiger(f, R, n, n2) {
       const base = rgb(f.c[0]), dark = rgb(f.c[1]), hi = rgb(f.c[2]);
-      return pixels(0.625, (x, y) => {
-        const w = x * 0.042 + 2.6 * fbm(n, x * 0.007, y * 0.022, 3) + 0.5 * fbm(n2, x * 0.03, y * 0.06, 2);
+      // 5–7 широких полос поперёк оружия, к верхнему и нижнему краю сужаются в клин;
+      // полосы широкие — считаем в трети разрешения (запас по времени генерации)
+      return pixels(0.17, (x, y) => {
+        const w = x * 0.0125 + 1.1 * fbm(n, x * 0.004, y * 0.011, 2) + 0.1 * n2(x * 0.016, y * 0.03);
         const s = Math.abs(Math.sin(w * Math.PI));
-        const thr = 0.8 + 0.14 * Math.abs(y - 96) / 96 + 0.1 * fbm(n2, x * 0.02 + 3, y * 0.02, 2);
-        if (s > thr) return dark;
-        return mix(base, hi, clamp01(0.4 + fbm(n2, x * 0.01, y * 0.012, 2)));
+        const e = Math.abs(y - 96) / 96;
+        const thr = 0.66 + 0.3 * e * e + 0.07 * n2(x * 0.01 + 3, y * 0.012);
+        const body = mix(base, hi, clamp01(0.4 + 0.7 * n(x * 0.005 + 7, y * 0.008)));
+        return mix(body, dark, smooth(thr - 0.03, thr + 0.03, s));
       });
     },
+    // Соты: крупные ячейки, тонкие мягкие грани и редкие залитые ячейки
     hex(f, R) {
       return vec((ctx) => {
-        const g = ctx.createRadialGradient(W / 2, H / 2, 10, W / 2, H / 2, W / 1.6);
-        g.addColorStop(0, shade(f.c[0], 0.12)); g.addColorStop(1, f.c[0]);
-        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-        const s = 9, hh = Math.sqrt(3) * s;
+        ctx.fillStyle = f.c[0]; ctx.fillRect(0, 0, W, H);
+        const s = 21, hh = Math.sqrt(3) * s;
         const cells = [];
         ctx.beginPath();
         for (let col = 0, x = 0; x < W + s * 2; col++, x += s * 1.5) {
           for (let y = (col % 2) * hh / 2 - hh; y < H + hh; y += hh) {
             ctx.moveTo(x + s, y);
             for (let k = 1; k <= 6; k++) ctx.lineTo(x + s * Math.cos(k * Math.PI / 3), y + s * Math.sin(k * Math.PI / 3));
-            if (R() < 0.09) cells.push([x, y]);
+            if (R() < 0.16) cells.push([x, y]);
           }
         }
-        ctx.strokeStyle = f.c[1]; ctx.lineWidth = 1.1; ctx.shadowColor = f.c[1]; ctx.shadowBlur = 4 * S;
+        ctx.strokeStyle = f.c[1]; ctx.lineWidth = 1.6; ctx.globalAlpha = 0.6;
+        ctx.shadowColor = f.c[1]; ctx.shadowBlur = 3 * S;
         ctx.stroke();
         ctx.shadowBlur = 0;
         ctx.fillStyle = f.c[1];
         cells.forEach((p) => {
-          ctx.globalAlpha = 0.18 + R() * 0.3;
+          ctx.globalAlpha = 0.12 + R() * 0.16;
           ctx.beginPath();
-          for (let k = 0; k <= 6; k++) ctx.lineTo(p[0] + (s - 1.5) * Math.cos(k * Math.PI / 3), p[1] + (s - 1.5) * Math.sin(k * Math.PI / 3));
+          for (let k = 0; k <= 6; k++) ctx.lineTo(p[0] + (s - 2.5) * Math.cos(k * Math.PI / 3), p[1] + (s - 2.5) * Math.sin(k * Math.PI / 3));
           ctx.fill();
         });
         ctx.globalAlpha = 1;
       });
     },
-    pixel(f, R, n, n2) {
+    // Пиксельный камуфляж: крупные квадраты, плавное поле без мелкого шума
+    pixel(f, R, n) {
       return vec((ctx) => {
-        const c = f.c, cs = 5;
+        const c = f.c, cs = 12;
         for (let y = 0; y < H; y += cs) {
           for (let x = 0; x < W; x += cs) {
-            const v = fbm(n, x * 0.02, y * 0.035, 3) + 0.25 * n2(x * 0.08, y * 0.08);
-            ctx.fillStyle = v < -0.12 ? c[2] : v < 0.04 ? c[0] : v < 0.2 ? c[1] : c[3];
+            const v = fbm(n, x * 0.0085, y * 0.015, 2);
+            ctx.fillStyle = v < -0.13 ? c[2] : v < 0.04 ? c[0] : v < 0.19 ? c[1] : c[3];
             ctx.fillRect(x, y, cs, cs);
           }
         }
       });
     },
+    // Мрамор: два-три широких плавных развода без мелких завихрений.
+    // Светлый тон c[2] — не в палитре (иначе читается как запечённый блик), а только редкими узкими прожилками без ореола.
     marble(f, R, n, n2, n3) {
-      const P = pal([f.c[0], f.c[1], f.c[2], f.c[1], f.c[3], f.c[0]]);
-      return pixels(0.5, (x, y) => {
-        const px = x * 0.008, py = y * 0.012;
-        const qx = fbm(n, px, py, 3), qy = fbm(n2, px + 5.2, py + 1.3, 3);
-        return P(0.5 + 1.1 * fbm(n3, px + 4 * qx + 1.7, py + 4 * qy + 9.2, 3));
+      const P = pal([f.c[0], f.c[1], f.c[3], f.c[1], f.c[0]]), vein = rgb(f.c[2]);
+      return pixels(0.17, (x, y) => {
+        const px = x * 0.0036, py = y * 0.0054;
+        const qx = fbm(n, px, py, 2), qy = fbm(n2, px + 5.2, py + 1.3, 2);
+        const v = fbm(n3, px + 1.5 * qx + 1.7, py + 1.5 * qy + 9.2, 2);
+        const c = P(0.5 + 1.1 * v);
+        return mix(c, vein, 0.5 * (1 - smooth(0.004, 0.014, Math.abs(v - 0.16))));
       });
     },
+    // Волны: две-три широкие волны с мягкой пеной
     waves(f, R, n) {
       const deep = rgb(f.c[0]), mid = rgb(f.c[1]), foam = rgb(f.c[2]);
-      return pixels(0.625, (x, y) => {
-        const base = mix(mid, deep, clamp01(y / H * 0.9 + 0.25 * fbm(n, x * 0.01, y * 0.01, 2)));
-        const w = Math.sin(x * 0.06 + y * 0.22 + 3 * fbm(n, x * 0.012, y * 0.02, 3));
-        if (w > 0.93) return mix(base, foam, 0.85);
-        if (w > 0.6) return mix(base, mid, 0.45);
-        return base;
+      return pixels(0.25, (x, y) => {
+        const base = mix(mid, deep, clamp01(y / H * 0.9 + 0.25 * fbm(n, x * 0.006, y * 0.008, 2)));
+        const w = Math.sin(x * 0.022 + y * 0.075 + 2 * fbm(n, x * 0.005, y * 0.009, 2));
+        const c = mix(base, mid, 0.35 * smooth(0.35, 0.8, w));
+        return mix(c, foam, 0.65 * smooth(0.88, 0.98, w));
       });
     },
+    // Лава: редкие широкие трещины с мягким свечением
     cracks(f, R, n, n2) {
       const rock = rgb(f.c[0]), hot = rgb(f.c[1]), core = rgb(f.c[2]);
-      const rock2 = [rock[0] * 2 + 18, rock[1] * 1.8 + 12, rock[2] * 1.8 + 10];
-      return pixels(0.625, (x, y) => {
-        const r = 1 - Math.abs(fbm(n, x * 0.016, y * 0.026, 4)) * 2.2;
-        let c = mix(rock, rock2, clamp01(0.5 + fbm(n2, x * 0.03, y * 0.03, 3)));
-        if (r > 0.78) c = mix(c, hot, smooth(0.78, 0.9, r));
-        if (r > 0.92) c = mix(c, core, smooth(0.92, 0.985, r));
+      const rock2 = [rock[0] * 1.6 + 14, rock[1] * 1.5 + 10, rock[2] * 1.5 + 8];
+      return pixels(0.25, (x, y) => {
+        const r = 1 - Math.abs(fbm(n, x * 0.0075, y * 0.012, 3)) * 2.3;
+        let c = mix(rock, rock2, clamp01(0.5 + fbm(n2, x * 0.01, y * 0.014, 2)));
+        if (r > 0.7) c = mix(c, hot, smooth(0.7, 0.88, r));
+        if (r > 0.9) c = mix(c, core, smooth(0.9, 0.98, r));
         return c;
       });
     },
-    scales(f) {
+    // Драконья чешуя: крупные плоские чешуйки (около 110 на поле), кромка мягко уходит в c[2],
+    // контур тонкий и прозрачный; объём не запекаем — его даёт свет. Тон слегка «гуляет» крупными пятнами.
+    scales(f, R, n) {
+      const body = rgb(f.c[1]), deep = rgb(f.c[0]), rim = rgb(f.c[2]);
+      // классическая чешуя: круги касаются в ряду, ряды рисуем снизу вверх — верхний ряд прячет прямой край нижнего
+      const sw = 44, sh = 22, r = sw / 2;
+      // одна кромка-спрайт на все чешуйки: прозрачный центр, у края — переход к c[2]
+      const sp = mk(2 * r * S, r * S), st = sp.getContext('2d');
+      st.scale(S, S);
+      const g = st.createRadialGradient(r, 0, 0, r, 0, r);
+      g.addColorStop(0, 'rgba(' + rim.join(',') + ',0)'); g.addColorStop(0.62, 'rgba(' + rim.join(',') + ',0)');
+      g.addColorStop(1, 'rgba(' + rim.join(',') + ',0.55)');
+      st.fillStyle = g; st.beginPath(); st.arc(r, 0, r, 0, Math.PI); st.closePath(); st.fill();
       return vec((ctx) => {
         ctx.fillStyle = f.c[0]; ctx.fillRect(0, 0, W, H);
-        const sw = 16, sh = 10, r = sw * 0.62;
-        for (let row = 0, y = -8; y < H + 14; row++, y += sh) {
+        ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 0.7;
+        for (let row = 0, y = Math.ceil(H / sh) * sh; y >= -sh; row++, y -= sh) {
           for (let x = (row % 2 ? sw / 2 : 0) - sw; x < W + sw; x += sw) {
-            const g = ctx.createRadialGradient(x, y + 2, 1, x, y + 3, r * 1.1);
-            g.addColorStop(0, f.c[2]); g.addColorStop(0.5, f.c[1]); g.addColorStop(1, f.c[0]);
-            ctx.fillStyle = g;
-            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI); ctx.closePath(); ctx.fill();
-            ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 0.7; ctx.stroke();
+            const t = fbm(n, x * 0.006, y * 0.01, 2);
+            const c = t > 0 ? mix(body, rim, Math.min(0.18, t * 0.4)) : mix(body, deep, Math.min(0.3, -t * 0.7));
+            ctx.fillStyle = 'rgb(' + c.map(Math.round).join(',') + ')';
+            ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832); ctx.fill();   // круг целиком: верх закрывает щели между чешуйками ряда выше
+            ctx.drawImage(sp, x - r, y, 2 * r, r);
+            ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI); ctx.stroke();
           }
         }
       });
     },
     stars(f, R, n, n2, n3) {
       const P = pal([f.c[0], f.c[0], f.c[1], f.c[2], f.c[3]]);
-      const c = pixels(0.5, (x, y) => {
-        const px = x * 0.009, py = y * 0.014;
-        const qx = fbm(n, px, py, 3), qy = fbm(n2, px + 3.1, py + 7.7, 3);
-        return P(0.4 + 1.25 * fbm(n3, px + 3 * qx, py + 3 * qy, 4));
+      // туманность — пара крупных мягких облаков; звёзд немного, видны отдельные яркие
+      const c = pixels(0.25, (x, y) => {
+        const px = x * 0.0065, py = y * 0.01;
+        const qx = fbm(n, px, py, 2), qy = fbm(n2, px + 3.1, py + 7.7, 2);
+        return P(0.4 + 1.1 * fbm(n3, px + 2 * qx, py + 2 * qy, 3));
       });
       const ctx = c.getContext('2d');
       ctx.scale(S, S);
       ctx.fillStyle = f.c[3];
-      for (let i = 0; i < 260; i++) {
-        const big = R() > 0.93;
-        const rad = big ? 0.8 + R() * 0.9 : 0.25 + R() * 0.5;
-        ctx.globalAlpha = 0.45 + R() * 0.55;
-        ctx.shadowColor = f.c[3]; ctx.shadowBlur = big ? 6 * S : 0;
+      for (let i = 0; i < 46; i++) {
+        const big = i < 7;
+        const rad = big ? 1.1 + R() * 0.8 : 0.4 + R() * 0.4;
+        ctx.globalAlpha = big ? 0.95 : 0.35 + R() * 0.4;
+        ctx.shadowColor = f.c[3]; ctx.shadowBlur = big ? 5 * S : 0;
         ctx.beginPath(); ctx.arc(R() * W, R() * H, rad, 0, 6.2832); ctx.fill();
       }
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;
       return c;
     },
+    // Сакура: несколько крупных цветков по всей длине и редкие лепестки
     dots(f, R) {
       return vec((ctx) => {
-        const g = ctx.createLinearGradient(0, 0, W, H);
-        g.addColorStop(0, f.c[0]); g.addColorStop(1, shade(f.c[0], -0.1));
-        ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-        for (let i = 0; i < 46; i++) {
-          const x = R() * W, y = R() * H, r = 4 + R() * 6;
+        ctx.fillStyle = f.c[0]; ctx.fillRect(0, 0, W, H);
+        const NF = 12;
+        for (let i = 0; i < NF; i++) {
+          const x = (i + 0.2 + R() * 0.6) * W / NF, y = 36 + R() * 84, r = 9 + R() * 4;   // полоса y 36..120 — там у моделей основные детали
           ctx.save(); ctx.translate(x, y); ctx.rotate(R() * 6.28);
           ctx.fillStyle = f.c[1]; ctx.globalAlpha = 0.92;
           for (let k = 0; k < 5; k++) { ctx.rotate(1.2566); ctx.beginPath(); ctx.ellipse(0, -r * 0.85, r * 0.5, r * 0.85, 0, 0, 6.2832); ctx.fill(); }
@@ -322,26 +357,29 @@ const Tex = (function () {
           ctx.restore();
         }
         ctx.fillStyle = f.c[1];
-        for (let i = 0; i < 70; i++) {
-          ctx.globalAlpha = 0.4 + R() * 0.4;
-          ctx.beginPath(); ctx.ellipse(R() * W, R() * H, 1.5 + R() * 2, 0.8 + R(), R() * 3, 0, 6.2832); ctx.fill();
+        for (let i = 0; i < 14; i++) {
+          ctx.globalAlpha = 0.55 + R() * 0.3;
+          ctx.beginPath(); ctx.ellipse(R() * W, R() * H, 2.6 + R() * 2, 1.4 + R(), R() * 3, 0, 6.2832); ctx.fill();
         }
         ctx.globalAlpha = 1;
       });
     },
+    // Дамаск: 7–9 широких плавных слоёв стали, контраст умеренный
     damascus(f, R, n, n2) {
       const P = pal([f.c[2], f.c[1], f.c[0], f.c[1], f.c[2]]);
-      return pixels(0.625, (x, y) => {
-        const w = y * 0.2 + 7 * fbm(n, x * 0.006, y * 0.018, 3) + 1.6 * fbm(n2, x * 0.03, y * 0.05, 2);
-        return P(Math.pow(0.5 + 0.5 * Math.sin(w * Math.PI), 1.4));
+      return pixels(0.25, (x, y) => {
+        const w = y * 0.085 + 3.2 * fbm(n, x * 0.004, y * 0.01, 2) + 0.45 * fbm(n2, x * 0.012, y * 0.02, 2);
+        return P(0.1 + 0.36 * (0.5 + 0.5 * Math.sin(w * Math.PI)));
       });
     },
+    // Калёная сталь: крупные мягкие зоны цветов побежалости
     patina(f, R, n, n2, n3) {
       const P = pal([f.c[3], f.c[0], f.c[1], f.c[2], f.c[3], f.c[0]]);
-      return pixels(0.5, (x, y) => {
-        const px = x * 0.01, py = y * 0.016;
-        const qx = fbm(n, px, py, 3), qy = fbm(n2, px + 2.3, py + 4.1, 3);
-        return P(0.5 + 1.3 * fbm(n3, px + 2.5 * qx, py + 2.5 * qy, 4));
+      // частота и искажение снижены — две-три крупные зоны цвета вместо мелких завихрений
+      return pixels(0.17, (x, y) => {
+        const px = x * 0.004, py = y * 0.006;
+        const qx = fbm(n, px, py, 2), qy = fbm(n2, px + 2.3, py + 4.1, 2);
+        return P(0.5 + 1.2 * fbm(n3, px + 1.1 * qx, py + 1.1 * qy, 2));
       });
     },
     panel(f) {
@@ -350,18 +388,13 @@ const Tex = (function () {
         const g = ctx.createLinearGradient(0, 0, 0, H);
         g.addColorStop(0, white); g.addColorStop(1, shade(white, -0.14));
         ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-        ctx.strokeStyle = 'rgba(0,0,0,.14)'; ctx.lineWidth = 0.8;
-        for (let x = 40; x < W + 40; x += 64) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - 22, H); ctx.stroke(); }
+        // только крупные плоскости: белая панель, оранжевая диагональ, чёрные блоки и две тонкие полосы (без надписей и маркеров)
         ctx.fillStyle = orange;
         ctx.beginPath(); ctx.moveTo(120, H); ctx.lineTo(200, 0); ctx.lineTo(262, 0); ctx.lineTo(182, H); ctx.fill();
         ctx.fillStyle = black;
         ctx.beginPath(); ctx.moveTo(300, 0); ctx.lineTo(512, 0); ctx.lineTo(512, 72); ctx.lineTo(382, 72); ctx.lineTo(354, 42); ctx.lineTo(300, 42); ctx.fill();
         ctx.beginPath(); ctx.moveTo(0, 150); ctx.lineTo(92, 150); ctx.lineTo(112, H); ctx.lineTo(0, H); ctx.fill();
         ctx.fillStyle = orange; ctx.fillRect(330, 122, 182, 6); ctx.fillRect(330, 132, 120, 3);
-        ctx.fillStyle = black; ctx.fillRect(0, 100, W, 2);
-        ctx.font = 'bold 9px Arial, sans-serif';
-        ctx.fillText('PROTO-07 // CL', 300, 114); ctx.fillText('MK.II', 40, 62);
-        for (let i = 0; i < 6; i++) { ctx.fillStyle = i % 2 ? orange : black; ctx.fillRect(420 + i * 12, 86, 8, 8); }
       });
     },
     splatter(f, R) {
@@ -369,48 +402,57 @@ const Tex = (function () {
         const g = ctx.createLinearGradient(0, 0, W, H);
         g.addColorStop(0, shade(f.c[0], 0.1)); g.addColorStop(1, f.c[0]);
         ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-        for (let i = 0; i < 70; i++) {
-          const x = R() * W, y = R() * H, r = 2 + Math.pow(R(), 2) * 14;
-          ctx.fillStyle = f.c[1 + (i % 2)]; ctx.globalAlpha = 0.92;
+        // четыре крупные кляксы вдоль оружия (цвета по очереди) с каплями и одним подтёком, плюс редкие брызги
+        for (let i = 0; i < 4; i++) {
+          const x = (i + 0.25 + R() * 0.5) * W / 4, y = 44 + R() * 70, r = 24 + R() * 10;
+          ctx.fillStyle = f.c[1 + (i % 2)]; ctx.globalAlpha = 0.95;
           blob(ctx, x, y, r, R);
-          for (let k = 0; k < 6; k++) {
-            const a = R() * 6.2832, d = r * (1.2 + R() * 1.6);
-            ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, r * (0.08 + R() * 0.18), 0, 6.2832); ctx.fill();
+          for (let k = 0; k < 7; k++) {
+            const a = R() * 6.2832, d = r * (1.15 + R() * 0.9);
+            ctx.beginPath(); ctx.arc(x + Math.cos(a) * d, y + Math.sin(a) * d, r * (0.07 + R() * 0.12), 0, 6.2832); ctx.fill();
           }
-          if (R() < 0.25) ctx.fillRect(x - r * 0.15, y, r * 0.3, r * (2 + R() * 3));
+          const dx = x + (R() - 0.5) * r * 0.6, len = r * (1.2 + R() * 1.2), dw = r * 0.16;
+          ctx.fillRect(dx - dw / 2, y, dw, len);
+          ctx.beginPath(); ctx.arc(dx, y + len, dw * 0.85, 0, 6.2832); ctx.fill();
+        }
+        for (let i = 0; i < 8; i++) {
+          ctx.fillStyle = f.c[1 + (i % 2)]; ctx.globalAlpha = 0.85;
+          ctx.beginPath(); ctx.arc(R() * W, R() * H, 1.5 + R() * 2.5, 0, 6.2832); ctx.fill();
         }
         ctx.globalAlpha = 1;
       });
     },
+    // Микросхема: редкая сетка, полтора десятка толстых дорожек с контактами и две микросхемы
     circuit(f, R) {
       return vec((ctx) => {
         ctx.fillStyle = f.c[0]; ctx.fillRect(0, 0, W, H);
-        ctx.strokeStyle = f.c[2]; ctx.lineWidth = 0.6; ctx.beginPath();
-        for (let x = 0; x < W; x += 8) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
-        for (let y = 0; y < H; y += 8) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
+        ctx.strokeStyle = f.c[2]; ctx.lineWidth = 0.8; ctx.globalAlpha = 0.6; ctx.beginPath();
+        for (let x = 0; x < W; x += 32) { ctx.moveTo(x, 0); ctx.lineTo(x, H); }
+        for (let y = 0; y < H; y += 32) { ctx.moveTo(0, y); ctx.lineTo(W, y); }
         ctx.stroke();
-        const pads = [];
+        ctx.globalAlpha = 1;
+        const pads = [], NT = 16;
         ctx.beginPath();
-        for (let i = 0; i < 48; i++) {
-          let x = Math.round(R() * W / 8) * 8, y = Math.round(R() * H / 8) * 8;
+        for (let i = 0; i < NT; i++) {
+          let x = Math.round((i + R()) * W / NT / 16) * 16, y = Math.round((40 + R() * 80) / 16) * 16;
           ctx.moveTo(x, y); pads.push([x, y]);
-          const steps = 3 + Math.floor(R() * 5);
+          const steps = 2 + Math.floor(R() * 3);
           for (let s = 0; s < steps; s++) {
-            const len = 8 * (1 + Math.floor(R() * 6)), dir = Math.floor(R() * 6);
-            if (dir < 2) x += len; else if (dir === 2) x -= len; else if (dir === 3) y += len; else if (dir === 4) y -= len; else { x += len; y += len * (R() < 0.5 ? 1 : -1); }
+            const len = 16 * (1 + Math.floor(R() * 3)), dir = Math.floor(R() * 5);
+            if (dir < 2) x += len; else if (dir === 2) y += len; else if (dir === 3) y -= len; else { x += len; y += len * (R() < 0.5 ? 1 : -1); }
             ctx.lineTo(x, y);
           }
           pads.push([x, y]);
         }
-        ctx.strokeStyle = f.c[1]; ctx.lineWidth = 1.3; ctx.shadowColor = f.c[1]; ctx.shadowBlur = 5 * S;
+        ctx.strokeStyle = f.c[1]; ctx.lineWidth = 2.4; ctx.lineJoin = 'round'; ctx.shadowColor = f.c[1]; ctx.shadowBlur = 3 * S;
         ctx.stroke();
         ctx.fillStyle = f.c[1];
-        pads.forEach((p) => { ctx.beginPath(); ctx.arc(p[0], p[1], 2, 0, 6.2832); ctx.fill(); });
+        pads.forEach((p) => { ctx.beginPath(); ctx.arc(p[0], p[1], 3.6, 0, 6.2832); ctx.fill(); });
         ctx.shadowBlur = 0;
-        for (let i = 0; i < 6; i++) {
-          const x = R() * (W - 40), y = R() * (H - 20);
-          ctx.fillStyle = '#05080a'; ctx.fillRect(x, y, 30, 14);
-          ctx.strokeStyle = f.c[1]; ctx.lineWidth = 0.8; ctx.strokeRect(x, y, 30, 14);
+        for (let i = 0; i < 2; i++) {
+          const x = (i * 0.5 + 0.1 + R() * 0.3) * W, y = 40 + R() * 60;
+          ctx.fillStyle = shade(f.c[0], -0.5); ctx.fillRect(x, y, 46, 22);
+          ctx.strokeStyle = f.c[1]; ctx.lineWidth = 1.4; ctx.strokeRect(x, y, 46, 22);
         }
       });
     },

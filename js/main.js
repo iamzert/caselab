@@ -88,6 +88,8 @@
     const Q = new URLSearchParams(location.search);
     const DEV = /^(127.0.0.1|localhost)$/.test(location.hostname);
     if (DEV && Q.has('demo')) { G.demo = true; G.S = G.sanitize(demoState()); }
+    // онбординг: новый ли это игрок — решается по сохранению до любых действий (js/onboarding.js)
+    if (typeof Onb !== 'undefined') Onb.boot();
 
     G.lang = G.S.settings.lang || detectLang();
     Fonts.boot(G.S.settings.font);   // пара шрифтов: класс на <html> до первой отрисовки экранов
@@ -125,9 +127,16 @@
     // В Яндекс Играх регистрация необязательна: кто выбрал «Играть как гость» (settings.guest),
     // того больше не спрашиваем. На сайте (CASELAB_NO_SDK) она обязательна — флаг там не действует.
     const askReg = !G.S.profile.name && (window.CASELAB_NO_SDK || !G.S.settings.guest);
-    if (G.demo) { /* без регистрации и окон */ } else if (askReg) Profile.askRegister(showOffline);
-    else if (showOffline) showOffline();
+    // Онбординг нового игрока (js/onboarding.js) — после регистрации или выбора гостя и окна офлайн-дохода:
+    // его пузыри ждут, пока закроются окна
+    const afterReg = () => {
+      if (showOffline) showOffline();
+      if (typeof Onb !== 'undefined') Onb.start();
+    };
+    if (G.demo) { /* без регистрации и окон */ } else if (askReg) Profile.askRegister(afterReg);
+    else afterReg();
     if (location.hash === '#admin') Desk.open();
+    G.emit('login', {});   // запуск игры: опыт за вход, достижения, онбординг
   }
 
   boot();

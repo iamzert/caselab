@@ -453,21 +453,20 @@ const Sfx = (function () {
       if (w.low) thud(t, 74, w.low, 0.07, amb);
       chord(t + 0.012, w.n, w.v, w.tau);
     },
-    // Очень редкий дроп (шанс < 1 %): мягкий низкий удар, широкий аккорд и вместе с ним
-    // металлический тон (квинта аккорда). У реликвий и артефактов аккорд полнее, а металл звучит
-    // большой септимой (реликвии) или ноной (артефакты)
+    // Редкий дроп (редкость ≥ 5 или ★): сдержанно — мягкий низкий удар, тёплый аккорд чуть громче
+    // обычного выигрыша и тихий металлический тон. У реликвий и артефактов аккорд полнее, а металл
+    // звучит большой септимой (реликвии) или ноной (артефакты). Без «воздушного» толчка и долгого хвоста
     rare: function (r) {
       const t = now();
       if (t < 0) return;
       r = r | 0;
-      thud(t, 84, 0.42, 0.1, amb);
-      burst(t, { type: 'lowpass', f: 800, q: 0.7, v: 0.21, a: 0.003, tau: 0.04, bus: amb });   // толчок воздуха
-      chord(t + 0.02, r >= 7 ? [D3, A3, D4, Fs4, A4, D5] : [D3, A3, D4, A4, D5], 0.25, 0.25);
-      bowl(t + 0.02, r >= 8 ? E6 : r >= 7 ? Cs6 : A5, 0.2, 0.3);
+      thud(t, 84, 0.26, 0.08, amb);
+      chord(t + 0.02, r >= 7 ? [D3, A3, D4, Fs4, A4, D5] : [D3, A3, D4, A4, D5], 0.18, 0.2);
+      bowl(t + 0.04, r >= 8 ? E6 : r >= 7 ? Cs6 : A5, 0.09, 0.22);
     },
-    // Докат перед очень редким предметом: тихий низкий «воздух» нарастает только по громкости
-    // (высота не растёт) и мягкие парные толчки. Возвращает функцию, которая обрывает звук
-    // (клик «пропустить»)
+    // Докат перед редким предметом: тихий низкий «воздух» нарастает только по громкости
+    // (высота не растёт) и редкие мягкие толчки — фон под щелчки ленты, не перекрывает их.
+    // Возвращает функцию, которая обрывает звук (клик «пропустить»)
     rareRise: function (sec) {
       const c = ensure();
       if (!c) return noop;
@@ -482,7 +481,7 @@ const Sfx = (function () {
       lp.Q.value = 0.7;
       const g = c.createGain();
       g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.3, t + sec);
+      g.gain.linearRampToValueAtTime(0.14, t + sec);
       g.gain.setTargetAtTime(0, t + sec, 0.05);
       s.connect(lp);
       lp.connect(g);
@@ -490,10 +489,8 @@ const Sfx = (function () {
       s.start(t, Math.random() * 0.9);
       s.stop(t + sec + 0.5);
       const nodes = [{ src: s, g: g, t0: t }];
-      for (let k = 0.08; k < sec - 0.2; k += 0.6) {
-        const v = 0.2 + 0.2 * (k / sec);
-        Array.prototype.push.apply(nodes, thud(t + k, 64, v, 0.05));
-        Array.prototype.push.apply(nodes, thud(t + k + 0.17, 58, v * 0.6, 0.045));
+      for (let k = 0.08; k < sec - 0.2; k += 0.8) {
+        Array.prototype.push.apply(nodes, thud(t + k, 64, 0.1 + 0.08 * (k / sec), 0.05));
       }
       return function () {
         const at = c.currentTime;

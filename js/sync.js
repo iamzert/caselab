@@ -21,8 +21,11 @@
 //   Sync.watch(bool)              — панель с живыми данными открыта (только тогда идут маячки)
 //   Sync.online(), Sync.players(), Sync.player(pid)
 //   Sync.setLuck(target, v, scope), Sync.forceDrop(pid, skin, case) → Promise<bool>
+//   Sync.gift(pid, skin, f) → Promise<bool>  подарок игроку (себе — сразу локально)
+//   Sync.remember(), Sync.restore() → Promise<bool>, Sync.forget()
+//                                 — ключи канала на запомненном устройстве (IndexedDB, неизвлекаемые CryptoKey)
 //   Sync.lastError()              — 'quota' (ntfy 429) | 'net' | ''
-//   Sync.journal()                — [{ t, k, target, v, scope, s, c, self, done, exp }] новые первыми
+//   Sync.journal()                — [{ t, k, target, v, scope, s, c, f, self, done, exp }] новые первыми (k: 'l' | 'f' | 'g')
 //   Sync.luckInfo(target)         — { lv: {scope: v}, exp: {scope: t}, inh: {scope: v} } (inh — от «Все игроки»)
 //   Sync.luckOf(target), Sync.on(fn), Sync.state()
 const Sync = (function () {
@@ -299,6 +302,9 @@ const Sync = (function () {
   const okScope = (c) => c === 'all' || (typeof c === 'string' && has.call(CASE_BY_ID, c));
   const okLuck = (v) => v === null || (typeof v === 'number' && v >= 0 && v <= 100);
   const okSkin = (s) => typeof s === 'string' && has.call(SKINS, s);
+  // Секретный скин (трофей): только подарком, не дропом
+  const secret = (s) => (typeof G.isSecret === 'function' ? !!G.isSecret(s) : !!(SKINS[s] && RARITIES[SKINS[s].r] && RARITIES[SKINS[s].r].id === 'secret'));
+  const okF = (f) => typeof f === 'number' && isFinite(f) && f >= 0 && f <= 1;
   // Отметка «выпал»: от исходного nonce команды и pid (pid в канал не попадает)
   async function markOf(n, pid) { return hex(await sha(enc.encode('caselab:x:1|' + n + '|' + pid))).slice(0, 20); }
 
@@ -340,7 +346,9 @@ const Sync = (function () {
     if (b.k === 'l' && (mine || b.p === '*') && okScope(b.c) && okLuck(b.L)) {
       putLuck(mine ? C.me : C.star, b.c, b.L, b.t);
       mergeLuck();
-    } else if (b.k === 'f' && mine && okSkin(b.s) && (!b.c || has.call(CASE_BY_ID, b.c))) {
+    } else if (b.k === 'g' && mine && okSkin(b.s) && okNonce(b.id) && okF(b.f)) {
+      await takeGift(b, pid);
+    } else if (b.k === 'f' && mine && okSkin(b.s) && !secret(b.s) && (!b.c || has.call(CASE_BY_ID, b.c))) {
       const h = await markOf(okNonce(b.o) ? b.o : b.n, pid);
       const q = G.mix.r.q;
       if (!C.done.has(h) && !q.some((e) => e.h === h)) q.push({ s: b.s, c: b.c || '', t: b.t, h: h });
@@ -350,6 +358,38 @@ const Sync = (function () {
       C.watch = now() + WATCH_TTL;
       if (now() - C.lastHb > 20e3) setTimeout(heartbeat, 300 + Math.random() * 3700);
     }
+  }
+
+  // Подарок от админа: id применяется один раз (G.S.gifts переживает перезагрузку, повтор из истории
+  // ntfy и переотправки админа второй копии не дают). Получение подтверждается отметкой, как «выпал»
+  const gotGift = new Set();
+  const giftMark = (id, pid) => markOf('g|' + id, pid);
+  function sendMark(h) {
+    C.done.add(h);
+    packCmd({ v: 1, k: 'x', t: now(), n: b64u(rnd(9)), h: h }, false).then((m) => post(K.cmd, m)).catch(noop);
+  }
+  async function takeGift(b, pid) {
+    const S = G.S, h = await giftMark(b.id, pid);
+    const had = gotGift.has(b.id) || (Array.isArray(S.gifts) && S.gifts.indexOf(b.id) >= 0);
+    gotGift.add(b.id);
+    if (had) {
+      // отметка могла потеряться: если её нет и в истории канала — отправить ещё раз
+      setTimeout(() => { if (!C.done.has(h)) sendMark(h); }, 20e3);
+      return;
+    }
+    try {
+      if (typeof G.giftReceive === 'function') G.giftReceive(b.s, { f: b.f, from: 'admin', id: b.id });
+      else {
+        G.addInst(b.s, b.f, 'admin');
+        if (!Array.isArray(S.gifts)) S.gifts = [];
+        S.gifts.push(b.id);
+        if (S.gifts.length > 200) S.gifts.splice(0, S.gifts.length - 200);
+        G.save(true);
+        if (typeof UI !== 'undefined' && UI.refresh) UI.refresh();
+      }
+    } catch (e) { return; }
+    if (!C.done.has(h)) sendMark(h);
+    heartbeat();
   }
 
   // ---------- клиент: состояние ----------
@@ -437,6 +477,7 @@ const Sync = (function () {
       setTimeout(heartbeat, 3000);
       return true;
     })().catch(() => false);
+    started.then(bootRes);
     return started;
   }
 
@@ -461,8 +502,9 @@ const Sync = (function () {
   // Журнал: строка на команду (o — её исходный nonce). Повтор (re) только продлевает срок;
   // если исходная команда уже ушла из истории ntfy, строка восстанавливается из повтора (ot — исходное время)
   function admCmd(b) {
-    if ((b.k !== 'l' && b.k !== 'f') || adm.jn.has(b.n)) return;
+    if ((b.k !== 'l' && b.k !== 'f' && b.k !== 'g') || adm.jn.has(b.n)) return;
     if (b.p !== '*' && !okTag(b.p)) return;
+    if (b.k === 'g' && (b.p === '*' || !okNonce(b.id) || !okSkin(b.s) || !okF(b.f))) return;
     adm.jn.add(b.n);
     const o = b.re && okNonce(b.o) ? b.o : b.n;
     if (b.re) {
@@ -470,21 +512,24 @@ const Sync = (function () {
       if (adm.jr.some((e) => e.o === o)) { adm.changed(); return; }
     }
     const t = b.re && typeof b.ot === 'number' && b.ot <= b.t ? b.ot : b.t;
+    // подарок: одна строка на id (переотправка несёт тот же id)
+    if (b.k === 'g' && adm.jr.some((x) => x.k === 'g' && x.gid === b.id)) { adm.changed(); return; }
     const e = { t: t, k: b.k, tg: b.p, v: b.k === 'l' ? b.L : null, scope: b.k === 'l' ? b.c : '', s: b.s || '', c: b.k === 'f' ? b.c || '' : '', self: false, h: '', o: o };
+    if (b.k === 'g') { e.gid = b.id; e.f = b.f; }
     let i = 0;
     while (i < adm.jr.length && adm.jr[i].t > e.t) i++;
     adm.jr.splice(i, 0, e);
     if (adm.jr.length > 1000) adm.jr.length = 1000;
-    if (e.k === 'f') fillMark(e);
+    if (e.k !== 'l') fillMark(e);
     adm.changed();
   }
   function fillMark(e) {
     const pid = adm.byTag.get(e.tg);
     if (e.h || !pid) return;
-    markOf(e.o, pid).then((h) => { e.h = h; adm.changed(); }).catch(noop);
+    (e.k === 'g' ? giftMark(e.gid, pid) : markOf(e.o, pid)).then((h) => { e.h = h; adm.changed(); }).catch(noop);
   }
-  function localLog(k, v, scope, s, c) {
-    adm.jr.unshift({ t: now(), k: k, tg: 'self', v: v, scope: scope || '', s: s || '', c: c || '', self: true, h: '', o: '' });
+  function localLog(k, v, scope, s, c, f) {
+    adm.jr.unshift({ t: now(), k: k, tg: 'self', v: v, scope: scope || '', s: s || '', c: c || '', f: f, self: true, h: '', o: '' });
     adm.changed();
   }
   // Текущие слои настроек по журналу: tag | '*' → { scope: { v, t, ref } }
@@ -517,7 +562,7 @@ const Sync = (function () {
       tagOf(o.p).then((t) => {
         r.tag = t;
         if (adm.players.get(o.p) === r) adm.byTag.set(t, o.p);
-        adm.jr.forEach((e) => { if (e.k === 'f' && e.tg === t) fillMark(e); });
+        adm.jr.forEach((e) => { if (e.k !== 'l' && e.tg === t) fillMark(e); });
         adm.changed();
       }).catch(noop);
     }
@@ -603,6 +648,11 @@ const Sync = (function () {
         if (e.k !== 'f' || e.self || (e.h && C.done.has(e.h)) || t0 - e.t > 7 * 86400e3) continue;
         if (t0 - sentAt(e) > RENEW && !(await sendCmd({ k: 'f', p: e.tg, s: e.s, c: e.c, o: e.o, ot: e.t, re: 1 }))) return;
       }
+      // Подарки ждут получения дольше: игрок может не заходить неделями
+      for (const e of adm.jr.slice()) {
+        if (e.k !== 'g' || e.self || (e.h && C.done.has(e.h)) || t0 - e.t > 30 * 86400e3) continue;
+        if (t0 - sentAt(e) > RENEW && !(await sendCmd({ k: 'g', p: e.tg, s: e.s, id: e.gid, f: e.f, o: e.o, ot: e.t, re: 1 }))) return;
+      }
     } finally { renewing = false; }
   }
   async function admStart() {
@@ -636,6 +686,75 @@ const Sync = (function () {
     adm.beacon = adm.keep = adm.keepT = 0; adm.watching = false; adm.lastBeacon = 0; adm.err = '';
     if (adm.sub) { adm.sub.close(); adm.sub = null; }
     adm.players.clear(); adm.byTag.clear(); adm.jr = []; adm.jn.clear(); adm.req.clear(); adm.renew.clear(); ephCache.clear();
+  }
+
+  // ---------- запомненное устройство ----------
+  // Только по вызову из панели (после входа или на устройстве с флагом входа): у игроков базы нет.
+  // Хранятся неизвлекаемые CryptoKey (байты закрытых ключей не прочитать даже со страницы) и отпечаток
+  // ключа в коде: сменился CHAN_PUB — запись не подходит и удаляется молча.
+  const DB = 'caselab_cache', ST = 'kv', REC = TEST ? 'wt' : 'w';
+  const fp = () => PUB.sig + '.' + PUB.enc;
+  let bootRes = noop;
+  const booted = new Promise((r) => { bootRes = r; });
+  // create = false: базы нет — не создавать (открытие отменяется)
+  function idb(create) {
+    return new Promise((res) => {
+      let rq;
+      try { rq = indexedDB.open(DB, 1); } catch (e) { res(null); return; }
+      rq.onupgradeneeded = (e) => {
+        if (!create && e.oldVersion === 0) { try { rq.transaction.abort(); } catch (err) { /* тихо */ } return; }
+        try { rq.result.createObjectStore(ST); } catch (err) { /* тихо */ }
+      };
+      rq.onsuccess = () => res(rq.result);
+      rq.onerror = (e) => { if (e && e.preventDefault) e.preventDefault(); res(null); };
+      rq.onblocked = () => res(null);
+    });
+  }
+  function idbDo(db, mode, fn) {
+    return new Promise((res) => {
+      try {
+        const tx = db.transaction(ST, mode), rq = fn(tx.objectStore(ST));
+        tx.oncomplete = () => res(rq ? rq.result : true);
+        tx.onerror = tx.onabort = (e) => { if (e && e.preventDefault) e.preventDefault(); res(null); };
+      } catch (e) { res(null); }
+    });
+  }
+  // Сохранённые ключи — пара к открытым ключам в коде: пробная подпись и пробный ECDH
+  async function keysOk(rec) {
+    const m = rnd(16);
+    const sg = await subtle.sign({ name: 'ECDSA', hash: 'SHA-256' }, rec.sign, m);
+    if (!(await subtle.verify({ name: 'ECDSA', hash: 'SHA-256' }, K.verify, sg, m))) return false;
+    const kp = await subtle.generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits']);
+    const a = await subtle.deriveBits({ name: 'ECDH', public: kp.publicKey }, rec.ecdh, 256);
+    const b = await subtle.deriveBits({ name: 'ECDH', public: K.encPub }, kp.privateKey, 256);
+    return hex(new Uint8Array(a)) === hex(new Uint8Array(b));
+  }
+  async function remember() {
+    if (!A.match || !A.sign || !A.ecdh || typeof indexedDB === 'undefined') return false;
+    const db = await idb(true);
+    if (!db) return false;
+    try { return !!(await idbDo(db, 'readwrite', (st) => st.put({ fp: fp(), sign: A.sign, ecdh: A.ecdh }, REC))); } finally { db.close(); }
+  }
+  async function restore() {
+    if (A.match) return true;
+    if (!(await booted) || !subtle || typeof indexedDB === 'undefined') return false;
+    const db = await idb(false);
+    if (!db) return false;
+    try {
+      const rec = await idbDo(db, 'readonly', (st) => st.get(REC));
+      if (!rec) return false;
+      let ok = false;
+      try { ok = rec.fp === fp() && (await keysOk(rec)); } catch (e) { ok = false; }
+      if (!ok) { await idbDo(db, 'readwrite', (st) => st.delete(REC)); return false; }
+      if (A.match) return true;
+      A.sign = rec.sign; A.ecdh = rec.ecdh; A.pub = { sig: PUB.sig, enc: PUB.enc }; A.match = true;
+      admStart().catch(noop);
+      adm.changed();
+      return true;
+    } catch (e) { return false; } finally { db.close(); }
+  }
+  function forget() {
+    try { const rq = indexedDB.deleteDatabase(DB); rq.onerror = (e) => { if (e && e.preventDefault) e.preventDefault(); }; } catch (e) { /* тихо */ }
   }
 
   // ---------- API панели ----------
@@ -685,10 +804,29 @@ const Sync = (function () {
   }
   async function forceDrop(pid, skinId, caseId) {
     caseId = caseId || '';
-    if (!okSkin(skinId) || (caseId && (!has.call(CASE_BY_ID, caseId) || CASE_BY_ID[caseId].items.indexOf(skinId) < 0))) return false;
+    if (!okSkin(skinId) || secret(skinId) || (caseId && (!has.call(CASE_BY_ID, caseId) || CASE_BY_ID[caseId].items.indexOf(skinId) < 0))) return false;
     if (isSelf(pid)) { const ok = G.queueOwn(skinId, caseId); if (ok) localLog('f', null, '', skinId, caseId); return ok; }
     if (!okPid(pid)) return false;
     return sendCmd({ k: 'f', p: await tagOf(pid), s: skinId, c: caseId });
+  }
+  // Подарок: себе — сразу в инвентарь; игроку — подписанная команда 'g' с адресатом-меткой и случайным id.
+  // Пока игрок не подтвердил получение, админский клиент переотправляет её (keepAlive)
+  function giftSelf(skinId, f, id) {
+    if (typeof G.giftReceive === 'function') return !!G.giftReceive(skinId, { f: f, from: 'admin', id: id });
+    G.addInst(skinId, f, 'admin');
+    G.save(true);
+    return true;
+  }
+  async function gift(pid, skinId, f) {
+    f = Number(f);
+    if (!okSkin(skinId) || !okF(f)) return false;
+    f = Math.round(f * 1e6) / 1e6;
+    const id = b64u(rnd(9));
+    if (isSelf(pid)) { const ok = giftSelf(skinId, f, id); if (ok) localLog('g', null, '', skinId, '', f); return ok; }
+    if (!okPid(pid)) return false;
+    const tg = await tagOf(pid);
+    adm.byTag.set(tg, pid);
+    return sendCmd({ k: 'g', p: tg, s: skinId, id: id, f: f });
   }
   function journal() {
     const cur = new Set();
@@ -698,7 +836,7 @@ const Sync = (function () {
       const live = !e.self && (e.k === 'l' ? cur.has(e) : !done);
       return {
         t: e.t, k: e.k, target: e.self ? 'self' : e.tg === '*' ? '*' : adm.byTag.get(e.tg) || '#' + e.tg.slice(0, 8),
-        v: e.v, scope: e.scope, s: e.s, c: e.c, self: e.self, done: done, exp: live ? sentAt(e) + HIST : 0,
+        v: e.v, scope: e.scope, s: e.s, c: e.c, f: e.f, self: e.self, done: done, exp: live ? sentAt(e) + HIST : 0,
       };
     });
   }
@@ -720,6 +858,10 @@ const Sync = (function () {
     luckInfo: luckInfo,
     setLuck: setLuck,
     forceDrop: forceDrop,
+    gift: gift,
+    remember: () => remember().catch(() => false),
+    restore: () => restore().catch(() => false),
+    forget: forget,
     journal: journal,
     lastError: () => adm.err,
     on: (fn) => { if (typeof fn === 'function') adm.fns.push(fn); return () => { adm.fns = adm.fns.filter((f) => f !== fn); }; },

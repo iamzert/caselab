@@ -4,7 +4,9 @@
 // (Онлайн, Игроки, Шансы, Выдача, Журнал, Экономика, Сохранение, Ключ канала).
 // Открыть: 5 быстрых нажатий на логотип или адрес страницы с #admin в конце. Нужны логин и пароль.
 // Пароль проверяется только так: из него выводится ключ (PBKDF2, js/sync.js) и сравнивается
-// с открытым ключом CHAN_PUB в коде. Ни пароль, ни что-либо из него в коде и на устройстве не хранится.
+// с открытым ключом CHAN_PUB в коде. Пароль на устройстве не хранится. После входа устройство запоминается:
+// флаг caselab_ui и неизвлекаемые ключи канала в IndexedDB (js/sync.js) — при следующем запуске канал
+// подключается сам. «Выйти на этом устройстве» забывает и флаг, и ключи.
 // Пока CHAN_PUB пуст, вход не открывает панель, а показывает строку для CHAN_PUB (см. README).
 // Онлайн, Игроки и шансы других игроков — только сборка для сайта (служебный канал js/sync.js).
 const Desk = (function () {
@@ -32,7 +34,7 @@ const Desk = (function () {
   }
 
   // Состояние канала в этой вкладке
-  const net = { busy: false, match: false, err: '' };
+  const net = { busy: false, match: false, err: '', rest: false };   // rest — подключаю сохранённые ключи
   // Проверка логина и пароля (окно входа, «Подключить канал», регистрация под ником админа).
   // → Promise<'ok' | 'bad' | 'wait' | 'empty' | 'crypto'>. После неверной попытки — пауза 1.5 с, после пяти — минута.
   function check(loginName, pass) {
@@ -45,7 +47,7 @@ const Desk = (function () {
     const p = Net.login(String(pass));
     pass = null;
     return p.then((r) => {
-      if (r.match) { fails = 0; net.match = true; return 'ok'; }
+      if (r.match) { fails = 0; net.match = true; Net.remember(); return 'ok'; }
       if (r.empty) return 'empty';
       fail();
       return 'bad';
@@ -99,7 +101,7 @@ const Desk = (function () {
   };
   A['adm-devlogin'] = function () {
     if (!DEVTEST) return;
-    session = true;
+    unlock();
     netLogin();
     entered();
   };
@@ -108,7 +110,7 @@ const Desk = (function () {
     if (!Net || net.busy) return;
     net.busy = true; net.err = '';
     redraw();
-    Net.loginTest().then((r) => { net.match = !!r.match; if (!r.match) net.err = 'bad'; })
+    Net.loginTest().then((r) => { net.match = !!r.match; if (r.match) Net.remember(); else net.err = 'bad'; })
       .catch(() => { net.match = false; net.err = 'crypto'; })
       .then(() => { net.busy = false; redraw(); });
   }
@@ -212,7 +214,7 @@ const Desk = (function () {
       '<aside class="ap-side"><div class="ap-brand">' + UI.ic('gear') + '<span>Админ</span></div>' +
       '<nav class="ap-nav">' + nav + '</nav>' +
       '<div class="ap-st" id="ap-st">' + statusLine() + '</div>' +
-      '<button class="ap-ni ap-out" data-act="adm-logout">' + UI.ic('logout') + '<span>Выйти</span></button></aside>' +
+      '<button class="ap-ni ap-out" data-act="adm-logout" title="Забыть вход и ключи канала на этом устройстве">' + UI.ic('logout') + '<span>Выйти на этом устройстве</span></button></aside>' +
       '<div class="ap-main"><div class="ap-h"><h3>' + cur.t + '</h3>' + (SEC[ui.sec].tools ? SEC[ui.sec].tools() : '') + '</div>' +
       (SEC[ui.sec].head ? SEC[ui.sec].head() : '') +
       '<div id="ap-dyn">' + SEC[ui.sec].body() + '</div></div></div>';
@@ -245,6 +247,7 @@ const Desk = (function () {
   function statusLine() {
     if (!site()) return '<i class="ap-dot off"></i>Локально (без канала)';
     if (net.busy) return '<i class="ap-dot wait"></i>Канал: вычисляю ключ…';
+    if (net.rest && !net.match) return '<i class="ap-dot wait"></i>Канал: подключение…';
     if (!Net.ready()) return '<i class="ap-dot off"></i>Канал: ключ не встроен';
     if (!net.match) return '<i class="ap-dot off"></i>Канал: нужен пароль';
     const s = Net.state(), er = Net.lastError();
@@ -260,6 +263,7 @@ const Desk = (function () {
   const note = (html, cls) => '<p class="ap-note' + (cls ? ' ' + cls : '') + '">' + html + '</p>';
   function chanForm() {
     if (net.busy) return '<div class="ap-box">' + note('Вычисляю ключ канала из пароля…') + '</div>';
+    if (net.rest) return '<div class="ap-box">' + note('Подключаю канал этого устройства…') + '</div>';
     return '<div class="ap-box"><div class="ap-bt">Подключить канал</div>' +
       note('Онлайн, Игроки и шансы других игроков работают по подписанному каналу. Введите пароль ещё раз: из него выводится ключ. Пароль не сохраняется и никуда не отправляется.') +
       '<div class="ap-row"><input id="ap-np" class="ap-in w" type="password" autocomplete="current-password" placeholder="Пароль">' +
@@ -393,6 +397,7 @@ const Desk = (function () {
     return '<div class="ap-card"><div class="ap-ch">' + who(r) + pidCell(r) +
       (r.on ? '<span class="ap-on">в игре · ' + (r.act ? 'активен' : 'отошёл') + '</span>' : '<span class="ap-mut">был ' + ago(r.t) + '</span>') +
       '<span class="ap-sp"></span><button class="btn mini primary" data-act="adm-target" data-id="' + esc(pid) + '">' + UI.ic('dice') + 'Шансы</button>' +
+      (SKINS[NOIR] ? '<button class="btn mini ap-sxb" data-act="adm-noir-to" data-id="' + esc(pid) + '">' + UI.ic('rewards') + 'Подарить секретный скин</button>' : '') +
       '<button class="btn mini" data-act="adm-pl" data-id="">' + UI.ic('x') + '</button></div>' +
       '<div class="ap-kvs">' + kv('Баланс', money(r.b)) + kv('Кейсов всего', G.fmtInt(r.o)) + kv('За сессию', G.fmtInt(r.so)) +
       kv('Потрачено (сессия)', money(r.sp)) + kv('Потрачено всего', spentAll == null ? '…' : G.fmt(spentAll)) + kv('Заработано всего', r.tot == null ? '…' : G.fmt(r.tot)) +
@@ -515,6 +520,10 @@ const Desk = (function () {
     else if (id === 'ap-fs') ui.fskin = e.target.value;
     else if (id === 'ap-gs') last.skin = e.target.value;
     else if (id === 'ap-gw') last.wear = e.target.value;
+    else if (id === 'ap-xw') last.xwear = e.target.value;
+    else if (id === 'ap-ys') last.gskin = e.target.value;
+    else if (id === 'ap-yw') last.gwear = e.target.value;
+    else if (id === 'ap-xp' || id === 'ap-yp') { last.gpid = e.target.value; const o = document.getElementById(id === 'ap-xp' ? 'ap-yp' : 'ap-xp'); if (o) o.value = last.gpid; }
   });
   document.addEventListener('input', (e) => {
     if (!e.target || e.target.id !== 'ap-lv') return;
@@ -528,12 +537,12 @@ const Desk = (function () {
     return table(id, [
       { k: 't', h: 'Время', num: 1, f: (e) => hms(e.t) },
       { k: 'target', h: 'Цель', v: (e) => (e.self ? 'self' : e.target), f: (e) => esc(e.self ? 'Это устройство' : tgName(e.target)) },
-      { k: 'k', h: 'Действие', f: (e) => (e.k === 'l' ? 'Удача' : 'Следующий дроп') },
-      { k: 'v', h: 'Значение', v: (e) => (e.k === 'l' ? (e.v == null ? -1 : e.v) : 200), f: (e) => (e.k === 'l' ? esc(luckLabel(e.v)) : skinCell(e.s)) },
-      { k: 'scope', h: 'Охват', v: (e) => (e.k === 'l' ? scopeTxt(e.scope) : caseName(e.c)), f: (e) => esc(e.k === 'l' ? scopeTxt(e.scope) : caseName(e.c) || 'Любой кейс') },
+      { k: 'k', h: 'Действие', f: (e) => (e.k === 'l' ? 'Удача' : e.k === 'g' ? 'Подарок' : 'Следующий дроп') },
+      { k: 'v', h: 'Значение', v: (e) => (e.k === 'l' ? (e.v == null ? -1 : e.v) : 200), f: (e) => (e.k === 'l' ? esc(luckLabel(e.v)) : skinCell(e.s) + (e.k === 'g' && e.f != null ? ' <span class="ap-mut">' + Number(e.f).toFixed(4) + '</span>' : '')) },
+      { k: 'scope', h: 'Охват', v: (e) => (e.k === 'l' ? scopeTxt(e.scope) : caseName(e.c)), f: (e) => (e.k === 'g' ? '<span class="ap-mut">—</span>' : esc(e.k === 'l' ? scopeTxt(e.scope) : caseName(e.c) || 'Любой кейс')) },
       { k: 'exp', h: 'Действует до', num: 1, v: (e) => e.exp || null, f: (e) => (e.exp ? hm(e.exp) : '<span class="ap-mut">—</span>') },
-      { k: 'done', h: 'Статус', v: (e) => (e.k === 'f' ? (e.done ? 1 : 0) : 2), f: (e) => (e.k !== 'f' ? '' : e.self ? '<span class="ap-mut">локально</span>' : e.done ? '<span class="ap-on">выпал</span>' : '<span class="ap-mut">ждёт</span>') },
-    ], rows, { sort: { k: 't', d: -1 }, find: (e) => (e.self ? 'это устройство' : tgName(e.target)) + ' ' + (e.k === 'l' ? luckLabel(e.v) + ' ' + scopeTxt(e.scope) : skinTxt(e.s) + ' ' + caseName(e.c)), empty: 'Изменений пока нет', tall: id === 'lg' });
+      { k: 'done', h: 'Статус', v: (e) => (e.k !== 'l' ? (e.done ? 1 : 0) : 2), f: (e) => (e.k === 'l' ? '' : e.self ? '<span class="ap-mut">' + (e.k === 'g' ? 'получен' : 'локально') + '</span>' : e.done ? '<span class="ap-on">' + (e.k === 'g' ? 'получен' : 'выпал') + '</span>' : '<span class="ap-mut">ждёт</span>') },
+    ], rows, { sort: { k: 't', d: -1 }, find: (e) => (e.self ? 'это устройство' : tgName(e.target)) + ' ' + (e.k === 'l' ? luckLabel(e.v) + ' ' + scopeTxt(e.scope) : (e.k === 'g' ? 'подарок ' : '') + skinTxt(e.s) + ' ' + caseName(e.c)), empty: 'Изменений пока нет', tall: id === 'lg' });
   }
   SEC.log = {
     tools: () => search('lg', 'Цель, предмет, кейс'),
@@ -572,22 +581,66 @@ const Desk = (function () {
   };
 
   // ---------- Выдача (только это устройство) ----------
-  const last = { skin: null, wear: 'ft', n: 1 };   // выбор в «Выдать предмет» сохраняется между действиями
+  // выбор в «Выдать предмет» и подарках сохраняется между действиями
+  const last = { skin: null, wear: 'ft', n: 1, xwear: 'fn', gskin: null, gwear: 'ft', gpid: '' };
+  // Секретный скин (трофей): только этот блок и подарки; в случайные выдачи и списки не попадает
+  const NOIR = 'kar_noir';
+  const isSecret = (id) => (typeof G.isSecret === 'function' ? !!G.isSecret(id) : !!(SKINS[id] && RARITIES[SKINS[id].r] && RARITIES[SKINS[id].r].id === 'secret'));
+  const plain = () => SKIN_LIST.filter((s) => !isSecret(s.id));
+  const btn = (act, id, t, cls) => '<button class="btn mini' + (cls ? ' ' + cls : '') + '" data-act="' + act + '"' + (id != null ? ' data-id="' + esc(id) + '"' : '') + '>' + t + '</button>';
+  const wearOpts = (cur) => WEARS.map((w) => opt(w.id, G.t('wear_' + w.id), w.id === cur)).join('');
+  // Игрок для подарка: сначала те, кто в игре
+  function playerSel(id) {
+    // в игре — первыми, своё устройство — последним
+    const rank = (r) => (r.me ? 0 : r.on ? 2 : 1);
+    const pl = Net.players().slice().sort((a, b) => rank(b) - rank(a) || b.t - a.t);
+    if (!pl.some((r) => r.pid === last.gpid)) last.gpid = pl.length ? pl[0].pid : '';
+    return '<select id="' + id + '" class="ap-in ap-pp">' + (pl.length ? pl.map((r) => opt(r.pid, (r.on ? '● ' : '') + (r.n || '—') + ' · ' + r.pid + (r.me ? ' (вы)' : ''), r.pid === last.gpid)).join('') : '<option value="">Игроков нет (12 ч)</option>') + '</select>';
+  }
+  // Кому можно дарить: только сайт с подключённым каналом
+  function giftGate() {
+    if (!site()) return note('Дарить другим игрокам можно только на сайте игры: в этой сборке нет внешних сервисов.');
+    if (!remoteOn()) return note('Подарить игроку — после подключения канала (раздел «Онлайн» или «Игроки»).');
+    return '';
+  }
+  function noirBox() {
+    if (!SKINS[NOIR]) return '';
+    const sk = SKINS[NOIR], g = giftGate();
+    return '<div class="ap-box ap-sx"><div class="ap-sx-card">' + UI.itemCard(NOIR, { price: sk.value }) + '</div><div class="ap-sx-r">' +
+      '<div class="ap-bt">Секретный скин</div><div class="ap-sx-n">' + esc(skinTxt(NOIR)) + ' <span>· ' + COIN + String(Math.round(sk.value)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + '</span></div>' +
+      '<div class="ap-row"><select id="ap-xw" class="ap-in">' + wearOpts(last.xwear) + '</select>' + btn('adm-noir-self', null, 'Выдать себе', 'primary') + '</div>' +
+      (g || '<div class="ap-row">' + playerSel('ap-xp') + btn('adm-noir-gift', null, 'Подарить игроку', 'primary') + '</div>') +
+      note('Трофей: продать и поставить в апгрейд нельзя, в кейсах не выпадает. Игрок получает окно «Подарок»; в ленту подарок не попадает.') + '</div></div>';
+  }
+  function anyGiftBox() {
+    const g = giftGate();
+    let body = g;
+    if (!g) {
+      const ids = plain().sort((a, b) => b.value - a.value);
+      if (!last.gskin || !ids.some((s) => s.id === last.gskin)) last.gskin = ids[0].id;
+      body = '<div class="ap-row"><select id="ap-ys" class="ap-in w">' + ids.map((s) => opt(s.id, skinTxt(s.id) + ' · ' + G.fmt(s.value), s.id === last.gskin)).join('') + '</select>' +
+        '<select id="ap-yw" class="ap-in">' + wearOpts(last.gwear) + '</select></div>' +
+        '<div class="ap-row">' + playerSel('ap-yp') + btn('adm-gift-any', null, 'Подарить', 'primary') + '</div>' +
+        note('Подарок приходит игроку, когда он в игре (или зайдёт позже: пока он не получен, панель отправляет его заново). Статус — в «Журнале».');
+    }
+    return '<div class="ap-box"><div class="ap-bt">Подарить игроку любой предмет</div>' + body + '</div>';
+  }
   SEC.give = {
     head: function () {
       const S = G.S;
-      const ids = SKIN_LIST.slice().sort((a, b) => b.value - a.value);
+      const ids = plain().sort((a, b) => b.value - a.value);
       if (!last.skin) last.skin = ids[0].id;
       const skins = ids.map((s) => opt(s.id, skinTxt(s.id) + ' · ' + G.fmt(s.value), s.id === last.skin)).join('');
-      const wears = WEARS.map((w) => opt(w.id, G.t('wear_' + w.id), w.id === last.wear)).join('');
-      const b = (act, id, t, cls) => '<button class="btn mini' + (cls ? ' ' + cls : '') + '" data-act="' + act + '"' + (id != null ? ' data-id="' + id + '"' : '') + '>' + t + '</button>';
-      return '<div class="ap-box"><div class="ap-bt">Баланс · ' + COIN + G.fmt(S.coins) + '</div><div class="ap-row">' +
+      const wears = wearOpts(last.wear);
+      const b = btn;
+      return noirBox() + '<div class="ap-box"><div class="ap-bt">Баланс · ' + COIN + G.fmt(S.coins) + '</div><div class="ap-row">' +
         [100, 1000, 10000, 100000].map((v) => b('adm-coins', v, '+' + G.fmtInt(v))).join('') +
         '<input id="adm-coins" class="ap-in" type="number" min="0" step="0.01" placeholder="Сумма">' + b('adm-setcoins', null, 'Установить', 'primary') + '</div></div>' +
         '<div class="ap-box"><div class="ap-bt">Выдать предмет</div><div class="ap-row">' +
         '<select id="ap-gs" class="ap-in w">' + skins + '</select><select id="ap-gw" class="ap-in">' + wears + '</select>' +
         '<input id="adm-n" class="ap-in s" type="number" min="1" max="50" value="' + last.n + '" title="Количество">' + b('adm-give', null, 'Выдать', 'primary') + '</div>' +
         '<div class="ap-row">' + b('adm-give-rand', 'star', 'Случайный нож/перчатки') + b('adm-give-rand', '10', '10 случайных предметов') + '</div></div>' +
+        (site() ? anyGiftBox() : '') +
         '<div class="ap-box"><div class="ap-bt">Прогресс</div><div class="ap-row">' +
         b('adm-maxup', null, 'Прокачка на максимум') + b('adm-resetup', null, 'Сбросить прокачку') + b('adm-collection', null, 'Открыть всю коллекцию') +
         b('adm-clearinv', null, 'Очистить инвентарь', 'danger') + '</div></div>' +
@@ -621,7 +674,7 @@ const Desk = (function () {
     if (!unlocked()) return;
     const id = document.getElementById('ap-gs').value, wear = document.getElementById('ap-gw').value;
     const n = Math.max(1, Math.min(50, Math.floor(Number(document.getElementById('adm-n').value) || 1)));
-    if (!SKINS[id]) return;
+    if (!SKINS[id] || isSecret(id)) return;
     last.skin = id; last.wear = wear; last.n = n;
     let k = 0;
     while (k < n && giveOne(id, wear)) k++;
@@ -629,11 +682,46 @@ const Desk = (function () {
   };
   A['adm-give-rand'] = function (mode) {
     if (!unlocked()) return;
-    const pool = mode === 'star' ? SKIN_LIST.filter((s) => G.isStar(s.id)) : SKIN_LIST;
+    const pool = mode === 'star' ? plain().filter((s) => G.isStar(s.id)) : plain();
     const n = mode === 'star' ? 1 : 10;
     let k = 0;
     while (k < n && giveOne(pool[Math.floor(Math.random() * pool.length)].id, null)) k++;
     done(k ? 'Выдано: ' + k + ' шт.' : 'Инвентарь полон');
+  };
+  // ---------- Подарки ----------
+  // pid 'self' — себе (сразу, локально); иначе — через канал. Удалённый подарок — с подтверждением
+  function sendGift(pid, skinId, wearId) {
+    if (!unlocked() || !SKINS[skinId]) return;
+    const self = pid === 'self';
+    if (!self && !remoteOn()) { UI.toast(site() ? 'Канал не подключён' : 'Дарить другим можно только на сайте', 'bad'); return; }
+    if (!self && !pid) { UI.toast('Выберите игрока', 'bad'); return; }
+    const go = () => {
+      const f = G.rollFloat(wearId || null);
+      const p = Net ? Net.gift(pid, skinId, f) : Promise.resolve(localGift(skinId, f));
+      Promise.resolve(p).then((ok) => {
+        if (self) { UI.refresh(); if (visible()) panel(); if (!ok) UI.toast('Не выдано', 'bad'); return; }
+        UI.toast(ok ? 'Подарок отправлен: ' + skinTxt(skinId) + ' → ' + tgName(pid) : failTxt(), ok ? 'good' : 'bad');
+        if (visible()) panel();
+      });
+    };
+    if (self) go();
+    else UI.confirm('Подарить <b>' + esc(skinTxt(skinId)) + '</b> игроку <b>' + esc(tgName(pid)) + '</b>?', go);
+  }
+  function localGift(skinId, f) {
+    const id = 'l' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    if (typeof G.giftReceive === 'function') return !!G.giftReceive(skinId, { f: f, from: 'admin', id: id });
+    G.addInst(skinId, f, 'admin'); G.save(true);
+    return true;
+  }
+  const pickedPid = (id) => { const el = document.getElementById(id); return el ? el.value : last.gpid; };
+  A['adm-noir-self'] = function () { sendGift('self', NOIR, last.xwear); };
+  A['adm-noir-gift'] = function () { sendGift(pickedPid('ap-xp'), NOIR, last.xwear); };
+  A['adm-noir-to'] = function (pid) { sendGift(pid, NOIR, last.xwear); };
+  A['adm-gift-any'] = function () {
+    const s = document.getElementById('ap-ys');
+    if (s) last.gskin = s.value;
+    if (isSecret(last.gskin) && last.gskin !== NOIR) return;
+    sendGift(pickedPid('ap-yp'), last.gskin, last.gwear);
   };
   A['adm-maxup'] = function () { if (!unlocked()) return; G.UPGRADES.forEach((u) => { G.S.up[u.id] = u.max; }); done('Прокачка на максимуме'); };
   A['adm-resetup'] = function () { if (!unlocked()) return; G.UPGRADES.forEach((u) => { G.S.up[u.id] = 0; }); done('Прокачка сброшена'); };
@@ -709,13 +797,24 @@ const Desk = (function () {
     });
   };
 
+  // Выход на этом устройстве: забыть флаг входа и сохранённые ключи канала
   A['adm-logout'] = function () {
     session = false; store.set(null);
-    if (Net) Net.logout();
-    net.match = false; net.err = ''; ui.pid = ''; ui.target = 'self';
+    if (Net) { Net.logout(); Net.forget(); }
+    net.match = false; net.err = ''; net.rest = false; ui.pid = ''; ui.target = 'self';
     UI.showScreen('cases');
-    UI.toast('Вы вышли из админ-панели');
+    UI.toast('Вы вышли из админ-панели на этом устройстве');
   };
+
+  // Запомненное устройство: канал подключается сам, без пароля (ключи из IndexedDB, см. js/sync.js)
+  if (Net && unlocked()) {
+    net.rest = true;
+    Net.restore().then((ok) => {
+      net.rest = false;
+      if (ok) { net.match = true; net.err = ''; }
+      redraw();
+    });
+  }
 
   // ---------- Скрытые входы ----------
   let taps = [];
